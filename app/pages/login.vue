@@ -112,8 +112,9 @@ const errors = reactive({ email: '', password: '' })
 const demoAccounts = [
   { email: 'aden@bizmonr.com', password: 'admin123', role: 'Admin' },
   { email: 'dedi@bizmonr.com', password: 'karyawan123', role: 'Karyawan (Sembako)' },
-  { email: 'siti@bizmonr.com', password: 'karyawan123', role: 'Karyawan (Wonton)' },
   { email: 'budi@bizmonr.com', password: 'karyawan123', role: 'Karyawan (Es Teh)' },
+  { email: 'rina@bizmonr.com', password: 'karyawan123', role: 'Karyawan (Dimsum)' },
+  { email: 'siti@bizmonr.com', password: 'karyawan123', role: 'Karyawan (Wonton)' },
 ]
 
 function fillDemo(demo: { email: string; password: string }) {
