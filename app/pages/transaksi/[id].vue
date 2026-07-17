@@ -1,12 +1,16 @@
 <template>
   <div class="max-w-2xl mx-auto">
-    <div v-if="trx" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div v-if="isLoading" class="text-center py-12">
+      <p class="text-gray-500">Memuat detail transaksi...</p>
+    </div>
+
+    <div v-else-if="trx" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <!-- Header -->
       <div class="p-6 border-b border-gray-200">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold text-gray-900">Detail Transaksi</h2>
-          <span class="text-xs font-medium px-2.5 py-1 rounded-full" :class="trx.status === 'Selesai' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-            {{ trx.status }}
+          <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+            Selesai
           </span>
         </div>
         <p class="text-sm font-mono text-primary-600 font-semibold">{{ trx.id }}</p>
@@ -15,20 +19,20 @@
       <!-- Info -->
       <div class="p-6 border-b border-gray-200 grid grid-cols-2 gap-4">
         <div>
-          <p class="text-xs text-gray-400 mb-0.5">Bisnis</p>
-          <p class="text-sm font-medium text-gray-900">{{ trx.bisnis }}</p>
+          <p class="text-xs text-gray-400 mb-0.5">Cabang</p>
+          <p class="text-sm font-medium text-gray-900">{{ trx.branch.business.name }} - {{ trx.branch.name }}</p>
         </div>
         <div>
           <p class="text-xs text-gray-400 mb-0.5">Tanggal</p>
-          <p class="text-sm font-medium text-gray-900">{{ fmt.formatDateTime(trx.tanggal) }}</p>
+          <p class="text-sm font-medium text-gray-900">{{ fmt.formatDateTime(trx.createdAt) }}</p>
         </div>
         <div>
           <p class="text-xs text-gray-400 mb-0.5">Kasir</p>
-          <p class="text-sm font-medium text-gray-900">{{ trx.kasir }}</p>
+          <p class="text-sm font-medium text-gray-900">{{ trx.cashier.name }}</p>
         </div>
         <div>
           <p class="text-xs text-gray-400 mb-0.5">Metode</p>
-          <p class="text-sm font-medium text-gray-900">{{ trx.metode_pembayaran }}</p>
+          <p class="text-sm font-medium text-gray-900">{{ trx.paymentMethod }}</p>
         </div>
       </div>
 
@@ -36,10 +40,10 @@
       <div class="p-6 border-b border-gray-200">
         <h3 class="text-sm font-semibold text-gray-700 mb-3">Item Transaksi</h3>
         <div class="space-y-3">
-          <div v-for="(item, idx) in trx.items" :key="idx" class="flex items-center justify-between">
+          <div v-for="item in trx.details" :key="item.id" class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-gray-900">{{ item.produk }}</p>
-              <p class="text-xs text-gray-400">{{ item.qty }} × {{ fmt.format(item.harga) }}</p>
+              <p class="text-sm text-gray-900">{{ item.product.name }}</p>
+              <p class="text-xs text-gray-400">{{ item.quantity }} × {{ fmt.format(item.price) }}</p>
             </div>
             <p class="text-sm font-medium text-gray-900">{{ fmt.format(item.subtotal) }}</p>
           </div>
@@ -48,33 +52,67 @@
 
       <!-- Totals -->
       <div class="p-6 space-y-2">
-        <div class="flex justify-between text-sm">
-          <span class="text-gray-500">Subtotal</span>
-          <span class="text-gray-900 font-medium">{{ fmt.format(trx.total) }}</span>
-        </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-gray-500">Bayar</span>
-          <span class="text-gray-900 font-medium">{{ fmt.format(trx.bayar) }}</span>
-        </div>
-        <div class="flex justify-between text-base font-bold border-t border-gray-100 pt-2 mt-2">
-          <span class="text-gray-700">Kembalian</span>
-          <span class="text-green-600">{{ fmt.format(trx.kembalian) }}</span>
+        <div class="flex justify-between text-base font-bold pt-2 mt-2">
+          <span class="text-gray-700">Total Bayar</span>
+          <span class="text-primary-600">{{ fmt.format(trx.total) }}</span>
         </div>
       </div>
 
-      <!-- Actions -->
-      <div class="p-6 border-t border-gray-200 flex gap-3">
+      <!-- Actions (No Print) -->
+      <div class="p-6 border-t border-gray-200 flex gap-3 no-print">
         <button @click="$router.back()" class="flex-1 py-2.5 px-4 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
           ← Kembali
         </button>
-        <button @click="window.print()" class="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+        <button @click="printReceipt" class="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
           Cetak Struk
         </button>
       </div>
+
+      <!-- Thermal Print Area (Hidden on screen) -->
+      <div id="print-area" class="hidden">
+        <div class="print-header">
+          <h2>{{ settingsStore.headerStruk }}</h2>
+          <p v-if="settingsStore.namaToko">{{ settingsStore.namaToko }} - {{ trx.branch.name }}</p>
+          <p v-else>{{ trx.branch.business.name }} - {{ trx.branch.name }}</p>
+          <p v-if="settingsStore.alamat">{{ settingsStore.alamat }}</p>
+          <p v-if="settingsStore.telepon">Telp: {{ settingsStore.telepon }}</p>
+          <div class="divider"></div>
+        </div>
+        <div class="print-info">
+          <p>Tgl: {{ fmt.formatDateTime(trx.createdAt) }}</p>
+          <p>ID: {{ trx.id.split('-')[0] }}</p>
+          <p>Ksr: {{ trx.cashier.name }}</p>
+          <div class="divider"></div>
+        </div>
+        <div class="print-items">
+          <div v-for="item in trx.details" :key="item.id" class="item-row">
+            <p class="item-name">{{ item.product.name }}</p>
+            <div class="item-calc">
+              <span>{{ item.qty }}x {{ fmt.format(item.snapshotPrice) }}</span>
+              <span>{{ fmt.format(item.subtotal) }}</span>
+            </div>
+          </div>
+          <div class="divider"></div>
+        </div>
+        <div class="print-total">
+          <div class="total-row">
+            <span>Total:</span>
+            <span>{{ fmt.format(trx.total) }}</span>
+          </div>
+          <div class="total-row">
+            <span>Metode:</span>
+            <span>{{ trx.paymentMethod }}</span>
+          </div>
+          <div class="divider"></div>
+        </div>
+        <div class="print-footer">
+          <p>{{ settingsStore.footerStruk }}</p>
+        </div>
+      </div>
     </div>
 
-    <!-- Not Found -->
-    <div v-else class="bg-white rounded-xl border border-gray-200 py-16 text-center">
+    <!-- Not Found (No Print) -->
+    <div v-else class="bg-white rounded-xl border border-gray-200 py-16 text-center no-print">
       <Search class="w-12 h-12 text-gray-300 mx-auto mb-3" />
       <p class="text-gray-500 font-medium">Transaksi tidak ditemukan</p>
       <NuxtLink to="/transaksi/riwayat" class="inline-block mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium">
@@ -85,14 +123,101 @@
 </template>
 
 <script setup lang="ts">
-import { transactions } from '~/data/transactions'
+import { ref, onMounted } from 'vue'
 import { Search } from 'lucide-vue-next'
 
 const route = useRoute()
 const fmt = useFormatCurrency()
+const { fetchWithAuth } = useApi()
+const toast = useToastStore()
+const settingsStore = useSettingsStore()
 
-const trx = computed(() => {
+const isLoading = ref(true)
+const trx = ref<any>(null)
+
+onMounted(async () => {
   const id = route.params.id as string
-  return transactions.find((t) => t.id === id) || null
+  try {
+    const res = await fetchWithAuth<any>(`/transactions/${id}`)
+    if (res.success) {
+      trx.value = res.data
+    } else {
+      toast.error('Transaksi tidak ditemukan')
+    }
+  } catch (error) {
+    toast.error('Gagal memuat transaksi')
+  } finally {
+    isLoading.value = false
+  }
 })
+
+function printReceipt() {
+  window.print()
+}
 </script>
+
+<style>
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+  #print-area {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 58mm; /* Standard thermal printer size */
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    color: #000;
+  }
+  
+  .print-header {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .print-header h2 {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0;
+  }
+  .print-header p {
+    margin: 2px 0 0;
+  }
+  
+  .divider {
+    border-top: 1px dashed #000;
+    margin: 8px 0;
+  }
+  
+  .print-info p {
+    margin: 2px 0;
+  }
+  
+  .item-row {
+    margin-bottom: 6px;
+  }
+  .item-name {
+    margin: 0 0 2px;
+  }
+  .item-calc {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    margin: 2px 0;
+  }
+  
+  .print-footer {
+    text-align: center;
+    margin-top: 10px;
+  }
+}
+</style>

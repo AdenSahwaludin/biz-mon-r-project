@@ -36,7 +36,10 @@
 
       <!-- Product Grid -->
       <div class="flex-1 overflow-y-auto">
-        <div v-if="filteredProducts.length" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div v-if="isLoading" class="flex flex-col items-center justify-center py-16 text-center">
+          <p class="text-gray-500">Memuat produk...</p>
+        </div>
+        <div v-else-if="filteredProducts.length" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
           <button
             v-for="prod in filteredProducts"
             :key="prod.id"
@@ -46,10 +49,10 @@
             <div class="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mb-2 group-hover:bg-primary-100 transition-colors text-primary-600">
               <component :is="getBusinessIcon(bizIcon)" class="w-5 h-5" />
             </div>
-            <p class="text-sm font-medium text-gray-900 truncate">{{ prod.nama }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ prod.kategori }}</p>
-            <p class="text-sm font-bold text-primary-600 mt-1">{{ fmt.format(prod.harga) }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">Stok: {{ prod.stok }}</p>
+            <p class="text-sm font-medium text-gray-900 truncate">{{ prod.name }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ prod.category?.name }}</p>
+            <p class="text-sm font-bold text-primary-600 mt-1">{{ fmt.format(prod.price) }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">Stok: {{ prod.stock }}</p>
           </button>
         </div>
         <div v-else class="flex flex-col items-center justify-center py-16 text-center">
@@ -97,8 +100,8 @@
           class="flex items-start gap-3 bg-gray-50 rounded-lg p-3"
         >
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">{{ item.produk.nama }}</p>
-            <p class="text-xs text-gray-500 mt-0.5">{{ fmt.format(item.produk.harga) }} / {{ item.produk.satuan }}</p>
+            <p class="text-sm font-medium text-gray-900 truncate">{{ item.produk.name }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ fmt.format(item.produk.price) }} / {{ item.produk.unit }}</p>
           </div>
 
           <!-- Qty Controls -->
@@ -177,9 +180,12 @@
           >Batal</button>
           <button
             @click="handlePay"
-            :disabled="!canPay"
-            class="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >Bayar Sekarang</button>
+            :disabled="!canPay || isSaving"
+            class="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            <span v-if="isSaving" class="mr-2 animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+            Bayar Sekarang
+          </button>
         </div>
       </div>
     </div>
@@ -187,15 +193,14 @@
     <!-- Success Modal -->
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="showSuccess" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div v-if="showSuccess" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
             <div class="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4">
               <CheckCircle class="w-8 h-8" />
             </div>
             <h3 class="text-xl font-bold text-gray-900 mb-1">Berhasil!</h3>
-            <p class="text-sm text-gray-500 mb-4">{{ successData?.id }}</p>
 
-            <div class="bg-gray-50 rounded-lg p-4 mb-4 text-left space-y-2">
+            <div class="bg-gray-50 rounded-lg p-4 mb-4 text-left space-y-2 mt-4">
               <div class="flex justify-between text-sm">
                 <span class="text-gray-500">Total</span>
                 <span class="font-semibold text-gray-900">{{ fmt.format(successData?.total || 0) }}</span>
@@ -222,11 +227,54 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Thermal Print Area (Hidden on screen) -->
+    <div id="print-area" class="hidden" v-if="successData">
+      <div class="print-header">
+        <h2>{{ settingsStore.headerStruk }}</h2>
+        <p v-if="settingsStore.namaToko">{{ settingsStore.namaToko }} - {{ biz.activeBranch?.name }}</p>
+        <p v-else>{{ biz.activeBusiness?.name }} - {{ biz.activeBranch?.name }}</p>
+        <p v-if="settingsStore.alamat">{{ settingsStore.alamat }}</p>
+        <p v-if="settingsStore.telepon">Telp: {{ settingsStore.telepon }}</p>
+        <div class="divider"></div>
+      </div>
+      <div class="print-info">
+        <p>Tgl: {{ fmt.formatDateTime(successData.createdAt) }}</p>
+        <p>ID: {{ successData.id.split('-')[0] }}</p>
+        <p>Ksr: {{ auth.user?.name }}</p>
+        <div class="divider"></div>
+      </div>
+      <div class="print-items">
+        <div v-for="item in cart.items" :key="item.produk.id" class="item-row">
+          <p class="item-name">{{ item.produk.name }}</p>
+          <div class="item-calc">
+            <span>{{ item.qty }}x {{ fmt.format(item.produk.price) }}</span>
+            <span>{{ fmt.format(item.subtotal) }}</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+      </div>
+      <div class="print-total">
+        <div class="total-row">
+          <span>Total:</span>
+          <span>{{ fmt.format(successData.total) }}</span>
+        </div>
+        <div class="total-row">
+          <span>Metode:</span>
+          <span>{{ successData.metode }}</span>
+        </div>
+        <div class="divider"></div>
+      </div>
+      <div class="print-footer">
+        <p>{{ settingsStore.footerStruk }}</p>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { products } from '~/data/products'
+import { ref, computed, onMounted } from 'vue'
 import { Search, Package, ShoppingCart, X, Minus, Plus, Banknote, Smartphone, CheckCircle, Soup, CupSoda, Utensils, Store } from 'lucide-vue-next'
 
 const cart = useCartStore()
@@ -234,49 +282,97 @@ const auth = useAuthStore()
 const biz = useBusinessStore()
 const fmt = useFormatCurrency()
 const toast = useToastStore()
+const settingsStore = useSettingsStore()
+const { fetchWithAuth } = useApi()
 
 const barcodeInput = ref<HTMLInputElement>()
 const barcodeValue = ref('')
 const searchQuery = ref('')
 const showCart = ref(false)
 const showSuccess = ref(false)
-const successData = ref<{ id: string; total: number; bayar: number; kembalian: number; metode: string } | null>(null)
+const successData = ref<{ id: string; createdAt: string; total: number; bayar: number; kembalian: number; metode: string } | null>(null)
+const isSaving = ref(false)
+const isLoading = ref(false)
+const products = ref<any[]>([])
 
 const isMobile = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
   isMobile.value = window.innerWidth < 1024
   window.addEventListener('resize', () => {
     isMobile.value = window.innerWidth < 1024
   })
+  
+  if (biz.businesses.length === 0) {
+    await biz.fetchAll()
+  }
+  
+  await fetchProducts()
+  
   // Auto-focus barcode input
   barcodeInput.value?.focus()
 })
 
-const bizIcon = computed(() => biz.activeBusinessInfo?.icon || 'Store')
+async function fetchProducts() {
+  isLoading.value = true
+  try {
+    const res = await fetchWithAuth<any>('/products')
+    if (res.success) {
+      products.value = res.data
+    }
+  } catch (error) {
+    toast.error('Gagal memuat produk')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const bizIcon = computed(() => biz.activeBusiness?.icon || 'Store')
 
 function getBusinessIcon(name: string) {
   return { Soup, CupSoda, Utensils, Store }[name] || Store
 }
 
 const bizProducts = computed(() => {
-  const activeName = biz.activeBisnis
-  return products.filter((p) => p.bisnis === activeName && p.status === 'Aktif')
+  // Only show active products for the current business
+  const branch = biz.activeBranch
+  if (!branch) return []
+  return products.value.filter((p) => p.businessId === branch.businessId && p.isActive)
 })
 
 const filteredProducts = computed(() => {
   if (!searchQuery.value) return bizProducts.value
   const q = searchQuery.value.toLowerCase()
   return bizProducts.value.filter((p) =>
-    p.nama.toLowerCase().includes(q) || p.barcode.includes(q)
+    p.name.toLowerCase().includes(q) || (p.barcode && p.barcode.includes(q))
   )
 })
 
 const quickAmounts = computed(() => {
   const sub = cart.subtotal
   if (sub <= 0) return [10000, 20000, 50000, 100000]
-  const rounded = Math.ceil(sub / 10000) * 10000
-  return [sub, rounded, rounded + 10000, rounded + 50000].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 4)
+  
+  const amounts = new Set<number>()
+  amounts.add(sub)
+  
+  // Common rounded amounts up to next multiples
+  amounts.add(Math.ceil(sub / 5000) * 5000)
+  amounts.add(Math.ceil(sub / 10000) * 10000)
+  amounts.add(Math.ceil(sub / 20000) * 20000)
+  amounts.add(Math.ceil(sub / 50000) * 50000)
+  amounts.add(Math.ceil(sub / 100000) * 100000)
+
+  // Standard single bills that are strictly greater than the subtotal
+  const indonesianBills = [5000, 10000, 20000, 50000, 100000]
+  indonesianBills.forEach(bill => {
+    if (bill > sub) amounts.add(bill)
+  })
+
+  // Convert Set to array, sort ascending, filter out 0 or anything smaller than sub
+  return Array.from(amounts)
+    .filter(v => v >= sub)
+    .sort((a, b) => a - b)
+    .slice(0, 4)
 })
 
 const canPay = computed(() => {
@@ -292,7 +388,7 @@ function handleBarcode() {
   const prod = bizProducts.value.find((p) => p.barcode === code)
   if (prod) {
     cart.addItem(prod)
-    toast.success(`${prod.nama} ditambahkan`)
+    toast.success(`${prod.name} ditambahkan`)
   } else {
     toast.error('Produk tidak ditemukan')
   }
@@ -307,18 +403,56 @@ function handleCancel() {
   }
 }
 
-function handlePay() {
-  const bayar = cart.metodePembayaran === 'QRIS' ? cart.subtotal : cart.nominalBayar
-  const kembalian = bayar - cart.subtotal
-
-  successData.value = {
-    id: cart.generateTransactionId(),
-    total: cart.subtotal,
-    bayar,
-    kembalian,
-    metode: cart.metodePembayaran,
+async function handlePay() {
+  if (!biz.activeBranchId) {
+    toast.error('Pilih cabang terlebih dahulu')
+    return
   }
-  showSuccess.value = true
+
+  isSaving.value = true
+  
+  try {
+    const payload = {
+      branchId: biz.activeBranchId,
+      paymentMethod: cart.metodePembayaran,
+      total: cart.subtotal,
+      details: cart.items.map(item => ({
+        productId: item.produk.id,
+        qty: item.qty,
+        price: item.produk.price,
+        subtotal: item.subtotal
+      }))
+    }
+    
+    const res = await fetchWithAuth<any>('/transactions', {
+      method: 'POST',
+      body: payload
+    })
+    
+    if (res.success) {
+      const bayar = cart.metodePembayaran === 'QRIS' ? cart.subtotal : cart.nominalBayar
+      const kembalian = bayar - cart.subtotal
+
+      successData.value = {
+        id: res.data.id,
+        createdAt: res.data.createdAt,
+        total: cart.subtotal,
+        bayar,
+        kembalian,
+        metode: cart.metodePembayaran,
+      }
+      showSuccess.value = true
+      
+      // Refresh products to update stock
+      fetchProducts()
+    } else {
+      toast.error(res.message || 'Gagal menyimpan transaksi')
+    }
+  } catch (error: any) {
+    toast.error(error.data?.message || 'Terjadi kesalahan')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function closeSuccess() {
@@ -332,3 +466,35 @@ function printReceipt() {
   window.print()
 }
 </script>
+
+<style>
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+  #print-area {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 58mm;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    color: #000;
+  }
+  
+  .print-header { text-align: center; margin-bottom: 10px; }
+  .print-header h2 { font-size: 16px; font-weight: bold; margin: 0; }
+  .print-header p { margin: 2px 0 0; }
+  .divider { border-top: 1px dashed #000; margin: 8px 0; }
+  .print-info p { margin: 2px 0; }
+  .item-row { margin-bottom: 6px; }
+  .item-name { margin: 0 0 2px; }
+  .item-calc { display: flex; justify-content: space-between; }
+  .total-row { display: flex; justify-content: space-between; font-weight: bold; margin: 2px 0; }
+  .print-footer { text-align: center; margin-top: 10px; }
+}
+</style>

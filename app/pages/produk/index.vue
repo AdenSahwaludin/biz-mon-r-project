@@ -9,12 +9,12 @@
         </div>
         <select v-model="filterBisnis" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
           <option value="">Semua Bisnis</option>
-          <option v-for="b in businessList" :key="b.slug" :value="b.nama">{{ b.nama }}</option>
+          <option v-for="b in businessList" :key="b.id" :value="b.id">{{ b.name }}</option>
         </select>
         <select v-model="filterStatus" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
           <option value="">Semua Status</option>
-          <option value="Aktif">Aktif</option>
-          <option value="Nonaktif">Nonaktif</option>
+          <option :value="true">Aktif</option>
+          <option :value="false">Nonaktif</option>
         </select>
         <NuxtLink to="/produk/tambah" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors shrink-0">
           <Plus class="w-4 h-4" /> Tambah Produk
@@ -22,8 +22,13 @@
       </div>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="isLoading" class="text-center py-12">
+      <p class="text-gray-500">Memuat produk...</p>
+    </div>
+
     <!-- Desktop Table -->
-    <div class="hidden sm:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div v-else class="hidden sm:block bg-white rounded-xl border border-gray-200 overflow-hidden">
       <table class="w-full">
         <thead>
           <tr class="bg-gray-50 border-b border-gray-200">
@@ -39,18 +44,18 @@
         <tbody>
           <tr v-for="prod in paginatedData" :key="prod.id" class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
             <td class="py-3 px-4">
-              <p class="text-sm font-medium text-gray-900">{{ prod.nama }}</p>
+              <p class="text-sm font-medium text-gray-900">{{ prod.name }}</p>
               <p class="text-xs text-gray-400 font-mono">{{ prod.barcode }}</p>
             </td>
-            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.bisnis }}</td>
-            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.kategori }}</td>
-            <td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">{{ fmt.format(prod.harga) }}</td>
+            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.business.name }}</td>
+            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.category.name }}</td>
+            <td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">{{ fmt.format(prod.price) }}</td>
             <td class="py-3 px-4 text-sm text-center">
-              <span :class="prod.stok <= 10 ? 'text-red-600 font-semibold' : 'text-gray-600'">{{ prod.stok }}</span>
+              <span :class="prod.stock <= 10 ? 'text-red-600 font-semibold' : 'text-gray-600'">{{ prod.stock }} {{ prod.unit }}</span>
             </td>
             <td class="py-3 px-4 text-center">
-              <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="prod.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
-                {{ prod.status }}
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="prod.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+                {{ prod.isActive ? 'Aktif' : 'Nonaktif' }}
               </span>
             </td>
             <td class="py-3 px-4 text-center">
@@ -70,20 +75,20 @@
     </div>
 
     <!-- Mobile Cards -->
-    <div class="sm:hidden space-y-3">
+    <div v-if="!isLoading" class="sm:hidden space-y-3">
       <div v-for="prod in paginatedData" :key="prod.id" class="bg-white border border-gray-200 rounded-xl p-4">
         <div class="flex items-start justify-between mb-2">
           <div>
-            <p class="text-sm font-semibold text-gray-900">{{ prod.nama }}</p>
-            <p class="text-xs text-gray-400">{{ prod.bisnis }} · {{ prod.kategori }}</p>
+            <p class="text-sm font-semibold text-gray-900">{{ prod.name }}</p>
+            <p class="text-xs text-gray-400">{{ prod.business.name }} · {{ prod.category.name }}</p>
           </div>
-          <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="prod.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
-            {{ prod.status }}
+          <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="prod.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+            {{ prod.isActive ? 'Aktif' : 'Nonaktif' }}
           </span>
         </div>
         <div class="flex items-center justify-between mt-2">
-          <p class="text-base font-bold text-primary-600">{{ fmt.format(prod.harga) }}</p>
-          <p class="text-xs text-gray-400">Stok: <span :class="prod.stok <= 10 ? 'text-red-500 font-semibold' : ''">{{ prod.stok }}</span></p>
+          <p class="text-base font-bold text-primary-600">{{ fmt.format(prod.price) }}</p>
+          <p class="text-xs text-gray-400">Stok: <span :class="prod.stock <= 10 ? 'text-red-500 font-semibold' : ''">{{ prod.stock }}</span></p>
         </div>
         <div class="flex gap-2 mt-3 pt-3 border-t border-gray-100">
           <NuxtLink :to="`/produk/edit/${prod.id}`" class="flex-1 py-2 text-sm text-center font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Edit</NuxtLink>
@@ -93,7 +98,7 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex items-center justify-between mt-4 bg-white rounded-xl border border-gray-200 px-4 py-3">
+    <div v-if="!isLoading && totalPages > 1" class="flex items-center justify-between mt-4 bg-white rounded-xl border border-gray-200 px-4 py-3">
       <p class="text-sm text-gray-500">{{ (page - 1) * perPage + 1 }}–{{ Math.min(page * perPage, filteredData.length) }} dari {{ filteredData.length }}</p>
       <div class="flex gap-1">
         <button @click="page = Math.max(1, page - 1)" :disabled="page === 1" class="px-3 py-1 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40">←</button>
@@ -108,10 +113,12 @@
         <div v-if="deleteTarget" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
             <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Produk</h3>
-            <p class="text-sm text-gray-500 mb-5">Apakah Anda yakin ingin menghapus <strong>{{ deleteTarget.nama }}</strong>?</p>
+            <p class="text-sm text-gray-500 mb-5">Apakah Anda yakin ingin menghapus <strong>{{ deleteTarget.name }}</strong>?</p>
             <div class="flex gap-3">
               <button @click="deleteTarget = null" class="flex-1 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50">Batal</button>
-              <button @click="doDelete" class="flex-1 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg">Hapus</button>
+              <button @click="doDelete" :disabled="isSaving" class="flex-1 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50">
+                {{ isSaving ? '...' : 'Hapus' }}
+              </button>
             </div>
           </div>
         </div>
@@ -121,29 +128,55 @@
 </template>
 
 <script setup lang="ts">
-import { products, type Product } from '~/data/products'
-import { businessList } from '~/data/dashboard'
+import { ref, computed, watch, onMounted } from 'vue'
 import { Search, Plus, Edit, Trash2, Package } from 'lucide-vue-next'
+
+const bizStore = useBusinessStore()
+const businessList = computed(() => bizStore.businesses)
 
 const fmt = useFormatCurrency()
 const toast = useToastStore()
+const { fetchWithAuth } = useApi()
 
 const search = ref('')
 const filterBisnis = ref('')
-const filterStatus = ref('')
+const filterStatus = ref<boolean | string>('')
 const page = ref(1)
 const perPage = 10
-const deleteTarget = ref<Product | null>(null)
+const deleteTarget = ref<any | null>(null)
+const isSaving = ref(false)
+const isLoading = ref(false)
 
-const localProducts = ref([...products])
+const products = ref<any[]>([])
+
+onMounted(async () => {
+  if (businessList.value.length === 0) {
+    await bizStore.fetchAll()
+  }
+  await fetchProducts()
+})
+
+async function fetchProducts() {
+  isLoading.value = true
+  try {
+    const res = await fetchWithAuth<any>('/products')
+    if (res.success) {
+      products.value = res.data
+    }
+  } catch (error) {
+    toast.error('Gagal memuat produk')
+  } finally {
+    isLoading.value = false
+  }
+}
 
 const filteredData = computed(() => {
-  let data = [...localProducts.value]
-  if (filterBisnis.value) data = data.filter((p) => p.bisnis === filterBisnis.value)
-  if (filterStatus.value) data = data.filter((p) => p.status === filterStatus.value)
+  let data = [...products.value]
+  if (filterBisnis.value) data = data.filter((p) => p.businessId === filterBisnis.value)
+  if (filterStatus.value !== '') data = data.filter((p) => p.isActive === filterStatus.value)
   if (search.value) {
     const q = search.value.toLowerCase()
-    data = data.filter((p) => p.nama.toLowerCase().includes(q) || p.barcode.includes(q))
+    data = data.filter((p) => p.name.toLowerCase().includes(q) || p.barcode.includes(q))
   }
   return data
 })
@@ -161,15 +194,28 @@ const visiblePages = computed(() => {
 
 watch([search, filterBisnis, filterStatus], () => { page.value = 1 })
 
-function confirmDelete(prod: Product) {
+function confirmDelete(prod: any) {
   deleteTarget.value = prod
 }
 
-function doDelete() {
-  if (deleteTarget.value) {
-    localProducts.value = localProducts.value.filter((p) => p.id !== deleteTarget.value!.id)
-    toast.success(`Produk "${deleteTarget.value.nama}" berhasil dihapus`)
+async function doDelete() {
+  if (!deleteTarget.value) return
+  isSaving.value = true
+  try {
+    const res = await fetchWithAuth<any>(`/products/${deleteTarget.value.id}`, {
+      method: 'DELETE'
+    })
+    if (res.success) {
+      toast.success('Produk berhasil dihapus')
+      await fetchProducts()
+    } else {
+      toast.error(res.message || 'Gagal menghapus produk')
+    }
     deleteTarget.value = null
+  } catch (e: any) {
+    toast.error(e.data?.message || 'Gagal menghapus produk')
+  } finally {
+    isSaving.value = false
   }
 }
 </script>

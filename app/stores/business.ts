@@ -1,42 +1,120 @@
 import { defineStore } from 'pinia'
-import { businessList } from '~/data/dashboard'
+
+export interface Branch {
+  id: string
+  name: string
+  businessId: string
+  isActive: boolean
+  business: Business
+}
+
+export interface Business {
+  id: string
+  name: string
+  slug: string
+  icon: string
+  color: string
+  isActive: boolean
+  branches?: Branch[]
+}
 
 export const useBusinessStore = defineStore('business', {
   state: () => ({
-    activeBisnis: null as string | null,
-    activeSlug: null as string | null,
+    businesses: [] as Business[],
+    branches: [] as Branch[],
+    activeBranchId: useCookie('active_branch_id').value || null as string | null,
+    isLoading: false
   }),
-
   getters: {
-    activeBusinessInfo: (state) => {
-      if (!state.activeSlug) return null
-      return businessList.find((b) => b.slug === state.activeSlug) || null
+    activeBranch: (state) => {
+      if (!state.activeBranchId) return null
+      return state.branches.find(b => b.id === state.activeBranchId) || null
     },
-    bisnisList: () => businessList,
+    activeBusiness: (state): Business | null => {
+      if (!state.activeBranchId) return null
+      const branch = state.branches.find(b => b.id === state.activeBranchId)
+      return branch ? branch.business : null
+    },
+    groupedBusinesses: (state) => {
+      // Return businesses with their branches
+      return state.businesses.map(biz => {
+        return {
+          ...biz,
+          branches: state.branches.filter(br => br.businessId === biz.id)
+        }
+      })
+    }
   },
-
   actions: {
-    setBisnis(slug: string) {
-      const biz = businessList.find((b) => b.slug === slug)
-      if (biz) {
-        this.activeBisnis = biz.nama
-        this.activeSlug = biz.slug
+    async fetchAll() {
+      this.isLoading = true
+      try {
+        const { fetchWithAuth } = useApi()
+        const [bizRes, brRes] = await Promise.all([
+          fetchWithAuth<any>('/businesses'),
+          fetchWithAuth<any>('/branches')
+        ])
+        
+        if (bizRes.success) this.businesses = bizRes.data
+        if (brRes.success) this.branches = brRes.data
+      } catch (error) {
+        console.error('Failed to fetch business data', error)
+      } finally {
+        this.isLoading = false
       }
     },
-
-    clearBisnis() {
-      this.activeBisnis = null
-      this.activeSlug = null
+    
+    setBranch(branchId: string) {
+      this.activeBranchId = branchId
+      useCookie('active_branch_id').value = branchId
     },
 
-    slugToName(slug: string): string {
-      const biz = businessList.find((b) => b.slug === slug)
-      return biz?.nama || slug
+    clearBranch() {
+      this.activeBranchId = null
+      useCookie('active_branch_id').value = null
     },
 
-    nameToSlug(nama: string): string {
-      const biz = businessList.find((b) => b.nama === nama)
-      return biz?.slug || nama.toLowerCase().replace(/\s+/g, '-')
+    async addBusiness(data: any) {
+      const { fetchWithAuth } = useApi()
+      const res = await fetchWithAuth<any>('/businesses', {
+        method: 'POST',
+        body: data
+      })
+      if (res.success) {
+        await this.fetchAll()
+      }
+      return res
     },
-  },
+
+    async addBranch(data: { name: string, businessId: string }) {
+      const { fetchWithAuth } = useApi()
+      const res = await fetchWithAuth<any>('/branches', {
+        method: 'POST',
+        body: data
+      })
+      if (res.success) {
+        await this.fetchAll()
+      }
+      return res
+    },
+
+    async toggleBranchStatus(branchId: string) {
+      try {
+        const { fetchWithAuth } = useApi()
+        const response = await fetchWithAuth<any>(`/branches/${branchId}/toggle`, {
+          method: 'PATCH'
+        })
+        if (response.success) {
+          const branch = this.branches.find(b => b.id === branchId)
+          if (branch) {
+            branch.isActive = response.data.isActive
+          }
+          return true
+        }
+        return false
+      } catch (error) {
+        return false
+      }
+    }
+  }
 })

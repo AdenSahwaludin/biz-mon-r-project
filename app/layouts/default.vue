@@ -26,17 +26,17 @@
       </div>
 
       <!-- Business Indicator -->
-      <div v-if="biz.activeBusinessInfo" class="mx-4 mt-4 mb-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center" :style="{ backgroundColor: biz.activeBusinessInfo.color + '15', color: biz.activeBusinessInfo.color }">
-        <component :is="getBusinessIcon(biz.activeBusinessInfo.icon)" class="w-4 h-4 mr-2 shrink-0" />
-        <span>{{ biz.activeBusinessInfo.nama }}</span>
+      <div v-if="biz.activeBusiness" class="mx-4 mt-4 mb-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center" :style="{ backgroundColor: biz.activeBusiness.color + '15', color: biz.activeBusiness.color }">
+        <component :is="getBusinessIcon(biz.activeBusiness.icon)" class="w-4 h-4 mr-2 shrink-0" />
+        <span class="truncate">{{ biz.activeBusiness.name }} - {{ biz.activeBranch?.name }}</span>
       </div>
 
       <!-- Navigation -->
       <nav class="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-        <template v-for="item in navItems" :key="item.to">
+        <template v-for="item in navItems" :key="item.label">
           <p v-if="item.divider" class="px-3 pt-4 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{{ item.label }}</p>
           <NuxtLink
-            v-else
+            v-else-if="item.to"
             :to="item.to"
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
             :class="isActive(item.to) ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
@@ -55,7 +55,7 @@
             {{ auth.userInitials }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">{{ auth.user?.nama }}</p>
+            <p class="text-sm font-medium text-gray-900 truncate">{{ auth.user?.name }}</p>
             <p class="text-xs text-gray-500">{{ auth.user?.role }}</p>
           </div>
           <button @click="auth.logout()" class="text-gray-400 hover:text-red-500 transition-colors" title="Keluar">
@@ -80,36 +80,52 @@
         </div>
 
         <!-- Right section -->
-        <div class="flex items-center gap-3">
-          <!-- Business Switcher (Admin only) -->
-          <div v-if="auth.isAdmin && biz.activeBusinessInfo" class="relative">
+        <div class="flex items-center gap-4">
+          <!-- Business Indicator for Karyawan -->
+          <div v-if="auth.isKaryawan && auth.userBranch" class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
+            <component :is="getBusinessIcon(auth.userBusiness?.name)" class="w-4 h-4 text-gray-500" />
+            <span class="text-sm font-medium text-gray-700">
+              {{ auth.userBusiness?.name }}
+              <span class="text-gray-400 font-normal"> - {{ auth.userBranch.name }}</span>
+            </span>
+          </div>
+
+          <!-- Business Selector Dropdown for Admin -->
+          <div class="relative" v-else-if="biz.activeBusiness">
             <button
               @click="showBizDropdown = !showBizDropdown"
               class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-colors"
             >
-              <component :is="getBusinessIcon(biz.activeBusinessInfo.icon)" class="w-4 h-4" :style="{ color: biz.activeBusinessInfo.color }" />
-              <span class="hidden sm:block text-gray-700">{{ biz.activeBusinessInfo.nama }}</span>
+              <component :is="getBusinessIcon(biz.activeBusiness.icon)" class="w-4 h-4" :style="{ color: biz.activeBusiness.color }" />
+              <span class="hidden sm:block text-gray-700">{{ biz.activeBusiness.name }} - {{ biz.activeBranch?.name }}</span>
               <ChevronDown class="w-4 h-4 text-gray-400" />
             </button>
             <Transition name="fade">
-              <div v-if="showBizDropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                <button
-                  v-for="b in biz.bisnisList"
-                  :key="b.slug"
-                  @click="switchBisnis(b.slug)"
-                  class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                  :class="b.slug === biz.activeSlug ? 'bg-primary-50 text-primary-600' : 'text-gray-700'"
-                >
-                  <component :is="getBusinessIcon(b.icon)" class="w-4 h-4" :style="{ color: b.color }" />
-                  {{ b.nama }}
-                </button>
+              <div v-if="showBizDropdown" class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <div class="max-h-64 overflow-y-auto">
+                  <div v-for="b in biz.groupedBusinesses" :key="b.id">
+                    <div class="px-4 py-1.5 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50 flex items-center gap-2">
+                      <component :is="getBusinessIcon(b.icon)" class="w-3 h-3" :style="{ color: b.color }" />
+                      {{ b.name }}
+                    </div>
+                    <button
+                      v-for="branch in b.branches"
+                      :key="branch.id"
+                      @click="switchBranch(branch.id)"
+                      class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                      :class="branch.id === biz.activeBranchId ? 'bg-primary-50 text-primary-600' : 'text-gray-700'"
+                    >
+                      <span class="ml-5">{{ branch.name }}</span>
+                    </button>
+                  </div>
+                </div>
                 <div class="border-t border-gray-100 mt-1 pt-1">
                   <NuxtLink
                     to="/pilih-bisnis"
                     @click="showBizDropdown = false"
-                    class="block px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                    class="block px-4 py-2 text-sm text-center text-primary-600 font-medium hover:bg-gray-50"
                   >
-                    Pilih Bisnis Lain
+                    Atur Semua Bisnis
                   </NuxtLink>
                 </div>
               </div>
@@ -132,6 +148,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import { BarChart2, CreditCard, Package, Tag, ClipboardList, TrendingUp, Users, User, Settings, LogOut, Menu, ChevronDown, ChevronLeft, ChevronRight, X, Soup, CupSoda, Utensils, Store } from 'lucide-vue-next'
 
 const auth = useAuthStore()
@@ -141,14 +158,15 @@ const route = useRoute()
 const sidebarOpen = ref(false)
 const showBizDropdown = ref(false)
 
-function getBusinessIcon(name: string) {
+function getBusinessIcon(name: string | undefined) {
+  if (!name) return Store
   return { Soup, CupSoda, Utensils, Store }[name] || Store
 }
 
 const pageTitle = computed(() => {
   const name = route.name as string
   const titles: Record<string, string> = {
-    'dashboard-bisnis': `Dashboard ${biz.activeBisnis || ''}`,
+    'dashboard': `Dashboard ${biz.activeBusiness?.name || ''}`,
     'produk': 'Produk',
     'produk-tambah': 'Tambah Produk',
     'produk-edit-id': 'Edit Produk',
@@ -174,10 +192,9 @@ const navItems = computed(() => {
       { to: '/profil', label: 'Profil', icon: User },
     ]
   }
-  const slug = biz.activeSlug || 'wonton'
   return [
     { label: 'Utama', divider: true },
-    { to: `/dashboard/${slug}`, label: 'Dashboard', icon: BarChart2 },
+    { to: `/dashboard`, label: 'Dashboard', icon: BarChart2 },
     { to: '/transaksi', label: 'Transaksi', icon: CreditCard },
     { label: 'Kelola', divider: true },
     { to: '/produk', label: 'Produk', icon: Package },
@@ -193,17 +210,27 @@ const navItems = computed(() => {
 
 function isActive(to: string): boolean {
   if (!to) return false
-  return route.path === to || route.path.startsWith(to + '/')
+  if (route.path === to) return true
+  
+  if (to === '/transaksi' && route.path.startsWith('/transaksi/riwayat')) return false
+  if (to === '/produk' && route.path.startsWith('/produk/kategori')) return false
+
+  return route.path.startsWith(to + '/')
 }
 
-function switchBisnis(slug: string) {
-  biz.setBisnis(slug)
+function switchBranch(branchId: string) {
+  biz.setBranch(branchId)
   showBizDropdown.value = false
-  navigateTo(`/dashboard/${slug}`)
+  // Stay on the same page and reload to fetch data for the new branch
+  window.location.reload()
 }
 
 // Close dropdown on click outside
-onMounted(() => {
+onMounted(async () => {
+  if (biz.businesses.length === 0) {
+    await biz.fetchAll()
+  }
+
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement
     if (!target.closest('.relative')) {

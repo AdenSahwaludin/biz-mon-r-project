@@ -1,5 +1,16 @@
 import { defineStore } from 'pinia'
-import type { Product } from '~/data/products'
+
+export interface Product {
+  id: string
+  name: string
+  barcode?: string
+  price: number
+  stock: number
+  unit: string
+  businessId: string
+  categoryId: string
+  isActive: boolean
+}
 
 export interface CartItem {
   produk: Product
@@ -33,12 +44,12 @@ export const useCartStore = defineStore('cart', {
       const existing = this.items.find((item) => item.produk.id === product.id)
       if (existing) {
         existing.qty += 1
-        existing.subtotal = existing.qty * existing.produk.harga
+        existing.subtotal = existing.qty * existing.produk.price
       } else {
         this.items.push({
           produk: product,
           qty: 1,
-          subtotal: product.harga,
+          subtotal: product.price,
         })
       }
     },
@@ -54,7 +65,7 @@ export const useCartStore = defineStore('cart', {
           this.removeItem(productId)
         } else {
           item.qty = qty
-          item.subtotal = item.qty * item.produk.harga
+          item.subtotal = item.qty * item.produk.price
         }
       }
     },
@@ -63,7 +74,7 @@ export const useCartStore = defineStore('cart', {
       const item = this.items.find((item) => item.produk.id === productId)
       if (item) {
         item.qty += 1
-        item.subtotal = item.qty * item.produk.harga
+        item.subtotal = item.qty * item.produk.price
       }
     },
 
@@ -74,7 +85,7 @@ export const useCartStore = defineStore('cart', {
           this.removeItem(productId)
         } else {
           item.qty -= 1
-          item.subtotal = item.qty * item.produk.harga
+          item.subtotal = item.qty * item.produk.price
         }
       }
     },
@@ -85,13 +96,6 @@ export const useCartStore = defineStore('cart', {
 
     setNominalBayar(nominal: number) {
       this.nominalBayar = nominal
-    },
-
-    generateTransactionId() {
-      const now = new Date()
-      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
-      const rand = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0')
-      return `TRX-${dateStr}-${rand}`
     },
 
     clearCart() {

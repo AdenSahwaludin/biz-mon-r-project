@@ -1,5 +1,13 @@
 import { defineStore } from 'pinia'
-import { users, type User } from '~/data/users'
+
+interface User {
+  id: string
+  name: string
+  username: string
+  role: string
+  branch?: { id: string; name: string } | null
+  business?: { id: string; name: string } | null
+}
 
 interface AuthState {
   user: User | null
@@ -13,12 +21,13 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isAdmin: (state) => state.user?.role === 'Admin',
-    isKaryawan: (state) => state.user?.role === 'Karyawan',
-    userBisnis: (state) => state.user?.bisnis || null,
+    isAdmin: (state) => state.user?.role === 'ADMIN',
+    isKaryawan: (state) => state.user?.role === 'KARYAWAN',
+    userBranch: (state) => state.user?.branch || null,
+    userBusiness: (state) => state.user?.business || null,
     userInitials: (state) => {
       if (!state.user) return ''
-      return state.user.nama
+      return state.user.name
         .split(' ')
         .map((n) => n[0])
         .join('')
@@ -28,28 +37,93 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    login(email: string, password: string): { success: boolean; message: string } {
-      const user = users.find((u) => u.email === email && u.password === password)
-      if (!user) {
-        return { success: false, message: 'Email atau password salah' }
+    async login(username: string, password: string): Promise<{ success: boolean; message: string }> {
+      try {
+        const { fetchWithAuth } = useApi()
+        const response = await fetchWithAuth<any>('/auth/login', {
+          method: 'POST',
+          body: { username, password }
+        })
+        
+        if (response.success) {
+          const token = useCookie('auth_token')
+          token.value = response.data.token
+          
+          this.user = response.data.user
+          this.isLoggedIn = true
+          return { success: true, message: 'Login berhasil' }
+        }
+        return { success: false, message: response.message || 'Login gagal' }
+      } catch (error: any) {
+        return { success: false, message: error.data?.message || 'Terjadi kesalahan' }
       }
-      if (user.status === 'Nonaktif') {
-        return { success: false, message: 'Akun Anda sudah dinonaktifkan' }
+    },
+
+    async fetchUser() {
+      const token = useCookie('auth_token')
+      if (!token.value) {
+        this.isLoggedIn = false
+        this.user = null
+        return false
       }
-      this.user = user
-      this.isLoggedIn = true
-      return { success: true, message: 'Login berhasil' }
+      
+      try {
+        const { fetchWithAuth } = useApi()
+        const response = await fetchWithAuth<any>('/auth/me')
+        if (response.success) {
+          this.user = response.data
+          this.isLoggedIn = true
+          return true
+        }
+        return false
+      } catch (error) {
+        token.value = null
+        this.isLoggedIn = false
+        this.user = null
+        return false
+      }
     },
 
     logout() {
+      const token = useCookie('auth_token')
+      token.value = null
       this.user = null
       this.isLoggedIn = false
       navigateTo('/login')
     },
 
-    updateProfile(nama: string, email: string) {
-      if (this.user) {
-        this.user = { ...this.user, nama, email }
+    async updateProfile(name: string, username: string) {
+      try {
+        const { fetchWithAuth } = useApi()
+        const response = await fetchWithAuth<any>('/auth/profile', {
+          method: 'PUT',
+          body: { name, username }
+        })
+        
+        if (response.success && this.user) {
+          this.user = { ...this.user, name, username }
+          return { success: true }
+        }
+        return { success: false, message: response.message }
+      } catch (error: any) {
+        return { success: false, message: error.data?.message || 'Gagal menyimpan profil' }
+      }
+    },
+
+    async changePassword(oldPassword: string, newPassword: string) {
+      try {
+        const { fetchWithAuth } = useApi()
+        const response = await fetchWithAuth<any>('/auth/profile', {
+          method: 'PUT',
+          body: { oldPassword, password: newPassword }
+        })
+        
+        if (response.success) {
+          return { success: true }
+        }
+        return { success: false, message: response.message }
+      } catch (error: any) {
+        return { success: false, message: error.data?.message || 'Gagal mengubah password' }
       }
     },
   },

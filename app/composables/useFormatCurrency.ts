@@ -22,7 +22,9 @@ export function useFormatCurrency() {
   }
 
   const formatDate = (dateStr: string): string => {
+    if (!dateStr) return '-'
     const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return '-'
     return new Intl.DateTimeFormat('id-ID', {
       day: 'numeric',
       month: 'long',
@@ -31,7 +33,9 @@ export function useFormatCurrency() {
   }
 
   const formatDateTime = (dateStr: string): string => {
+    if (!dateStr) return '-'
     const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return '-'
     return new Intl.DateTimeFormat('id-ID', {
       day: 'numeric',
       month: 'long',
@@ -42,7 +46,9 @@ export function useFormatCurrency() {
   }
 
   const formatTime = (dateStr: string): string => {
+    if (!dateStr) return '-'
     const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return '-'
     return new Intl.DateTimeFormat('id-ID', {
       hour: '2-digit',
       minute: '2-digit',
@@ -50,7 +56,9 @@ export function useFormatCurrency() {
   }
 
   const formatDateShort = (dateStr: string): string => {
+    if (!dateStr) return '-'
     const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return '-'
     return new Intl.DateTimeFormat('id-ID', {
       day: '2-digit',
       month: '2-digit',

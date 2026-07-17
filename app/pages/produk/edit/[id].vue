@@ -1,36 +1,45 @@
 <template>
   <div class="max-w-2xl mx-auto">
-    <div v-if="product" class="bg-white rounded-xl border border-gray-200 p-6">
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
       <h2 class="text-lg font-bold text-gray-900 mb-6">Edit Produk</h2>
 
-      <form @submit.prevent="handleSubmit" class="space-y-5">
-        <!-- Bisnis (readonly) -->
+      <div v-if="isInitialLoading" class="text-center py-12">
+        <p class="text-gray-500">Memuat data produk...</p>
+      </div>
+
+      <form v-else @submit.prevent="handleSubmit" class="space-y-5">
+        <!-- Bisnis -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Bisnis</label>
-          <input :value="form.bisnis" type="text" disabled class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-500 cursor-not-allowed" />
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Bisnis <span class="text-red-500">*</span></label>
+          <select v-model="form.businessId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.businessId }">
+            <option value="">Pilih bisnis</option>
+            <option v-for="b in businessList" :key="b.id" :value="b.id">{{ b.name }}</option>
+          </select>
+          <p v-if="errors.businessId" class="mt-1 text-xs text-red-500">{{ errors.businessId }}</p>
         </div>
 
         <!-- Nama -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Nama Produk <span class="text-red-500">*</span></label>
-          <input v-model="form.nama" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.nama }" />
-          <p v-if="errors.nama" class="mt-1 text-xs text-red-500">{{ errors.nama }}</p>
+          <input v-model="form.name" type="text" placeholder="Masukkan nama produk" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.name }" />
+          <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name }}</p>
         </div>
 
         <!-- Barcode -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Barcode</label>
-          <input v-model="form.barcode" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
+          <input v-model="form.barcode" type="text" placeholder="Scan atau masukkan barcode" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
+          <p v-if="errors.barcode" class="mt-1 text-xs text-red-500">{{ errors.barcode }}</p>
         </div>
 
         <!-- Kategori -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Kategori <span class="text-red-500">*</span></label>
-          <select v-model="form.kategori" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.kategori }">
-            <option value="">Pilih kategori</option>
-            <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
+          <select v-model="form.categoryId" :disabled="!form.businessId || isCategoriesLoading" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none disabled:bg-gray-100" :class="{ 'border-red-400': errors.categoryId }">
+            <option value="">{{ form.businessId ? (isCategoriesLoading ? 'Memuat kategori...' : 'Pilih kategori') : 'Pilih bisnis terlebih dahulu' }}</option>
+            <option v-for="cat in availableCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
           </select>
-          <p v-if="errors.kategori" class="mt-1 text-xs text-red-500">{{ errors.kategori }}</p>
+          <p v-if="errors.categoryId" class="mt-1 text-xs text-red-500">{{ errors.categoryId }}</p>
         </div>
 
         <!-- Harga + Stok -->
@@ -39,89 +48,180 @@
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Harga <span class="text-red-500">*</span></label>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Rp</span>
-              <input v-model.number="form.harga" type="number" min="0" class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.harga }" />
+              <input v-model.number="form.price" type="number" min="0" placeholder="0" class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.price }" />
             </div>
-            <p v-if="errors.harga" class="mt-1 text-xs text-red-500">{{ errors.harga }}</p>
+            <p v-if="errors.price" class="mt-1 text-xs text-red-500">{{ errors.price }}</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Stok <span class="text-red-500">*</span></label>
-            <input v-model.number="form.stok" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.stok }" />
-            <p v-if="errors.stok" class="mt-1 text-xs text-red-500">{{ errors.stok }}</p>
+            <input v-model.number="form.stock" type="number" min="0" placeholder="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.stock }" />
+            <p v-if="errors.stock" class="mt-1 text-xs text-red-500">{{ errors.stock }}</p>
           </div>
         </div>
 
         <!-- Satuan -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Satuan <span class="text-red-500">*</span></label>
-          <input v-model="form.satuan" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.satuan }" />
-          <p v-if="errors.satuan" class="mt-1 text-xs text-red-500">{{ errors.satuan }}</p>
+          <input v-model="form.unit" type="text" placeholder="pcs / porsi / kg / botol" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.unit }" />
+          <p v-if="errors.unit" class="mt-1 text-xs text-red-500">{{ errors.unit }}</p>
         </div>
 
-        <!-- Status -->
+        <!-- Status Toggle -->
         <div class="flex items-center justify-between">
           <label class="text-sm font-medium text-gray-700">Status Produk</label>
-          <button type="button" @click="form.status = form.status === 'Aktif' ? 'Nonaktif' : 'Aktif'" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="form.status === 'Aktif' ? 'bg-primary-600' : 'bg-gray-300'">
-            <span class="inline-block h-4 w-4 rounded-full bg-white transition-transform" :class="form.status === 'Aktif' ? 'translate-x-6' : 'translate-x-1'" />
+          <button type="button" @click="form.isActive = !form.isActive" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="form.isActive ? 'bg-primary-600' : 'bg-gray-300'">
+            <span class="inline-block h-4 w-4 rounded-full bg-white transition-transform" :class="form.isActive ? 'translate-x-6' : 'translate-x-1'" />
           </button>
         </div>
 
+        <!-- Actions -->
         <div class="flex gap-3 pt-4 border-t border-gray-200">
           <NuxtLink to="/produk" class="flex-1 py-2.5 text-sm font-medium text-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Batal</NuxtLink>
-          <button type="submit" :disabled="isLoading" class="flex-1 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50">
+          <button type="submit" :disabled="isLoading" class="flex-1 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            <svg v-if="isLoading" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
             {{ isLoading ? 'Menyimpan...' : 'Simpan Perubahan' }}
           </button>
         </div>
       </form>
     </div>
-    <div v-else class="bg-white rounded-xl border border-gray-200 py-16 text-center">
-      <span class="text-4xl block mb-3">🔍</span>
-      <p class="text-gray-500 font-medium">Produk tidak ditemukan</p>
-      <NuxtLink to="/produk" class="inline-block mt-3 text-sm text-primary-600 font-medium">← Kembali</NuxtLink>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { products } from '~/data/products'
-import { categoriesByBisnis } from '~/data/categories'
-
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 const route = useRoute()
-const toast = useToastStore()
-const isLoading = ref(false)
 
-const product = computed(() => products.find((p) => p.id === route.params.id))
+const bizStore = useBusinessStore()
+const businessList = computed(() => bizStore.businesses)
+const toast = useToastStore()
+const { fetchWithAuth } = useApi()
+
+const isLoading = ref(false)
+const isInitialLoading = ref(true)
+const isCategoriesLoading = ref(false)
+const availableCategories = ref<any[]>([])
+const initialCategoryId = ref<string>('')
 
 const form = reactive({
-  bisnis: product.value?.bisnis || '',
-  nama: product.value?.nama || '',
-  barcode: product.value?.barcode || '',
-  kategori: product.value?.kategori || '',
-  harga: product.value?.harga || 0,
-  stok: product.value?.stok || 0,
-  satuan: product.value?.satuan || '',
-  status: (product.value?.status || 'Aktif') as 'Aktif' | 'Nonaktif',
+  businessId: '',
+  name: '',
+  barcode: '',
+  categoryId: '',
+  price: 0,
+  stock: 0,
+  unit: '',
+  isActive: true,
 })
 
-const errors = reactive({ nama: '', kategori: '', harga: '', stok: '', satuan: '' })
-const availableCategories = computed(() => categoriesByBisnis[form.bisnis] || [])
+const errors = reactive({
+  businessId: '',
+  name: '',
+  barcode: '',
+  categoryId: '',
+  price: '',
+  stock: '',
+  unit: '',
+})
+
+onMounted(async () => {
+  if (businessList.value.length === 0) {
+    await bizStore.fetchAll()
+  }
+
+  try {
+    const res = await fetchWithAuth<any>(`/products`)
+    if (res.success) {
+      const prod = res.data.find((p: any) => p.id === route.params.id)
+      if (prod) {
+        form.businessId = prod.businessId
+        form.name = prod.name
+        form.barcode = prod.barcode || ''
+        form.price = prod.price
+        form.stock = prod.stock
+        form.unit = prod.unit
+        form.isActive = prod.isActive
+        initialCategoryId.value = prod.categoryId
+        
+        await fetchCategories(prod.businessId)
+        form.categoryId = prod.categoryId
+      } else {
+        toast.error('Produk tidak ditemukan')
+        navigateTo('/produk')
+      }
+    }
+  } catch (e) {
+    toast.error('Gagal memuat produk')
+    navigateTo('/produk')
+  } finally {
+    isInitialLoading.value = false
+  }
+})
+
+watch(() => form.businessId, async (newId, oldId) => {
+  if (oldId && newId !== oldId) {
+    form.categoryId = ''
+  }
+  availableCategories.value = []
+  if (newId) {
+    await fetchCategories(newId)
+    // If navigating back to initial business, restore initial category
+    if (newId === form.businessId && !form.categoryId && initialCategoryId.value) {
+      form.categoryId = initialCategoryId.value
+    }
+  }
+})
+
+async function fetchCategories(businessId: string) {
+  isCategoriesLoading.value = true
+  try {
+    const res = await fetchWithAuth<any>(`/categories?businessId=${businessId}`)
+    if (res.success) availableCategories.value = res.data
+  } catch (e) {
+    toast.error('Gagal memuat kategori')
+  } finally {
+    isCategoriesLoading.value = false
+  }
+}
 
 function validate(): boolean {
   let valid = true
   Object.keys(errors).forEach((k) => ((errors as any)[k] = ''))
-  if (!form.nama || form.nama.length < 3) { errors.nama = 'Nama produk minimal 3 karakter'; valid = false }
-  if (!form.kategori) { errors.kategori = 'Kategori wajib dipilih'; valid = false }
-  if (!form.harga || form.harga <= 0) { errors.harga = 'Harga harus lebih dari 0'; valid = false }
-  if (form.stok < 0) { errors.stok = 'Stok tidak boleh negatif'; valid = false }
-  if (!form.satuan || form.satuan.length < 2) { errors.satuan = 'Satuan wajib diisi'; valid = false }
+
+  if (!form.businessId) { errors.businessId = 'Bisnis wajib dipilih'; valid = false }
+  if (!form.name || form.name.length < 3) { errors.name = form.name ? 'Nama produk minimal 3 karakter' : 'Nama produk wajib diisi'; valid = false }
+  if (!form.categoryId) { errors.categoryId = 'Kategori wajib dipilih'; valid = false }
+  if (!form.price || form.price <= 0) { errors.price = 'Harga harus lebih dari 0'; valid = false }
+  else if (form.price > 2000000000) { errors.price = 'Maksimal harga adalah Rp 2.000.000.000'; valid = false }
+
+  if (form.stock < 0) { errors.stock = 'Stok tidak boleh negatif'; valid = false }
+  else if (form.stock > 2000000000) { errors.stock = 'Maksimal stok adalah 2.000.000.000'; valid = false }
+  if (!form.unit || form.unit.length < 2) { errors.unit = 'Satuan wajib diisi'; valid = false }
+
   return valid
 }
 
 async function handleSubmit() {
   if (!validate()) return
   isLoading.value = true
-  await new Promise((r) => setTimeout(r, 1000))
-  isLoading.value = false
-  toast.success('Produk berhasil diperbarui')
-  navigateTo('/produk')
+  try {
+    const res = await fetchWithAuth<any>(`/products/${route.params.id}`, {
+      method: 'PUT',
+      body: form
+    })
+    
+    if (res.success) {
+      toast.success('Produk berhasil diperbarui')
+      navigateTo('/produk')
+    } else {
+      toast.error(res.message || 'Gagal memperbarui produk')
+      if (res.message?.includes('Barcode')) {
+        errors.barcode = res.message
+      }
+    }
+  } catch (e: any) {
+    toast.error(e.data?.message || 'Terjadi kesalahan saat menyimpan produk')
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>

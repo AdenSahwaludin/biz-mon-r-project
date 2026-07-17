@@ -74,6 +74,45 @@
         </div>
       </div>
     </div>
+    <!-- Kelola Bisnis -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+      <h3 class="text-base font-semibold text-gray-900 mb-4">Kelola Bisnis & Cabang</h3>
+      <p class="text-sm text-gray-500 mb-4">Aktifkan atau nonaktifkan bisnis dan cabang agar tampil atau tersembunyi di sistem.</p>
+      <div class="space-y-4">
+        <div v-for="biz in bizStore.groupedBusinesses" :key="biz.id" class="border border-gray-200 rounded-lg overflow-hidden">
+          <!-- Business Row -->
+          <div class="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white" :style="{ backgroundColor: biz.color }">
+                <span class="font-bold text-xs">{{ biz.name.charAt(0) }}</span>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-gray-900">{{ biz.name }}</p>
+                <p class="text-xs text-gray-500">{{ biz.isActive ? 'Aktif' : 'Nonaktif' }}</p>
+              </div>
+            </div>
+            <button type="button" @click="bizStore.toggleBusinessStatus(biz.id)" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors" :class="biz.isActive ? 'bg-primary-600' : 'bg-gray-300'">
+              <span class="inline-block h-4 w-4 rounded-full bg-white transition-transform" :class="biz.isActive ? 'translate-x-6' : 'translate-x-1'" />
+            </button>
+          </div>
+          <!-- Branches List -->
+          <div class="p-2 space-y-1 bg-white">
+            <div v-for="branch in biz.branches" :key="branch.id" class="flex items-center justify-between p-3 rounded-md hover:bg-gray-50">
+              <div class="pl-2">
+                <p class="text-sm font-medium text-gray-800">{{ branch.name }}</p>
+                <p class="text-xs text-gray-500">{{ branch.isActive ? 'Aktif' : 'Nonaktif' }}</p>
+              </div>
+              <button type="button" @click="bizStore.toggleBranchStatus(branch.id)" class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors" :class="branch.isActive ? 'bg-green-500' : 'bg-gray-300'">
+                <span class="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform" :class="branch.isActive ? 'translate-x-4' : 'translate-x-1'" />
+              </button>
+            </div>
+            <div v-if="!biz.branches.length" class="text-xs text-center text-gray-400 py-3">
+              Belum ada cabang
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Save -->
     <button @click="saveSettings" class="w-full sm:w-auto px-8 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors">
@@ -84,20 +123,23 @@
 
 <script setup lang="ts">
 const toast = useToastStore()
+const bizStore = useBusinessStore()
+const settingsStore = useSettingsStore()
 
 const settings = reactive({
-  namaToko: 'Biz-Mon-R',
-  alamat: 'Jl. Contoh No. 1, Kota Bandung',
-  telepon: '0812-3456-7890',
+  namaToko: settingsStore.namaToko,
+  alamat: settingsStore.alamat,
+  telepon: settingsStore.telepon,
   tema: 'terang',
   formatTanggal: 'DD/MM/YYYY',
   itemPerHalaman: 10,
-  headerStruk: 'BIZ-MON-R',
-  footerStruk: 'Terima Kasih!',
+  headerStruk: settingsStore.headerStruk,
+  footerStruk: settingsStore.footerStruk,
   tampilkanLogo: true,
 })
 
 function saveSettings() {
+  settingsStore.saveSettings(settings)
   toast.success('Pengaturan berhasil disimpan')
 }
 </script>
