@@ -7,8 +7,9 @@ declare global {
 }
 
 function createPrismaClient(): PrismaClient {
-  const url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL
-  const authToken = process.env.TURSO_AUTH_TOKEN
+  const url = (process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL)?.trim()
+  const rawToken = process.env.TURSO_AUTH_TOKEN
+  const authToken = rawToken ? rawToken.replace(/\s+/g, '') : undefined
 
   if (url && (url.startsWith('libsql://') || url.startsWith('https://'))) {
     const libsql = createClient({
