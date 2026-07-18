@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import { requireAuth } from '../../utils/authGuard'
 import { prisma } from '../../utils/prisma'
 import { successResponse, errorResponse } from '../../utils/response'

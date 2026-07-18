@@ -1,7 +1,7 @@
 import { createClient } from '@libsql/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { PrismaClient } from '@prisma/client'
-import * as bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 
 const url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL
 const authToken = process.env.TURSO_AUTH_TOKEN
