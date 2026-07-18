@@ -11,6 +11,10 @@
           <option value="">Semua Bisnis</option>
           <option v-for="b in businessList" :key="b.id" :value="b.id">{{ b.name }}</option>
         </select>
+        <select v-model="filterKategori" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+          <option value="">Semua Kategori</option>
+          <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }} ({{ c.business?.name }})</option>
+        </select>
         <select v-model="filterStatus" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
           <option value="">Semua Status</option>
           <option :value="true">Aktif</option>
@@ -47,8 +51,8 @@
               <p class="text-sm font-medium text-gray-900">{{ prod.name }}</p>
               <p class="text-xs text-gray-400 font-mono">{{ prod.barcode }}</p>
             </td>
-            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.business.name }}</td>
-            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.category.name }}</td>
+            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.business?.name }}</td>
+            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.category?.name }}</td>
             <td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">{{ fmt.format(prod.price) }}</td>
             <td class="py-3 px-4 text-sm text-center">
               <span :class="prod.stock <= 10 ? 'text-red-600 font-semibold' : 'text-gray-600'">{{ prod.stock }} {{ prod.unit }}</span>
@@ -80,7 +84,7 @@
         <div class="flex items-start justify-between mb-2">
           <div>
             <p class="text-sm font-semibold text-gray-900">{{ prod.name }}</p>
-            <p class="text-xs text-gray-400">{{ prod.business.name }} · {{ prod.category.name }}</p>
+            <p class="text-xs text-gray-400">{{ prod.business?.name }} · {{ prod.category?.name }}</p>
           </div>
           <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="prod.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
             {{ prod.isActive ? 'Aktif' : 'Nonaktif' }}
@@ -131,15 +135,18 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Search, Plus, Edit, Trash2, Package } from 'lucide-vue-next'
 
+const route = useRoute()
 const bizStore = useBusinessStore()
 const businessList = computed(() => bizStore.businesses)
 
 const fmt = useFormatCurrency()
 const toast = useToastStore()
 const { fetchWithAuth } = useApi()
+const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 const search = ref('')
 const filterBisnis = ref('')
+const filterKategori = ref('')
 const filterStatus = ref<boolean | string>('')
 const page = ref(1)
 const perPage = 10
@@ -148,20 +155,48 @@ const isSaving = ref(false)
 const isLoading = ref(false)
 
 const products = ref<any[]>([])
+const categories = ref<any[]>([])
 
 onMounted(async () => {
   if (businessList.value.length === 0) {
     await bizStore.fetchAll()
   }
+  await fetchCategories()
   await fetchProducts()
+
+  if (route.query.categoryId) {
+    filterKategori.value = route.query.categoryId as string
+  }
 })
 
-async function fetchProducts() {
-  isLoading.value = true
+async function fetchCategories() {
   try {
-    const res = await fetchWithAuth<any>('/products')
-    if (res.success) {
-      products.value = res.data
+    const res = await fetchWithCache<any>('/categories', {
+      onRevalidated: (fresh) => {
+        if (fresh.success) categories.value = fresh.data
+      }
+    })
+    if (res.data?.success) {
+      categories.value = res.data.data
+    }
+  } catch (error) {
+    // optional
+  }
+}
+
+async function fetchProducts(forceRefresh = false) {
+  if (products.value.length === 0) {
+    isLoading.value = true
+  }
+  try {
+    const res = await fetchWithCache<any>('/products', {
+      forceRefresh,
+      onRevalidated: (fresh) => {
+        if (fresh.success) products.value = fresh.data
+      }
+    })
+    if (res.data?.success) {
+      products.value = res.data.data
     }
   } catch (error) {
     toast.error('Gagal memuat produk')
@@ -173,6 +208,7 @@ async function fetchProducts() {
 const filteredData = computed(() => {
   let data = [...products.value]
   if (filterBisnis.value) data = data.filter((p) => p.businessId === filterBisnis.value)
+  if (filterKategori.value) data = data.filter((p) => p.categoryId === filterKategori.value)
   if (filterStatus.value !== '') data = data.filter((p) => p.isActive === filterStatus.value)
   if (search.value) {
     const q = search.value.toLowerCase()
@@ -192,7 +228,7 @@ const visiblePages = computed(() => {
   return pages
 })
 
-watch([search, filterBisnis, filterStatus], () => { page.value = 1 })
+watch([search, filterBisnis, filterKategori, filterStatus], () => { page.value = 1 })
 
 function confirmDelete(prod: any) {
   deleteTarget.value = prod
@@ -207,7 +243,8 @@ async function doDelete() {
     })
     if (res.success) {
       toast.success('Produk berhasil dihapus')
-      await fetchProducts()
+      invalidateCache('/products')
+      await fetchProducts(true)
     } else {
       toast.error(res.message || 'Gagal menghapus produk')
     }

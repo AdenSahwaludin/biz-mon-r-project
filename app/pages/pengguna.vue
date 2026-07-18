@@ -42,7 +42,7 @@
             <td class="py-3 px-4 text-center">
               <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'">{{ u.role }}</span>
             </td>
-            <td class="py-3 px-4 text-sm text-gray-500 text-center">{{ u.branch ? (u.branch.business.name + ' - ' + u.branch.name) : '—' }}</td>
+            <td class="py-3 px-4 text-sm text-gray-500 text-center">{{ u.branch ? (u.branch.business?.name + ' - ' + u.branch.name) : '—' }}</td>
             <td class="py-3 px-4 text-center">
               <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">{{ u.isActive ? 'Aktif' : 'Nonaktif' }}</span>
             </td>
@@ -71,7 +71,7 @@
         </div>
         <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
           <span class="font-medium px-2 py-0.5 rounded-full" :class="u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'">{{ u.role }}</span>
-          <span v-if="u.branch">· {{ u.branch.business.name }} - {{ u.branch.name }}</span>
+          <span v-if="u.branch">· {{ u.branch.business?.name }} - {{ u.branch.name }}</span>
         </div>
         <div class="flex gap-2 pt-3 border-t border-gray-100">
           <button @click="openModal(u)" class="flex-1 py-2 text-sm text-center font-medium border border-gray-200 rounded-lg hover:bg-gray-50">Edit</button>
@@ -169,6 +169,7 @@ const bizStore = useBusinessStore()
 const businessList = computed(() => bizStore.groupedBusinesses)
 const toast = useToastStore()
 const { fetchWithAuth } = useApi()
+const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 const search = ref('')
 const localUsers = ref<any[]>([])
@@ -192,12 +193,19 @@ onMounted(async () => {
   await fetchUsers()
 })
 
-async function fetchUsers() {
-  isLoading.value = true
+async function fetchUsers(forceRefresh = false) {
+  if (localUsers.value.length === 0) {
+    isLoading.value = true
+  }
   try {
-    const res = await fetchWithAuth<any>('/users')
-    if (res.success) {
-      localUsers.value = res.data
+    const res = await fetchWithCache<any>('/users', {
+      forceRefresh,
+      onRevalidated: (fresh) => {
+        if (fresh.success) localUsers.value = fresh.data
+      }
+    })
+    if (res.data?.success) {
+      localUsers.value = res.data.data
     }
   } catch (e) {
     toast.error('Gagal memuat pengguna')
@@ -260,8 +268,9 @@ async function saveUser() {
 
     if (res.success) {
       toast.success(isEditing.value ? 'Pengguna berhasil diperbarui' : 'Pengguna berhasil ditambahkan')
+      invalidateCache('/users')
       showModal.value = false
-      await fetchUsers()
+      await fetchUsers(true)
     } else {
       toast.error(res.message || 'Gagal menyimpan pengguna')
     }
@@ -282,7 +291,8 @@ async function deleteUser() {
     
     if (res.success) {
       toast.success('Pengguna berhasil dihapus')
-      await fetchUsers()
+      invalidateCache('/users')
+      await fetchUsers(true)
     } else {
       toast.error(res.message || 'Gagal menghapus pengguna')
     }

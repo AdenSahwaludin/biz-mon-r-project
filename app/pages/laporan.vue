@@ -114,7 +114,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 const fmt = useFormatCurrency()
 const toast = useToastStore()
-const { fetchWithAuth } = useApi()
+const { fetchWithCache } = useCachedFetch()
 
 const filterBranchId = ref('')
 const chartMode = ref<'omzet' | 'transaksi'>('omzet')
@@ -135,14 +135,23 @@ watch(filterBranchId, async () => {
 })
 
 async function fetchReport() {
-  isLoading.value = true
+  if (!reportData.value.length) {
+    isLoading.value = true
+  }
   try {
     const url = filterBranchId.value ? `/reports/omzet?branchId=${filterBranchId.value}` : `/reports/omzet`
-    const res = await fetchWithAuth<any>(url)
+    const res = await fetchWithCache<any>(url, {
+      onRevalidated: (fresh) => {
+        if (fresh.success) {
+          summary.value = fresh.data.summary || {}
+          reportData.value = fresh.data.timeseries || []
+        }
+      }
+    })
     
-    if (res.success) {
-      summary.value = res.data.summary || {}
-      reportData.value = res.data.timeseries || []
+    if (res.data?.success) {
+      summary.value = res.data.data.summary || {}
+      reportData.value = res.data.data.timeseries || []
     }
   } catch (error) {
     toast.error('Gagal memuat laporan')

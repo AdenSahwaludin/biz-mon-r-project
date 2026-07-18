@@ -42,6 +42,7 @@
               <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Kasir</th>
               <th class="text-right text-xs font-medium text-gray-500 uppercase py-3 px-4">Total</th>
               <th class="text-center text-xs font-medium text-gray-500 uppercase py-3 px-4">Metode</th>
+              <th v-if="auth.isAdmin" class="text-center text-xs font-medium text-gray-500 uppercase py-3 px-4">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -53,10 +54,19 @@
             >
               <td class="py-3 px-4 text-sm font-medium text-primary-600">{{ trx.id }}</td>
               <td class="py-3 px-4 text-sm text-gray-600">{{ fmt.formatDateTime(trx.createdAt) }}</td>
-              <td class="py-3 px-4 text-sm text-gray-600">{{ trx.branch.business.name }} - {{ trx.branch.name }}</td>
-              <td class="py-3 px-4 text-sm text-gray-600">{{ trx.cashier.name }}</td>
+              <td class="py-3 px-4 text-sm text-gray-600">{{ trx.branch?.business?.name }} - {{ trx.branch?.name }}</td>
+              <td class="py-3 px-4 text-sm text-gray-600">{{ trx.cashier?.name }}</td>
               <td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">{{ fmt.format(trx.total) }}</td>
               <td class="py-3 px-4 text-sm text-gray-500 text-center">{{ trx.paymentMethod }}</td>
+              <td v-if="auth.isAdmin" class="py-3 px-4 text-center" @click.stop>
+                <button
+                  @click="confirmDelete(trx)"
+                  class="text-gray-400 hover:text-red-500 transition-colors p-1"
+                  title="Hapus Transaksi"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -80,12 +90,22 @@
         >
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-semibold text-primary-600">{{ trx.id }}</span>
-            <span class="text-xs font-medium px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
-              Selesai
-            </span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                Selesai
+              </span>
+              <button
+                v-if="auth.isAdmin"
+                @click.stop="confirmDelete(trx)"
+                class="text-gray-400 hover:text-red-500 p-1"
+                title="Hapus Transaksi"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <p class="text-xs text-gray-500">{{ fmt.formatDateTime(trx.createdAt) }}</p>
-          <p class="text-xs text-gray-400 mt-0.5">{{ trx.branch.business.name }} · {{ trx.cashier.name }} · {{ trx.paymentMethod }}</p>
+          <p class="text-xs text-gray-400 mt-0.5">{{ trx.branch?.business?.name }} · {{ trx.cashier?.name }} · {{ trx.paymentMethod }}</p>
           <p class="text-base font-bold text-gray-900 mt-2">{{ fmt.format(trx.total) }}</p>
         </div>
       </div>
@@ -108,12 +128,32 @@
         </div>
       </div>
     </template>
+
+    <!-- Delete Confirmation Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="deleteTarget" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Transaksi</h3>
+            <p class="text-sm text-gray-500 mb-5">
+              Apakah Anda yakin ingin menghapus transaksi <strong>{{ deleteTarget.id }}</strong>? Stok produk dalam transaksi ini akan dikembalikan.
+            </p>
+            <div class="flex gap-3">
+              <button @click="deleteTarget = null" class="flex-1 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50">Batal</button>
+              <button @click="doDelete" :disabled="isDeleting" class="flex-1 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50">
+                {{ isDeleting ? 'Menghapus...' : 'Hapus' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Search, ClipboardList } from 'lucide-vue-next'
+import { Search, ClipboardList, Trash2 } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const bizStore = useBusinessStore()
@@ -121,12 +161,15 @@ const businessList = computed(() => bizStore.groupedBusinesses)
 const fmt = useFormatCurrency()
 const toast = useToastStore()
 const { fetchWithAuth } = useApi()
+const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 const search = ref('')
 const filterBranchId = ref('')
 const page = ref(1)
 const perPage = 10
-const isLoading = ref(true)
+const isLoading = ref(false)
+const isDeleting = ref(false)
+const deleteTarget = ref<any | null>(null)
 
 const transactions = ref<any[]>([])
 
@@ -141,13 +184,20 @@ watch(filterBranchId, async () => {
   await fetchTransactions()
 })
 
-async function fetchTransactions() {
-  isLoading.value = true
+async function fetchTransactions(forceRefresh = false) {
+  if (transactions.value.length === 0) {
+    isLoading.value = true
+  }
   try {
     const url = filterBranchId.value ? `/transactions?branchId=${filterBranchId.value}` : `/transactions`
-    const res = await fetchWithAuth<any>(url)
-    if (res.success) {
-      transactions.value = res.data
+    const res = await fetchWithCache<any>(url, {
+      forceRefresh,
+      onRevalidated: (fresh) => {
+        if (fresh.success) transactions.value = fresh.data
+      }
+    })
+    if (res.data?.success) {
+      transactions.value = res.data.data
     }
   } catch (error) {
     toast.error('Gagal memuat transaksi')
@@ -156,12 +206,39 @@ async function fetchTransactions() {
   }
 }
 
+function confirmDelete(trx: any) {
+  deleteTarget.value = trx
+}
+
+async function doDelete() {
+  if (!deleteTarget.value) return
+  isDeleting.value = true
+  try {
+    const res = await fetchWithAuth<any>(`/transactions/${deleteTarget.value.id}`, {
+      method: 'DELETE'
+    })
+    if (res.success) {
+      toast.success('Transaksi berhasil dihapus dan stok telah dikembalikan')
+      deleteTarget.value = null
+      invalidateCache('/transactions')
+      invalidateCache('/products')
+      await fetchTransactions(true)
+    } else {
+      toast.error(res.message || 'Gagal menghapus transaksi')
+    }
+  } catch (e: any) {
+    toast.error(e.data?.message || 'Gagal menghapus transaksi')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
 const filteredData = computed(() => {
   let data = [...transactions.value]
 
   if (search.value) {
     const q = search.value.toLowerCase()
-    data = data.filter((t) => t.id.toLowerCase().includes(q) || t.cashier.name.toLowerCase().includes(q))
+    data = data.filter((t) => t.id?.toLowerCase().includes(q) || t.cashier?.name?.toLowerCase().includes(q))
   }
 
   return data

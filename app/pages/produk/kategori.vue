@@ -30,12 +30,24 @@
           :key="cat.id"
           class="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
         >
-          <div>
-            <p class="text-sm font-medium text-gray-900">{{ cat.name }}</p>
+          <div class="flex items-center gap-3">
+            <div>
+              <p class="text-sm font-semibold text-gray-900">{{ cat.name }}</p>
+              <span class="inline-block mt-0.5 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-medium">
+                {{ cat.products?.length || 0 }} Barang / Produk
+              </span>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <button @click="openEditModal(cat)" class="text-gray-400 hover:text-primary-600 transition-colors"><Edit class="w-4 h-4" /></button>
-            <button @click="openDeleteModal(cat)" class="text-gray-400 hover:text-red-500 transition-colors"><Trash2 class="w-4 h-4" /></button>
+          <div class="flex items-center gap-2">
+            <button
+              @click="openViewProductsModal(cat)"
+              class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+              title="Lihat Barang di Kategori Ini"
+            >
+              <Eye class="w-3.5 h-3.5" /> Lihat Barang
+            </button>
+            <button @click="openEditModal(cat)" class="text-gray-400 hover:text-primary-600 transition-colors p-1.5" title="Edit"><Edit class="w-4 h-4" /></button>
+            <button @click="openDeleteModal(cat)" class="text-gray-400 hover:text-red-500 transition-colors p-1.5" title="Hapus"><Trash2 class="w-4 h-4" /></button>
           </div>
         </div>
         <div v-if="!categories.length" class="py-12 text-center">
@@ -44,6 +56,60 @@
         </div>
       </template>
     </div>
+
+    <!-- View Products in Category Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="viewingCategory" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-xl max-w-2xl w-full p-6 shadow-xl max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
+              <div>
+                <h3 class="text-lg font-bold text-gray-900">Barang dalam Kategori: {{ viewingCategory.name }}</h3>
+                <p class="text-xs text-gray-500">Total {{ viewingCategory.products?.length || 0 }} barang terdaftar</p>
+              </div>
+              <button @click="viewingCategory = null" class="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
+            </div>
+
+            <!-- Products List inside Modal -->
+            <div class="overflow-y-auto flex-1 space-y-2 pr-1">
+              <div
+                v-for="prod in viewingCategory.products"
+                :key="prod.id"
+                class="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div>
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-semibold text-gray-900">{{ prod.name }}</p>
+                    <span
+                      class="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                      :class="prod.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                    >
+                      {{ prod.isActive ? 'Aktif' : 'Nonaktif' }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-gray-400 font-mono mt-0.5">Barcode: {{ prod.barcode }} · Unit: {{ prod.unit }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-bold text-primary-600">{{ fmt.format(prod.price) }}</p>
+                  <p class="text-xs text-gray-500">Stok: <span :class="prod.stock <= 10 ? 'text-red-500 font-semibold' : ''">{{ prod.stock }}</span></p>
+                </div>
+              </div>
+
+              <div v-if="!viewingCategory.products?.length" class="py-10 text-center">
+                <Package class="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p class="text-gray-500 text-sm">Tidak ada barang/produk di dalam kategori ini</p>
+              </div>
+            </div>
+
+            <div class="flex justify-end pt-4 border-t border-gray-100 mt-4">
+              <button @click="viewingCategory = null" class="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50">
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Add/Edit Modal -->
     <Teleport to="body">
@@ -90,13 +156,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { Plus, Edit, Trash2, Tag, Soup, CupSoda, Utensils, Store } from 'lucide-vue-next'
+import { ref, computed, watch, onMounted, reactive } from 'vue'
+import { Plus, Edit, Trash2, Tag, Soup, CupSoda, Utensils, Store, Eye, Package } from 'lucide-vue-next'
 
 const bizStore = useBusinessStore()
 const businessList = computed(() => bizStore.businesses)
+const fmt = useFormatCurrency()
 const toast = useToastStore()
 const { fetchWithAuth } = useApi()
+const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 function getBusinessIcon(name: string) {
   return { Soup, CupSoda, Utensils, Store }[name] || Store
@@ -113,6 +181,7 @@ const editingId = ref<string | null>(null)
 const modalForm = reactive({ name: '' })
 const modalError = ref('')
 const deleteTarget = ref<any | null>(null)
+const viewingCategory = ref<any | null>(null)
 
 onMounted(async () => {
   if (businessList.value.length === 0) {
@@ -129,18 +198,30 @@ watch(activeTabId, async (newVal) => {
   }
 })
 
-async function fetchCategories(businessId: string) {
-  isLoading.value = true
+async function fetchCategories(businessId: string, forceRefresh = false) {
+  if (categories.value.length === 0) {
+    isLoading.value = true
+  }
   try {
-    const res = await fetchWithAuth<any>(`/categories?businessId=${businessId}`)
-    if (res.success) {
-      categories.value = res.data
+    const url = `/categories?businessId=${businessId}`
+    const res = await fetchWithCache<any>(url, {
+      forceRefresh,
+      onRevalidated: (fresh) => {
+        if (fresh.success) categories.value = fresh.data
+      }
+    })
+    if (res.data?.success) {
+      categories.value = res.data.data
     }
   } catch (error) {
     toast.error('Gagal memuat kategori')
   } finally {
     isLoading.value = false
   }
+}
+
+function openViewProductsModal(cat: any) {
+  viewingCategory.value = cat
 }
 
 function openAddModal() {
@@ -191,8 +272,9 @@ async function saveCategory() {
       })
       if (res.success) toast.success('Kategori berhasil ditambahkan')
     }
+    invalidateCache('/categories')
     closeModal()
-    await fetchCategories(activeTabId.value!)
+    await fetchCategories(activeTabId.value!, true)
   } catch (e: any) {
     modalError.value = e.data?.message || 'Terjadi kesalahan'
   } finally {
@@ -209,7 +291,8 @@ async function doDelete() {
     })
     if (res.success) {
       toast.success('Kategori dihapus')
-      await fetchCategories(activeTabId.value!)
+      invalidateCache('/categories')
+      await fetchCategories(activeTabId.value!, true)
     }
     deleteTarget.value = null
   } catch (e: any) {

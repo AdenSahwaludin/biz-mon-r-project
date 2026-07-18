@@ -43,7 +43,7 @@
           <div v-for="item in trx.details" :key="item.id" class="flex items-center justify-between">
             <div>
               <p class="text-sm text-gray-900">{{ item.product.name }}</p>
-              <p class="text-xs text-gray-400">{{ item.quantity }} × {{ fmt.format(item.price) }}</p>
+              <p class="text-xs text-gray-400">{{ item.qty }} × {{ fmt.format(item.snapshotPrice) }}</p>
             </div>
             <p class="text-sm font-medium text-gray-900">{{ fmt.format(item.subtotal) }}</p>
           </div>
@@ -59,9 +59,12 @@
       </div>
 
       <!-- Actions (No Print) -->
-      <div class="p-6 border-t border-gray-200 flex gap-3 no-print">
+      <div class="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-3 no-print">
         <button @click="$router.back()" class="flex-1 py-2.5 px-4 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
           ← Kembali
+        </button>
+        <button v-if="auth.isAdmin" @click="showDeleteModal = true" class="flex-1 py-2.5 px-4 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5">
+          <Trash2 class="w-4 h-4" /> Hapus Transaksi
         </button>
         <button @click="printReceipt" class="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
           Cetak Struk
@@ -119,20 +122,44 @@
         ← Kembali ke Riwayat
       </NuxtLink>
     </div>
+
+    <!-- Delete Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Transaksi</h3>
+            <p class="text-sm text-gray-500 mb-5">
+              Yakin ingin menghapus transaksi <strong>{{ trx?.id }}</strong>? Stok produk akan dikembalikan otomatis.
+            </p>
+            <div class="flex gap-3">
+              <button @click="showDeleteModal = false" class="flex-1 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50">Batal</button>
+              <button @click="doDelete" :disabled="isDeleting" class="flex-1 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50">
+                {{ isDeleting ? 'Menghapus...' : 'Hapus' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Search } from 'lucide-vue-next'
+import { Search, Trash2 } from 'lucide-vue-next'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 const fmt = useFormatCurrency()
 const { fetchWithAuth } = useApi()
 const toast = useToastStore()
 const settingsStore = useSettingsStore()
 
 const isLoading = ref(true)
+const isDeleting = ref(false)
+const showDeleteModal = ref(false)
 const trx = ref<any>(null)
 
 onMounted(async () => {
@@ -153,6 +180,26 @@ onMounted(async () => {
 
 function printReceipt() {
   window.print()
+}
+
+async function doDelete() {
+  if (!trx.value) return
+  isDeleting.value = true
+  try {
+    const res = await fetchWithAuth<any>(`/transactions/${trx.value.id}`, {
+      method: 'DELETE'
+    })
+    if (res.success) {
+      toast.success('Transaksi dihapus & stok dikembalikan')
+      router.push('/transaksi/riwayat')
+    } else {
+      toast.error(res.message || 'Gagal menghapus transaksi')
+    }
+  } catch (e: any) {
+    toast.error(e.data?.message || 'Gagal menghapus transaksi')
+  } finally {
+    isDeleting.value = false
+  }
 }
 </script>
 
