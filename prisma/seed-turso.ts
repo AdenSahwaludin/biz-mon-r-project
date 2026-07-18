@@ -13,7 +13,7 @@ if (!url || !url.startsWith('libsql://')) {
 
 const libsql = createClient({ url, authToken })
 const adapter = new PrismaLibSQL(libsql)
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient({ adapter } as any)
 
 const schemaDDL = [
   `CREATE TABLE IF NOT EXISTS "User" (

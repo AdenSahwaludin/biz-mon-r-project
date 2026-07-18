@@ -16,7 +16,7 @@ function createPrismaClient(): PrismaClient {
       authToken
     })
     const adapter = new PrismaLibSQL(libsql)
-    return new PrismaClient({ adapter })
+    return new PrismaClient({ adapter } as any)
   }
 
   return new PrismaClient()
