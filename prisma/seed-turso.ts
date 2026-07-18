@@ -3,13 +3,17 @@ import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
-const url = (process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL)?.trim()
+let url = (process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL)?.trim()
 const rawToken = process.env.TURSO_AUTH_TOKEN
 const authToken = rawToken ? rawToken.replace(/\s+/g, '') : undefined
 
-if (!url || !url.startsWith('libsql://')) {
+if (!url || (!url.startsWith('libsql://') && !url.startsWith('https://'))) {
   console.error('❌ TURSO_DATABASE_URL must be set in .env')
   process.exit(1)
+}
+
+if (url.startsWith('libsql://')) {
+  url = url.replace('libsql://', 'https://')
 }
 
 const libsql = createClient({ url, authToken })
