@@ -284,6 +284,7 @@ const fmt = useFormatCurrency()
 const toast = useToastStore()
 const settingsStore = useSettingsStore()
 const { fetchWithAuth } = useApi()
+const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 const barcodeInput = ref<HTMLInputElement>()
 const barcodeValue = ref('')
@@ -313,12 +314,19 @@ onMounted(async () => {
   barcodeInput.value?.focus()
 })
 
-async function fetchProducts() {
-  isLoading.value = true
+async function fetchProducts(forceRefresh = false) {
+  if (products.value.length === 0) {
+    isLoading.value = true
+  }
   try {
-    const res = await fetchWithAuth<any>('/products')
-    if (res.success) {
-      products.value = res.data
+    const res = await fetchWithCache<any>('/products', {
+      forceRefresh,
+      onRevalidated: (fresh) => {
+        if (fresh.success) products.value = fresh.data
+      }
+    })
+    if (res.data?.success) {
+      products.value = res.data.data
     }
   } catch (error) {
     toast.error('Gagal memuat produk')
@@ -334,7 +342,6 @@ function getBusinessIcon(name: string) {
 }
 
 const bizProducts = computed(() => {
-  // Only show active products for the current business
   const branch = biz.activeBranch
   if (!branch) return []
   return products.value.filter((p) => p.businessId === branch.businessId && p.isActive)
@@ -355,20 +362,17 @@ const quickAmounts = computed(() => {
   const amounts = new Set<number>()
   amounts.add(sub)
   
-  // Common rounded amounts up to next multiples
   amounts.add(Math.ceil(sub / 5000) * 5000)
   amounts.add(Math.ceil(sub / 10000) * 10000)
   amounts.add(Math.ceil(sub / 20000) * 20000)
   amounts.add(Math.ceil(sub / 50000) * 50000)
   amounts.add(Math.ceil(sub / 100000) * 100000)
 
-  // Standard single bills that are strictly greater than the subtotal
   const indonesianBills = [5000, 10000, 20000, 50000, 100000]
   indonesianBills.forEach(bill => {
     if (bill > sub) amounts.add(bill)
   })
 
-  // Convert Set to array, sort ascending, filter out 0 or anything smaller than sub
   return Array.from(amounts)
     .filter(v => v >= sub)
     .sort((a, b) => a - b)
@@ -443,8 +447,11 @@ async function handlePay() {
       }
       showSuccess.value = true
       
-      // Refresh products to update stock
-      fetchProducts()
+      // Invalidate caches & refresh products to update stock
+      invalidateCache('/products')
+      invalidateCache('/transactions')
+      invalidateCache('/reports')
+      await fetchProducts(true)
     } else {
       toast.error(res.message || 'Gagal menyimpan transaksi')
     }

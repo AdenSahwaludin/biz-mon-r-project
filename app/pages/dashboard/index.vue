@@ -88,7 +88,7 @@
               >
                 <td class="py-3 px-4 text-sm font-medium text-primary-600">{{ trx.id }}</td>
                 <td class="py-3 px-4 text-sm text-gray-600">{{ fmt.formatDateTime(trx.createdAt) }}</td>
-                <td class="py-3 px-4 text-sm text-gray-600">{{ trx.cashier.name }}</td>
+                <td class="py-3 px-4 text-sm text-gray-600">{{ trx.cashier?.name }}</td>
                 <td class="py-3 px-4 text-sm text-gray-900 font-medium text-right">{{ fmt.format(trx.total) }}</td>
               </tr>
               <tr v-if="!recentTransactions.length">
@@ -110,7 +110,7 @@
               <span class="text-sm font-medium text-primary-600">{{ trx.id }}</span>
               <span class="text-sm font-semibold text-gray-900">{{ fmt.format(trx.total) }}</span>
             </div>
-            <p class="text-xs text-gray-500">{{ fmt.formatDateTime(trx.createdAt) }} · {{ trx.cashier.name }}</p>
+            <p class="text-xs text-gray-500">{{ fmt.formatDateTime(trx.createdAt) }} · {{ trx.cashier?.name }}</p>
           </div>
           <div v-if="!recentTransactions.length" class="text-center py-6 text-gray-500 text-sm border border-gray-100 rounded-lg">
             Belum ada transaksi.
@@ -131,10 +131,10 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const bizStore = useBusinessStore()
 const fmt = useFormatCurrency()
-const { fetchWithAuth } = useApi()
+const { fetchWithCache } = useCachedFetch()
 const toast = useToastStore()
 
-const isLoading = ref(true)
+const isLoading = ref(false)
 
 const summary = ref<any>({})
 const timeseries = ref<any[]>([])
@@ -149,22 +149,41 @@ onMounted(async () => {
   const branchId = bizStore.activeBranchId
   const queryParam = branchId ? `?branchId=${branchId}` : ''
 
+  if (!timeseries.value.length) {
+    isLoading.value = true
+  }
+
   try {
     const [omzetRes, sellersRes, trxRes] = await Promise.all([
-      fetchWithAuth<any>(`/reports/omzet${queryParam}`),
-      fetchWithAuth<any>(`/reports/best-sellers${queryParam}`),
-      fetchWithAuth<any>(`/transactions${queryParam}&limit=5`)
+      fetchWithCache<any>(`/reports/omzet${queryParam}`, {
+        onRevalidated: (fresh) => {
+          if (fresh.success) {
+            summary.value = fresh.data.summary || {}
+            timeseries.value = fresh.data.timeseries || []
+          }
+        }
+      }),
+      fetchWithCache<any>(`/reports/best-sellers${queryParam}`, {
+        onRevalidated: (fresh) => {
+          if (fresh.success) bestSellers.value = fresh.data || []
+        }
+      }),
+      fetchWithCache<any>(`/transactions${queryParam}&limit=5`, {
+        onRevalidated: (fresh) => {
+          if (fresh.success) recentTransactions.value = fresh.data || []
+        }
+      })
     ])
 
-    if (omzetRes.success) {
-      summary.value = omzetRes.data.summary
-      timeseries.value = omzetRes.data.timeseries
+    if (omzetRes.data?.success) {
+      summary.value = omzetRes.data.data.summary || {}
+      timeseries.value = omzetRes.data.data.timeseries || []
     }
-    if (sellersRes.success) {
-      bestSellers.value = sellersRes.data
+    if (sellersRes.data?.success) {
+      bestSellers.value = sellersRes.data.data || []
     }
-    if (trxRes.success) {
-      recentTransactions.value = trxRes.data
+    if (trxRes.data?.success) {
+      recentTransactions.value = trxRes.data.data || []
     }
   } catch (e) {
     toast.error('Gagal memuat dashboard')
@@ -185,7 +204,6 @@ const stats = computed(() => {
 const chartData = computed(() => {
   const bizColor = bizStore.activeBusiness?.color || '#4F46E5'
   
-  // Ambil 7 hari terakhir jika ada
   const recentDays = timeseries.value.slice(-7)
   
   return {

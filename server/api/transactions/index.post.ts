@@ -66,12 +66,36 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // Format transaction ID: TRX-DDMMYY-XXXX (e.g., TRX-180726-0001)
     const now = new Date()
     const d = now.getDate().toString().padStart(2, '0')
     const m = (now.getMonth() + 1).toString().padStart(2, '0')
     const y = now.getFullYear().toString().substring(2)
-    const random = Math.floor(1000 + Math.random() * 9000)
-    const customId = `TRX-${y}${m}${d}-${random}`
+    const datePrefix = `TRX-${d}${m}${y}-`
+
+    // Find latest transaction generated today with this date prefix
+    const latestTrxToday = await prisma.transaction.findFirst({
+      where: {
+        id: {
+          startsWith: datePrefix
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    let nextSeq = 1
+    if (latestTrxToday) {
+      const parts = latestTrxToday.id.split('-')
+      const lastNumber = parseInt(parts[parts.length - 1], 10)
+      if (!isNaN(lastNumber)) {
+        nextSeq = lastNumber + 1
+      }
+    }
+
+    const seqStr = nextSeq.toString().padStart(4, '0')
+    const customId = `${datePrefix}${seqStr}`
 
     const transaction = await prisma.transaction.create({
       data: {

@@ -7,7 +7,7 @@
           B
         </div>
         <h1 class="text-2xl font-bold text-gray-900">Masuk ke Biz-Mon-R</h1>
-        <p class="text-sm text-gray-500 mt-2">Pilih akun demo di bawah untuk masuk dengan cepat</p>
+        <p class="text-sm text-gray-500 mt-2">Silakan masuk menggunakan akun Anda</p>
       </div>
 
       <!-- Form -->
@@ -50,31 +50,16 @@
         </div>
 
         <button type="submit" :disabled="isLoading" class="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors flex justify-center items-center">
-          <span v-if="isLoading" class="mr-2">...</span>
+          <span v-if="isLoading" class="mr-2 animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
           Masuk ke Dashboard
         </button>
       </form>
-
-      <!-- Demo Accounts -->
-      <div class="mt-8 pt-6 border-t border-gray-100">
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Akun Demo (Pilih Salah Satu)</p>
-        <div class="space-y-2">
-          <button
-            v-for="demo in demoAccounts"
-            :key="demo.username"
-            @click="fillDemo(demo)"
-            class="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-xs transition-colors flex items-center justify-between"
-          >
-            <span class="text-gray-600"><strong>{{ demo.role }}</strong> — {{ demo.username }}</span>
-            <span class="text-gray-400">→</span>
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, reactive } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
 
 definePageMeta({
@@ -91,15 +76,6 @@ const showPassword = ref(false)
 const isLoading = ref(false)
 
 const errors = reactive({ username: '', password: '' })
-
-const demoAccounts = [
-  { username: 'admin', password: 'admin123', role: 'Admin' }
-]
-  
-function fillDemo(demo: { username: string; password: string }) {
-  form.username = demo.username
-  form.password = demo.password
-}
 
 async function handleLogin() {
   if (isLoading.value) return
