@@ -10,8 +10,10 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "@nuxtjs/tailwindcss": "^6.14.0",
     "@pinia/nuxt": "^1.0.0",
+    "@prisma/adapter-libsql": "5.22.0",
     "@vueuse/core": "^14.3.0",
     "@vueuse/nuxt": "^14.3.0",
     "bcrypt": "^6.0.0",
@@ -19,7 +21,7 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-vue-next": "^1.0.0",
     "nuxt": "^4.4.8",
-    "pinia": "^4.0.1",
+    "pinia": "^3.0.4",
     "vite": "^8.1.4",
     "vue": "^3.5.39",
     "vue-chartjs": "^5.3.4",

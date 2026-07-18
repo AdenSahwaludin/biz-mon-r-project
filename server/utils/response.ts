@@ -7,10 +7,19 @@ export function successResponse(data: any, message: string = 'Success') {
 }
 
 export function errorResponse(event: any, statusCode: number, message: string, details?: any) {
-  setResponseStatus(event, statusCode)
+  if (event) {
+    setResponseStatus(event, statusCode)
+  }
   return {
+    statusCode,
+    statusMessage: message,
     success: false,
     message,
-    details
+    details,
+    data: {
+      success: false,
+      message,
+      details
+    }
   }
 }

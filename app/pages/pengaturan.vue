@@ -97,7 +97,7 @@
           </div>
           <!-- Branches List -->
           <div class="p-2 space-y-1 bg-white">
-            <div v-for="branch in biz.branches" :key="branch.id" class="flex items-center justify-between p-3 rounded-md hover:bg-gray-50">
+            <div v-for="branch in (biz.branches || [])" :key="branch.id" class="flex items-center justify-between p-3 rounded-md hover:bg-gray-50">
               <div class="pl-2">
                 <p class="text-sm font-medium text-gray-800">{{ branch.name }}</p>
                 <p class="text-xs text-gray-500">{{ branch.isActive ? 'Aktif' : 'Nonaktif' }}</p>
@@ -106,7 +106,7 @@
                 <span class="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform" :class="branch.isActive ? 'translate-x-4' : 'translate-x-1'" />
               </button>
             </div>
-            <div v-if="!biz.branches.length" class="text-xs text-center text-gray-400 py-3">
+            <div v-if="!biz.branches?.length" class="text-xs text-center text-gray-400 py-3">
               Belum ada cabang
             </div>
           </div>

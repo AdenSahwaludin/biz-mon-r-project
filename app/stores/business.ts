@@ -5,7 +5,6 @@ export interface Branch {
   name: string
   businessId: string
   isActive: boolean
-  business: Business
 }
 
 export interface Business {
@@ -18,103 +17,142 @@ export interface Business {
   branches?: Branch[]
 }
 
-export const useBusinessStore = defineStore('business', {
-  state: () => ({
-    businesses: [] as Business[],
-    branches: [] as Branch[],
-    activeBranchId: useCookie('active_branch_id').value || null as string | null,
-    isLoading: false
-  }),
-  getters: {
-    activeBranch: (state) => {
-      if (!state.activeBranchId) return null
-      return state.branches.find(b => b.id === state.activeBranchId) || null
-    },
-    activeBusiness: (state): Business | null => {
-      if (!state.activeBranchId) return null
-      const branch = state.branches.find(b => b.id === state.activeBranchId)
-      return branch ? branch.business : null
-    },
-    groupedBusinesses: (state) => {
-      // Return businesses with their branches
-      return state.businesses.map(biz => {
-        return {
-          ...biz,
-          branches: state.branches.filter(br => br.businessId === biz.id)
-        }
-      })
-    }
-  },
-  actions: {
-    async fetchAll() {
-      this.isLoading = true
-      try {
-        const { fetchWithAuth } = useApi()
-        const [bizRes, brRes] = await Promise.all([
-          fetchWithAuth<any>('/businesses'),
-          fetchWithAuth<any>('/branches')
-        ])
-        
-        if (bizRes.success) this.businesses = bizRes.data
-        if (brRes.success) this.branches = brRes.data
-      } catch (error) {
-        console.error('Failed to fetch business data', error)
-      } finally {
-        this.isLoading = false
-      }
-    },
-    
-    setBranch(branchId: string) {
-      this.activeBranchId = branchId
-      useCookie('active_branch_id').value = branchId
-    },
+export interface BusinessState {
+  businesses: Business[]
+  branches: Branch[]
+  activeBranchId: string | null
+  isLoading: boolean
+}
 
-    clearBranch() {
-      this.activeBranchId = null
-      useCookie('active_branch_id').value = null
-    },
+export const useBusinessStore = defineStore('business', () => {
+  const businesses = ref<Business[]>([])
+  const branches = ref<Branch[]>([])
+  const activeBranchId = ref<string | null>((useCookie<string>('active_branch_id').value) || null)
+  const isLoading = ref(false)
 
-    async addBusiness(data: any) {
+  const activeBranch = computed<Branch | null>(() => {
+    if (!activeBranchId.value) return null
+    return branches.value.find(b => b.id === activeBranchId.value) || null
+  })
+
+  const activeBusiness = computed<Business | null>(() => {
+    if (!activeBranchId.value) return null
+    const branch = branches.value.find(b => b.id === activeBranchId.value)
+    if (!branch) return null
+    return businesses.value.find(b => b.id === branch.businessId) || null
+  })
+
+  const groupedBusinesses = computed<(Business & { branches: Branch[] })[]>(() => {
+    return businesses.value.map(biz => ({
+      ...biz,
+      branches: branches.value.filter(br => br.businessId === biz.id)
+    }))
+  })
+
+  async function fetchAll() {
+    isLoading.value = true
+    try {
       const { fetchWithAuth } = useApi()
-      const res = await fetchWithAuth<any>('/businesses', {
-        method: 'POST',
-        body: data
-      })
-      if (res.success) {
-        await this.fetchAll()
-      }
-      return res
-    },
+      const [bizRes, brRes] = await Promise.all([
+        fetchWithAuth<any>('/businesses'),
+        fetchWithAuth<any>('/branches')
+      ])
 
-    async addBranch(data: { name: string, businessId: string }) {
-      const { fetchWithAuth } = useApi()
-      const res = await fetchWithAuth<any>('/branches', {
-        method: 'POST',
-        body: data
-      })
-      if (res.success) {
-        await this.fetchAll()
-      }
-      return res
-    },
-
-    async toggleBranchStatus(branchId: string) {
-      try {
-        const { fetchWithAuth } = useApi()
-        const response = await fetchWithAuth<any>(`/branches/${branchId}/toggle`, {
-          method: 'PATCH'
-        })
-        if (response.success) {
-          const branch = this.branches.find(b => b.id === branchId)
-          if (branch) {
-            branch.isActive = response.data.isActive
-          }
-          return true
-        }
-        return false
-      } catch (error) {
-        return false
-      }
+      if (bizRes.success) businesses.value = bizRes.data
+      if (brRes.success) branches.value = brRes.data
+    } catch (error) {
+      console.error('Failed to fetch business data', error)
+    } finally {
+      isLoading.value = false
     }
+  }
+
+  function setBranch(branchId: string) {
+    activeBranchId.value = branchId
+    useCookie('active_branch_id').value = branchId
+  }
+
+  function clearBranch() {
+    activeBranchId.value = null
+    useCookie('active_branch_id').value = null
+  }
+
+  async function addBusiness(data: any) {
+    const { fetchWithAuth } = useApi()
+    const res = await fetchWithAuth<any>('/businesses', {
+      method: 'POST',
+      body: data
+    })
+    if (res.success) {
+      await fetchAll()
+    }
+    return res
+  }
+
+  async function addBranch(data: { name: string, businessId: string }) {
+    const { fetchWithAuth } = useApi()
+    const res = await fetchWithAuth<any>('/branches', {
+      method: 'POST',
+      body: data
+    })
+    if (res.success) {
+      await fetchAll()
+    }
+    return res
+  }
+
+  async function toggleBusinessStatus(businessId: string) {
+    try {
+      const { fetchWithAuth } = useApi()
+      const response = await fetchWithAuth<any>(`/businesses/${businessId}/toggle`, {
+        method: 'PATCH'
+      })
+      if (response.success) {
+        const business = businesses.value.find(b => b.id === businessId)
+        if (business) {
+          business.isActive = response.data.isActive
+        }
+        return true
+      }
+      return false
+    } catch (error) {
+      return false
+    }
+  }
+
+  async function toggleBranchStatus(branchId: string) {
+    try {
+      const { fetchWithAuth } = useApi()
+      const response = await fetchWithAuth<any>(`/branches/${branchId}/toggle`, {
+        method: 'PATCH'
+      })
+      if (response.success) {
+        const branch = branches.value.find(b => b.id === branchId)
+        if (branch) {
+          branch.isActive = response.data.isActive
+        }
+        return true
+      }
+      return false
+    } catch (error) {
+      return false
+    }
+  }
+
+  return {
+    businesses,
+    branches,
+    activeBranchId,
+    isLoading,
+    activeBranch,
+    activeBusiness,
+    groupedBusinesses,
+    fetchAll,
+    setBranch,
+    clearBranch,
+    addBusiness,
+    addBranch,
+    toggleBusinessStatus,
+    toggleBranchStatus
   }
 })
