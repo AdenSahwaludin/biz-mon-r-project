@@ -1,35 +1,43 @@
 <template>
   <div>
     <!-- Toolbar -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-      <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-        <div class="relative flex-1">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input v-model="search" type="text" placeholder="Cari produk atau barcode..." class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
-          <button
-            v-if="search"
-            @click="search = ''"
-            type="button"
-            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
-            title="Hapus"
-          >
-            <X class="w-4 h-4" />
-          </button>
-        </div>
-        <select v-model="filterBisnis" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
+      <!-- Full-Width Search Bar -->
+      <div class="relative w-full">
+        <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <input
+          v-model="search"
+          type="text"
+          placeholder="Cari produk atau barcode di sini..."
+          class="w-full pl-10 pr-9 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+        />
+        <button
+          v-if="search"
+          @click="search = ''"
+          type="button"
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+          title="Hapus"
+        >
+          <X class="w-4 h-4" />
+        </button>
+      </div>
+
+      <!-- Filters Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-center">
+        <select v-model="filterBisnis" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
           <option value="">Semua Bisnis</option>
           <option v-for="b in businessList" :key="b.id" :value="b.id">{{ b.name }}</option>
         </select>
-        <select v-model="filterKategori" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+        <select v-model="filterKategori" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
           <option value="">Semua Kategori</option>
-          <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }} ({{ c.business?.name }})</option>
+          <option v-for="c in filteredCategories" :key="c.id" :value="c.id">{{ c.name }} ({{ c.business?.name }})</option>
         </select>
-        <select v-model="filterStatus" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+        <select v-model="filterStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
           <option value="">Semua Status</option>
           <option :value="true">Aktif</option>
           <option :value="false">Nonaktif</option>
         </select>
-        <NuxtLink to="/produk/tambah" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors shrink-0">
+        <NuxtLink to="/produk/tambah" class="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors w-full">
           <Plus class="w-4 h-4" /> Tambah Produk
         </NuxtLink>
       </div>
@@ -154,7 +162,7 @@ const { fetchWithAuth } = useApi()
 const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 const search = ref('')
-const filterBisnis = ref('')
+const filterBisnis = ref(bizStore.activeBusiness?.id || '')
 const filterKategori = ref('')
 const filterStatus = ref<boolean | string>('')
 const page = ref(1)
@@ -166,9 +174,23 @@ const isLoading = ref(false)
 const products = ref<any[]>([])
 const categories = ref<any[]>([])
 
+const filteredCategories = computed(() => {
+  if (!filterBisnis.value) return categories.value
+  return categories.value.filter((c) => c.businessId === filterBisnis.value)
+})
+
+watch(() => bizStore.activeBusiness?.id, (newBizId) => {
+  if (newBizId) {
+    filterBisnis.value = newBizId
+  }
+})
+
 onMounted(async () => {
   if (businessList.value.length === 0) {
     await bizStore.fetchAll()
+  }
+  if (!filterBisnis.value && bizStore.activeBusiness?.id) {
+    filterBisnis.value = bizStore.activeBusiness.id
   }
   await fetchCategories()
   await fetchProducts()

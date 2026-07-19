@@ -2,56 +2,54 @@
   <div>
     <!-- Toolbar & Filters -->
     <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
-      <div class="flex flex-col md:flex-row gap-3">
-        <!-- Search -->
-        <div class="relative flex-1">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            v-model="search"
-            type="text"
-            placeholder="Cari ID transaksi atau nama kasir..."
-            class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-          />
-          <button
-            v-if="search"
-            @click="search = ''"
-            type="button"
-            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
-            title="Hapus"
-          >
-            <X class="w-4 h-4" />
-          </button>
-        </div>
+      <!-- Full Width Search -->
+      <div class="relative w-full">
+        <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <input
+          v-model="search"
+          type="text"
+          placeholder="Cari ID transaksi atau nama kasir di sini..."
+          class="w-full pl-10 pr-9 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+        />
+        <button
+          v-if="search"
+          @click="search = ''"
+          type="button"
+          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+          title="Hapus"
+        >
+          <X class="w-4 h-4" />
+        </button>
+      </div>
 
-        <!-- Filters Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <!-- Cabang (Default ke Cabang Aktif) -->
-          <select v-if="auth.isAdmin" v-model="filterBranchId" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-            <option value="">Semua Cabang</option>
-            <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
-              <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
-                {{ biz.name }} - {{ branch.name }}
-              </option>
-            </optgroup>
-          </select>
+      <!-- Filters Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Cabang (Default ke Cabang Aktif) -->
+        <select v-if="auth.isAdmin" v-model="filterBranchId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+          <option value="">Semua Cabang</option>
+          <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
+            <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
+              {{ biz.name }} - {{ branch.name }}
+            </option>
+          </optgroup>
+        </select>
 
-          <!-- Metode Pembayaran (Hanya Tunai & QRIS) -->
-          <select v-model="filterMethod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-            <option value="">Semua Metode</option>
-            <option value="Tunai">Tunai</option>
-            <option value="QRIS">QRIS</option>
-          </select>
+        <!-- Metode Pembayaran (Hanya Tunai & QRIS) -->
+        <select v-model="filterMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+          <option value="">Semua Metode</option>
+          <option value="Tunai">Tunai</option>
+          <option value="QRIS">QRIS</option>
+        </select>
 
-          <!-- Periode Tanggal -->
-          <select v-model="filterPeriod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-            <option value="all">Semua Waktu</option>
-            <option value="today">Hari Ini</option>
-            <option value="7days">7 Hari Terakhir</option>
-            <option value="30days">30 Hari Terakhir</option>
-            <option value="month">Bulan Ini</option>
-            <option value="custom">Kustom Tanggal</option>
-          </select>
-        </div>
+        <!-- Periode Tanggal -->
+        <select v-model="filterPeriod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+          <option value="all">Semua Waktu</option>
+          <option value="today">Hari Ini</option>
+          <option value="7days">7 Hari Terakhir</option>
+          <option value="30days">30 Hari Terakhir</option>
+          <option value="month">Bulan Ini</option>
+          <option value="custom">Kustom Tanggal</option>
+        </select>
       </div>
 
       <!-- Custom Date Range Picker -->

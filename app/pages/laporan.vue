@@ -1,34 +1,43 @@
 <template>
   <div>
-    <!-- Filters Toolbar -->
+    <!-- Filters Toolbar (Responsive Grid) -->
     <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
-      <div class="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
-        <!-- Filter Cabang (Default ke Cabang Aktif) -->
-        <select v-model="filterBranchId" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-          <option value="">Semua Cabang</option>
-          <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
-            <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
-              {{ biz.name }} - {{ branch.name }}
-            </option>
-          </optgroup>
-        </select>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+        <!-- Filter Cabang -->
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Cabang / Bisnis</label>
+          <select v-model="filterBranchId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+            <option value="">Semua Cabang</option>
+            <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
+              <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
+                {{ biz.name }} - {{ branch.name }}
+              </option>
+            </optgroup>
+          </select>
+        </div>
 
         <!-- Filter Periode Waktu -->
-        <select v-model="filterPeriod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-          <option value="all">Semua Data (Bulan Ini)</option>
-          <option value="today">Hari Ini</option>
-          <option value="7days">7 Hari Terakhir</option>
-          <option value="30days">30 Hari Terakhir</option>
-          <option value="month">Bulan Ini</option>
-          <option value="custom">Kustom Tanggal</option>
-        </select>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Periode Tanggal</label>
+          <select v-model="filterPeriod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+            <option value="all">Semua Data (Bulan Ini)</option>
+            <option value="today">Hari Ini</option>
+            <option value="7days">7 Hari Terakhir</option>
+            <option value="30days">30 Hari Terakhir</option>
+            <option value="month">Bulan Ini</option>
+            <option value="custom">Kustom Tanggal</option>
+          </select>
+        </div>
 
         <!-- Filter Metode Pembayaran (Hanya Tunai & QRIS) -->
-        <select v-model="filterPaymentMethod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-          <option value="">Semua Metode Pembayaran</option>
-          <option value="Tunai">Tunai</option>
-          <option value="QRIS">QRIS</option>
-        </select>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Metode Pembayaran</label>
+          <select v-model="filterPaymentMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+            <option value="">Semua Metode Pembayaran</option>
+            <option value="Tunai">Tunai</option>
+            <option value="QRIS">QRIS</option>
+          </select>
+        </div>
       </div>
 
       <!-- Custom Date Range Picker -->
@@ -100,13 +109,13 @@
         </div>
       </div>
 
-      <!-- Detail Table Section with Moved Omzet Sort Filter -->
+      <!-- Detail Table Section -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
         <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h3 class="text-base font-semibold text-gray-900">Detail Laporan Harian</h3>
           
           <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
-            <!-- Filter Omzet / Sorting Dipindahkan ke Sini -->
+            <!-- Filter Omzet / Sorting -->
             <select v-model="detailSortBy" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium outline-none bg-white focus:ring-2 focus:ring-primary-500">
               <option value="newest">Tanggal Terbaru</option>
               <option value="oldest">Tanggal Terlama</option>
@@ -200,18 +209,17 @@ onMounted(async () => {
 })
 
 watch([filterBranchId, filterPaymentMethod], async () => {
-  await fetchReport()
+  await fetchReport(true)
 })
 
-watch(() => bizStore.activeBranchId, async (newBranch) => {
-  if (newBranch) {
+watch(() => bizStore.activeBranchId, (newBranch) => {
+  if (newBranch && filterBranchId.value !== newBranch) {
     filterBranchId.value = newBranch
-    await fetchReport()
   }
 })
 
-async function fetchReport() {
-  if (!rawReportData.value.length) {
+async function fetchReport(forceRefresh = false) {
+  if (!rawReportData.value.length && !forceRefresh) {
     isLoading.value = true
   }
   try {
@@ -222,15 +230,15 @@ async function fetchReport() {
     }
 
     const res = await fetchWithCache<any>(url, {
-      forceRefresh: true,
+      forceRefresh,
       onRevalidated: (fresh) => {
-        if (fresh.success) {
+        if (fresh?.success && fresh.data?.timeseries) {
           rawReportData.value = fresh.data.timeseries || []
         }
       }
     })
     
-    if (res.data?.success) {
+    if (res.data?.success && res.data.data?.timeseries) {
       rawReportData.value = res.data.data.timeseries || []
     }
   } catch (error) {
@@ -358,6 +366,131 @@ const lineChartOptions = computed(() => ({
 }))
 
 function exportReport(type: string) {
-  toast.success(`Fitur Export ${type.toUpperCase()} akan segera hadir`)
+  let activeBranchName = 'Semua Cabang'
+  if (filterBranchId.value) {
+    for (const b of businessList.value) {
+      const found = b.branches?.find((br: any) => br.id === filterBranchId.value)
+      if (found) {
+        activeBranchName = `${b.name} - ${found.name}`
+        break
+      }
+    }
+  } else if (bizStore.activeBranch) {
+    activeBranchName = `${bizStore.activeBusiness?.name} - ${bizStore.activeBranch?.name}`
+  }
+
+  const dateLabel = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  if (type === 'csv') {
+    let csvContent = `Laporan Penjualan - ${activeBranchName}\n`
+    csvContent += `Tanggal Cetak: ${dateLabel}\n\n`
+    csvContent += 'Tanggal,Jumlah Transaksi,Total Omzet (Rp),Rata-rata (Rp)\n'
+
+    sortedReportData.value.forEach((row: any) => {
+      const avg = row.transaksi > 0 ? Math.round(row.omzet / row.transaksi) : 0
+      csvContent += `"${fmt.formatDate(row.tanggal)}",${row.transaksi},${row.omzet},${avg}\n`
+    })
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `Laporan-Penjualan-${activeBranchName.replace(/[\s\/-]+/g, '_')}-${Date.now()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    toast.success('Berhasil mendownload Laporan CSV')
+  } else if (type === 'pdf') {
+    const printWin = window.open('', '_blank')
+    if (!printWin) {
+      toast.error('Gagal membuka jendela cetak. Izinkan pop-up browser.')
+      return
+    }
+
+    const tableRowsHtml = sortedReportData.value.map((row: any) => {
+      const avg = row.transaksi > 0 ? Math.round(row.omzet / row.transaksi) : 0
+      return `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${fmt.formatDate(row.tanggal)}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: center;">${row.transaksi}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">${fmt.format(row.omzet)}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${fmt.format(avg)}</td>
+        </tr>
+      `
+    }).join('')
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Laporan Penjualan - ${activeBranchName}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #1f2937; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 25px; }
+            .title { font-size: 24px; font-weight: bold; color: #111827; }
+            .subtitle { font-size: 14px; color: #6b7280; margin-top: 4px; }
+            .meta { font-size: 13px; color: #4b5563; text-align: right; }
+            .stats { display: flex; gap: 15px; margin-bottom: 25px; }
+            .stat-card { flex: 1; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; }
+            .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; margin-bottom: 5px; }
+            .stat-val { font-size: 20px; font-weight: bold; color: #111827; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th { background: #f3f4f6; text-align: left; padding: 10px; font-size: 12px; text-transform: uppercase; color: #4b5563; border-bottom: 2px solid #e5e7eb; }
+            @media print {
+              body { padding: 0; }
+              @page { size: A4; margin: 1.5cm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="title">PantauBisnis</div>
+              <div class="subtitle">Laporan Penjualan Harian — ${activeBranchName}</div>
+            </div>
+            <div class="meta">
+              <p>Tanggal Cetak: <strong>${dateLabel}</strong></p>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-label">Total Omzet</div>
+              <div class="stat-val">${fmt.format(filteredSummary.value.totalOmzet)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Jumlah Transaksi</div>
+              <div class="stat-val">${filteredSummary.value.transactionCount}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Rata-rata per Transaksi</div>
+              <div class="stat-val">${fmt.format(rataRata.value)}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th style="text-align: center;">Transaksi</th>
+                <th style="text-align: right;">Omzet</th>
+                <th style="text-align: right;">Rata-rata</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `)
+    printWin.document.close()
+    setTimeout(() => {
+      printWin.focus()
+      printWin.print()
+    }, 250)
+  }
 }
 </script>

@@ -38,11 +38,11 @@
         <template v-for="item in navItems" :key="item.label">
           <p v-if="item.divider" class="px-3 pt-4 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{{ item.label }}</p>
           <NuxtLink
-          v-else-if="item.to"
-          :to="item.to"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          :class="isActive(item.to) ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
-          @click="sidebarOpen = true"> <!--  @click="sidebarOpen = false" -->
+            v-else-if="item.to"
+            :to="item.to"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            :class="isActive(item.to) ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+            @click="item.to === '/transaksi' ? (sidebarOpen = false) : null">
             <component :is="item.icon" class="w-5 h-5 shrink-0" />
             <span>{{ item.label }}</span>
           </NuxtLink>
