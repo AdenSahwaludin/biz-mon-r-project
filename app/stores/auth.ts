@@ -14,6 +14,8 @@ interface AuthState {
   isLoggedIn: boolean
 }
 
+const COOKIE_OPTS = { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' as const }
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: null,
@@ -46,7 +48,7 @@ export const useAuthStore = defineStore('auth', {
         })
         
         if (response.success) {
-          const token = useCookie('auth_token')
+          const token = useCookie('auth_token', COOKIE_OPTS)
           token.value = response.data.token
           
           this.user = response.data.user
@@ -60,7 +62,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async fetchUser() {
-      const token = useCookie('auth_token')
+      const token = useCookie('auth_token', COOKIE_OPTS)
       if (!token.value) {
         this.isLoggedIn = false
         this.user = null
@@ -75,6 +77,9 @@ export const useAuthStore = defineStore('auth', {
           this.isLoggedIn = true
           return true
         }
+        token.value = null
+        this.isLoggedIn = false
+        this.user = null
         return false
       } catch (error) {
         token.value = null
@@ -85,7 +90,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     logout() {
-      const token = useCookie('auth_token')
+      const token = useCookie('auth_token', COOKIE_OPTS)
       token.value = null
       this.user = null
       this.isLoggedIn = false

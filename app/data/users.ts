@@ -13,7 +13,7 @@ export const users: User[] = [
   {
     id: 'USR-001',
     nama: 'Aden Sahwaludin',
-    email: 'aden@bizmonr.com',
+    email: 'aden@pantaubisnis.com',
     password: 'admin123',
     role: 'Admin',
     status: 'Aktif',
@@ -22,7 +22,7 @@ export const users: User[] = [
   {
     id: 'USR-002',
     nama: 'Siti Nurhaliza',
-    email: 'siti@bizmonr.com',
+    email: 'siti@pantaubisnis.com',
     password: 'karyawan123',
     role: 'Karyawan',
     bisnis: 'Wonton',
@@ -32,7 +32,7 @@ export const users: User[] = [
   {
     id: 'USR-003',
     nama: 'Budi Santoso',
-    email: 'budi@bizmonr.com',
+    email: 'budi@pantaubisnis.com',
     password: 'karyawan123',
     role: 'Karyawan',
     bisnis: 'Es Teh',
@@ -42,7 +42,7 @@ export const users: User[] = [
   {
     id: 'USR-004',
     nama: 'Rina Wati',
-    email: 'rina@bizmonr.com',
+    email: 'rina@pantaubisnis.com',
     password: 'karyawan123',
     role: 'Karyawan',
     bisnis: 'Dimsum',
@@ -52,7 +52,7 @@ export const users: User[] = [
   {
     id: 'USR-005',
     nama: 'Dedi Kurniawan',
-    email: 'dedi@bizmonr.com',
+    email: 'dedi@pantaubisnis.com',
     password: 'karyawan123',
     role: 'Karyawan',
     bisnis: 'Warung Sembako',

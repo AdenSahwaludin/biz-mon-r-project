@@ -146,13 +146,10 @@
         <!-- Nominal Bayar -->
         <div v-if="cart.metodePembayaran === 'Tunai'">
           <label class="block text-xs font-medium text-gray-500 mb-1">Nominal Bayar</label>
-          <input
-            :value="cart.nominalBayar || ''"
-            @input="(e) => cart.setNominalBayar(Number((e.target as HTMLInputElement).value) || 0)"
-            type="number"
-            min="0"
+          <RupiahInput
+            v-model="cart.nominalBayar"
             placeholder="0"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            :showPrefix="true"
           />
           <!-- Quick amounts -->
           <div class="flex gap-1.5 mt-2">

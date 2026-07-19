@@ -38,11 +38,11 @@ async function main() {
         data: {
           ...biz,
           branches: {
-            create: { name: 'Pusat' }
+            create: { name: 'Samarkrombeng' }
           }
         }
       })
-      console.log(`✅ Business '${createdBiz.name}' created with default branch 'Pusat'`)
+      console.log(`✅ Business '${createdBiz.name}' created with default branch 'Samarkrombeng'`)
     }
   }
 }

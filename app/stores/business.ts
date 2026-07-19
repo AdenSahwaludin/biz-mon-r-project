@@ -27,7 +27,8 @@ export interface BusinessState {
 export const useBusinessStore = defineStore('business', () => {
   const businesses = ref<Business[]>([])
   const branches = ref<Branch[]>([])
-  const activeBranchId = ref<string | null>((useCookie<string>('active_branch_id').value) || null)
+  const branchCookie = useCookie<string>('active_branch_id', { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
+  const activeBranchId = ref<string | null>(branchCookie.value || null)
   const isLoading = ref(false)
 
   const activeBranch = computed<Branch | null>(() => {
@@ -81,12 +82,12 @@ export const useBusinessStore = defineStore('business', () => {
 
   function setBranch(branchId: string) {
     activeBranchId.value = branchId
-    useCookie('active_branch_id').value = branchId
+    branchCookie.value = branchId
   }
 
   function clearBranch() {
     activeBranchId.value = null
-    useCookie('active_branch_id').value = null
+    branchCookie.value = null
   }
 
   async function addBusiness(data: any) {

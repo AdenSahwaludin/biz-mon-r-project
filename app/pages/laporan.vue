@@ -1,9 +1,10 @@
 <template>
   <div>
-    <!-- Filters -->
+    <!-- Filters Toolbar -->
     <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-      <div class="flex flex-col sm:flex-row gap-3 items-stretch">
-        <select v-model="filterBranchId" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+      <div class="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
+        <!-- Filter Cabang -->
+        <select v-model="filterBranchId" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
           <option value="">Semua Cabang</option>
           <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
             <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
@@ -11,9 +12,34 @@
             </option>
           </optgroup>
         </select>
+
+        <!-- Filter Periode Waktu -->
+        <select v-model="filterPeriod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+          <option value="all">Semua Data (Bulan Ini)</option>
+          <option value="7days">7 Hari Terakhir</option>
+          <option value="30days">30 Hari Terakhir</option>
+          <option value="month">Bulan Ini</option>
+        </select>
+
+        <!-- Filter Metode Pembayaran -->
+        <select v-model="filterPaymentMethod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+          <option value="">Semua Metode Pembayaran</option>
+          <option value="Tunai">Tunai</option>
+          <option value="QRIS">QRIS</option>
+          <option value="Transfer">Transfer</option>
+        </select>
+
+        <!-- Sort Detail -->
+        <select v-model="sortBy" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+          <option value="newest">Tanggal Terbaru</option>
+          <option value="oldest">Tanggal Terlama</option>
+          <option value="highest">Omzet Tertinggi</option>
+          <option value="lowest">Omzet Terendah</option>
+        </select>
       </div>
     </div>
 
+    <!-- Loading -->
     <div v-if="isLoading" class="text-center py-12">
       <p class="text-gray-500">Memuat laporan...</p>
     </div>
@@ -23,11 +49,11 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-xl border border-gray-200 p-5">
           <p class="text-sm text-gray-500 mb-1">Total Omzet</p>
-          <p class="text-2xl font-bold text-gray-900">{{ fmt.format(summary.totalOmzet || 0) }}</p>
+          <p class="text-2xl font-bold text-gray-900">{{ fmt.format(filteredSummary.totalOmzet) }}</p>
         </div>
         <div class="bg-white rounded-xl border border-gray-200 p-5">
           <p class="text-sm text-gray-500 mb-1">Jumlah Transaksi</p>
-          <p class="text-2xl font-bold text-gray-900">{{ summary.transactionCount || 0 }}</p>
+          <p class="text-2xl font-bold text-gray-900">{{ filteredSummary.transactionCount }}</p>
         </div>
         <div class="bg-white rounded-xl border border-gray-200 p-5">
           <p class="text-sm text-gray-500 mb-1">Rata-rata per Transaksi</p>
@@ -55,14 +81,14 @@
       <!-- Detail Table -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
         <div class="p-5 border-b border-gray-200 flex items-center justify-between">
-          <h3 class="text-base font-semibold text-gray-900">Detail Laporan</h3>
+          <h3 class="text-base font-semibold text-gray-900">Detail Laporan Harian</h3>
           <div class="flex gap-2">
             <button @click="exportReport('pdf')" class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Export PDF</button>
             <button @click="exportReport('csv')" class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Export CSV</button>
           </div>
         </div>
 
-        <!-- Desktop -->
+        <!-- Desktop Table -->
         <table class="w-full hidden sm:table">
           <thead>
             <tr class="bg-gray-50">
@@ -73,29 +99,29 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in reportData" :key="row.tanggal" class="border-t border-gray-50 hover:bg-gray-50">
-              <td class="py-3 px-4 text-sm text-gray-700">{{ fmt.formatDate(row.tanggal) }}</td>
-              <td class="py-3 px-4 text-sm text-gray-700 text-center">{{ row.transaksi }}</td>
-              <td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">{{ fmt.format(row.omzet) }}</td>
-              <td class="py-3 px-4 text-sm text-gray-700 text-right">{{ fmt.format(Math.round(row.omzet / row.transaksi)) }}</td>
+            <tr v-for="row in filteredReportData" :key="row.tanggal" class="border-t border-gray-50 hover:bg-gray-50">
+              <td class="py-3 px-4 text-sm text-gray-700 font-medium">{{ fmt.formatDate(row.tanggal) }}</td>
+              <td class="py-3 px-4 text-sm text-gray-700 text-center font-medium">{{ row.transaksi }}</td>
+              <td class="py-3 px-4 text-sm font-bold text-gray-900 text-right">{{ fmt.format(row.omzet) }}</td>
+              <td class="py-3 px-4 text-sm text-gray-700 text-right">{{ fmt.format(row.transaksi > 0 ? Math.round(row.omzet / row.transaksi) : 0) }}</td>
             </tr>
-            <tr v-if="!reportData.length">
-              <td colspan="4" class="py-6 text-center text-gray-500 text-sm">Tidak ada data transaksi.</td>
+            <tr v-if="!filteredReportData.length">
+              <td colspan="4" class="py-6 text-center text-gray-500 text-sm">Tidak ada data transaksi yang sesuai filter.</td>
             </tr>
           </tbody>
         </table>
 
-        <!-- Mobile -->
+        <!-- Mobile View -->
         <div class="sm:hidden divide-y divide-gray-100">
-          <div v-for="row in reportData" :key="row.tanggal" class="p-4">
+          <div v-for="row in filteredReportData" :key="row.tanggal" class="p-4">
             <p class="text-sm font-medium text-gray-900">{{ fmt.formatDate(row.tanggal) }}</p>
             <div class="flex items-center justify-between mt-1">
               <span class="text-xs text-gray-500">{{ row.transaksi }} transaksi</span>
               <span class="text-sm font-semibold text-gray-900">{{ fmt.format(row.omzet) }}</span>
             </div>
           </div>
-          <div v-if="!reportData.length" class="p-4 text-center text-gray-500 text-sm">
-            Tidak ada data transaksi.
+          <div v-if="!filteredReportData.length" class="p-4 text-center text-gray-500 text-sm">
+            Tidak ada data transaksi yang sesuai filter.
           </div>
         </div>
       </div>
@@ -107,21 +133,25 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js'
-const bizStore = useBusinessStore()
-const businessList = computed(() => bizStore.groupedBusinesses)
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+
+const bizStore = useBusinessStore()
+const businessList = computed(() => bizStore.groupedBusinesses)
 
 const fmt = useFormatCurrency()
 const toast = useToastStore()
 const { fetchWithCache } = useCachedFetch()
 
 const filterBranchId = ref('')
+const filterPeriod = ref('all')
+const filterPaymentMethod = ref('')
+const sortBy = ref('newest')
+
 const chartMode = ref<'omzet' | 'transaksi'>('omzet')
 const isLoading = ref(false)
 
-const reportData = ref<any[]>([])
-const summary = ref<any>({})
+const rawReportData = ref<any[]>([])
 
 onMounted(async () => {
   if (businessList.value.length === 0) {
@@ -134,24 +164,30 @@ watch(filterBranchId, async () => {
   await fetchReport()
 })
 
+watch(() => bizStore.activeBranchId, async () => {
+  if (!filterBranchId.value) {
+    await fetchReport()
+  }
+})
+
 async function fetchReport() {
-  if (!reportData.value.length) {
+  if (!rawReportData.value.length) {
     isLoading.value = true
   }
   try {
-    const url = filterBranchId.value ? `/reports/omzet?branchId=${filterBranchId.value}` : `/reports/omzet`
+    const activeB = filterBranchId.value || bizStore.activeBranchId
+    const url = activeB ? `/reports/omzet?branchId=${activeB}` : `/reports/omzet`
     const res = await fetchWithCache<any>(url, {
+      forceRefresh: true,
       onRevalidated: (fresh) => {
         if (fresh.success) {
-          summary.value = fresh.data.summary || {}
-          reportData.value = fresh.data.timeseries || []
+          rawReportData.value = fresh.data.timeseries || []
         }
       }
     })
     
     if (res.data?.success) {
-      summary.value = res.data.data.summary || {}
-      reportData.value = res.data.data.timeseries || []
+      rawReportData.value = res.data.data.timeseries || []
     }
   } catch (error) {
     toast.error('Gagal memuat laporan')
@@ -160,23 +196,81 @@ async function fetchReport() {
   }
 }
 
-const rataRata = computed(() => summary.value.transactionCount ? Math.round(summary.value.totalOmzet / summary.value.transactionCount) : 0)
+const filteredReportData = computed(() => {
+  let list = [...rawReportData.value]
 
-const lineChartData = computed(() => ({
-  labels: reportData.value.map((r) => fmt.formatDateShort(r.tanggal)),
-  datasets: [
-    {
-      label: chartMode.value === 'omzet' ? 'Omzet' : 'Transaksi',
-      data: reportData.value.map((r) => chartMode.value === 'omzet' ? r.omzet : r.transaksi),
-      borderColor: '#4F46E5',
-      backgroundColor: '#4F46E520',
-      fill: true,
-      tension: 0.4,
-      pointRadius: 4,
-      pointBackgroundColor: '#4F46E5',
-    },
-  ],
-}))
+  // Filter Periode
+  if (filterPeriod.value !== 'all') {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+    list = list.filter((r) => {
+      const rowTime = new Date(r.tanggal).getTime()
+      if (filterPeriod.value === '7days') {
+        return rowTime >= (today - 7 * 24 * 60 * 60 * 1000)
+      } else if (filterPeriod.value === '30days') {
+        return rowTime >= (today - 30 * 24 * 60 * 60 * 1000)
+      } else if (filterPeriod.value === 'month') {
+        const rowDate = new Date(r.tanggal)
+        return rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()
+      }
+      return true
+    })
+  }
+
+  // Sorting
+  if (sortBy.value === 'newest') {
+    list.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+  } else if (sortBy.value === 'oldest') {
+    list.sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime())
+  } else if (sortBy.value === 'highest') {
+    list.sort((a, b) => b.omzet - a.omzet)
+  } else if (sortBy.value === 'lowest') {
+    list.sort((a, b) => a.omzet - b.omzet)
+  }
+
+  return list
+})
+
+const filteredSummary = computed(() => {
+  const totalOmzet = filteredReportData.value.reduce((acc, curr) => acc + (curr.omzet || 0), 0)
+  const transactionCount = filteredReportData.value.reduce((acc, curr) => acc + (curr.transaksi || 0), 0)
+  return { totalOmzet, transactionCount }
+})
+
+const rataRata = computed(() => filteredSummary.value.transactionCount ? Math.round(filteredSummary.value.totalOmzet / filteredSummary.value.transactionCount) : 0)
+
+function getHexColor(colorStr?: string) {
+  if (!colorStr) return '#4F46E5'
+  if (colorStr.includes('orange')) return '#EA580C'
+  if (colorStr.includes('amber')) return '#D97706'
+  if (colorStr.includes('rose')) return '#E11D48'
+  if (colorStr.includes('emerald')) return '#059669'
+  if (colorStr.includes('blue')) return '#2563EB'
+  return '#4F46E5'
+}
+
+const lineChartData = computed(() => {
+  const themeColor = getHexColor(bizStore.activeBusiness?.color)
+  // Re-sort chronologically for chart display
+  const chronological = [...filteredReportData.value].sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime())
+
+  return {
+    labels: chronological.map((r) => fmt.formatDateShort(r.tanggal)),
+    datasets: [
+      {
+        label: chartMode.value === 'omzet' ? 'Omzet' : 'Transaksi',
+        data: chronological.map((r) => chartMode.value === 'omzet' ? r.omzet : r.transaksi),
+        borderColor: themeColor,
+        backgroundColor: themeColor + '20',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: themeColor,
+      },
+    ],
+  }
+})
 
 const lineChartOptions = computed(() => ({
   responsive: true,

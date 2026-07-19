@@ -11,12 +11,13 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Biz-Mon-R — Monitoring & Penjualan Multi Bisnis',
+      title: 'PantauBisnis — Monitoring & Penjualan Multi Bisnis',
       meta: [
         { name: 'description', content: 'Sistem monitoring dan penjualan multi bisnis — Wonton, Es Teh, Dimsum, Warung Sembako' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       ],
       link: [
+        { rel: 'icon', type: 'image/png', href: '/logo.png' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' },

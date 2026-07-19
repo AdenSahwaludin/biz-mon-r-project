@@ -42,10 +42,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Harga <span class="text-red-500">*</span></label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Rp</span>
-              <input v-model.number="form.price" type="number" min="0" placeholder="0" class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': errors.price }" />
-            </div>
+            <RupiahInput v-model="form.price" :error="!!errors.price" placeholder="0" />
             <p v-if="errors.price" class="mt-1 text-xs text-red-500">{{ errors.price }}</p>
           </div>
           <div>

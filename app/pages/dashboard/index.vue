@@ -141,11 +141,57 @@ const timeseries = ref<any[]>([])
 const bestSellers = ref<any[]>([])
 const recentTransactions = ref<any[]>([])
 
+function getHexColor(colorStr?: string) {
+  if (!colorStr) return '#4F46E5'
+  if (colorStr.includes('orange')) return '#EA580C'
+  if (colorStr.includes('amber')) return '#D97706'
+  if (colorStr.includes('rose')) return '#E11D48'
+  if (colorStr.includes('emerald')) return '#059669'
+  if (colorStr.includes('blue')) return '#2563EB'
+  return '#4F46E5'
+}
+
+const chartData = computed(() => {
+  const hexColor = getHexColor(bizStore.activeBusiness?.color)
+  const recentDays = timeseries.value.slice(-7)
+  
+  return {
+    labels: recentDays.map((d: any) => fmt.formatDateShort(d.tanggal)),
+    datasets: [
+      {
+        label: 'Omzet',
+        data: recentDays.map((d: any) => d.omzet),
+        backgroundColor: hexColor + 'D9',
+        hoverBackgroundColor: hexColor,
+        borderColor: hexColor,
+        borderWidth: 2,
+        borderRadius: 6,
+      },
+    ],
+  }
+})
+
 onMounted(async () => {
   if (bizStore.businesses.length === 0) {
     await bizStore.fetchAll()
   }
+  await fetchDashboardData()
+})
 
+const stats = computed(() => {
+  return [
+    { icon: Coins, label: 'Omzet Hari Ini', value: fmt.format(summary.value.daily || 0) },
+    { icon: Calendar, label: 'Omzet 7 Hari', value: fmt.format(summary.value.weekly || 0) },
+    { icon: CalendarDays, label: 'Omzet 30 Hari', value: fmt.format(summary.value.monthly || 0) },
+    { icon: Receipt, label: 'Total Transaksi', value: (summary.value.transactionCount || 0).toString() },
+  ]
+})
+
+watch(() => bizStore.activeBranchId, async () => {
+  await fetchDashboardData()
+})
+
+async function fetchDashboardData() {
   const branchId = bizStore.activeBranchId
   const queryParam = branchId ? `?branchId=${branchId}` : ''
 
@@ -156,6 +202,7 @@ onMounted(async () => {
   try {
     const [omzetRes, sellersRes, trxRes] = await Promise.all([
       fetchWithCache<any>(`/reports/omzet${queryParam}`, {
+        forceRefresh: true,
         onRevalidated: (fresh) => {
           if (fresh.success) {
             summary.value = fresh.data.summary || {}
@@ -164,11 +211,13 @@ onMounted(async () => {
         }
       }),
       fetchWithCache<any>(`/reports/best-sellers${queryParam}`, {
+        forceRefresh: true,
         onRevalidated: (fresh) => {
           if (fresh.success) bestSellers.value = fresh.data || []
         }
       }),
       fetchWithCache<any>(`/transactions${queryParam}&limit=5`, {
+        forceRefresh: true,
         onRevalidated: (fresh) => {
           if (fresh.success) recentTransactions.value = fresh.data || []
         }
@@ -190,36 +239,7 @@ onMounted(async () => {
   } finally {
     isLoading.value = false
   }
-})
-
-const stats = computed(() => {
-  return [
-    { icon: Coins, label: 'Omzet Hari Ini', value: fmt.format(summary.value.daily || 0) },
-    { icon: Calendar, label: 'Omzet 7 Hari', value: fmt.format(summary.value.weekly || 0) },
-    { icon: CalendarDays, label: 'Omzet 30 Hari', value: fmt.format(summary.value.monthly || 0) },
-    { icon: Receipt, label: 'Total Transaksi', value: (summary.value.transactionCount || 0).toString() },
-  ]
-})
-
-const chartData = computed(() => {
-  const bizColor = bizStore.activeBusiness?.color || '#4F46E5'
-  
-  const recentDays = timeseries.value.slice(-7)
-  
-  return {
-    labels: recentDays.map((d: any) => fmt.formatDateShort(d.tanggal)),
-    datasets: [
-      {
-        label: 'Omzet',
-        data: recentDays.map((d: any) => d.omzet),
-        backgroundColor: bizColor + '30',
-        borderColor: bizColor,
-        borderWidth: 2,
-        borderRadius: 6,
-      },
-    ],
-  }
-})
+}
 
 const chartOptions = {
   responsive: true,

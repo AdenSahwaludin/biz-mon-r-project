@@ -17,9 +17,11 @@
       ]"
     >
       <!-- Logo -->
-      <div class="h-16 flex items-center gap-3 px-5 border-b border-gray-200 shrink-0">
-        <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">B</div>
-        <span class="text-lg font-bold text-gray-900">Biz-Mon-R</span>
+      <div class="h-16 flex items-center gap-2 px-5 border-b border-gray-200 shrink-0">
+        <div class="w-7 h-7 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+          <img src="/logo.png" alt="PantauBisnis" class="w-10 h-10 object-contain" />
+        </div>
+        <span class="text-lg font-bold text-gray-900">PantauBisnis</span>
         <button @click="sidebarOpen = false" class="ml-auto lg:hidden text-gray-400 hover:text-gray-600">
           <X class="w-5 h-5" />
         </button>
@@ -36,17 +38,16 @@
         <template v-for="item in navItems" :key="item.label">
           <p v-if="item.divider" class="px-3 pt-4 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{{ item.label }}</p>
           <NuxtLink
-            v-else-if="item.to"
-            :to="item.to"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
-            :class="isActive(item.to) ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
-            @click="sidebarOpen = false"
-          >
+          v-else-if="item.to"
+          :to="item.to"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          :class="isActive(item.to) ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+          @click="sidebarOpen = true"> <!--  @click="sidebarOpen = false" -->
             <component :is="item.icon" class="w-5 h-5 shrink-0" />
             <span>{{ item.label }}</span>
           </NuxtLink>
         </template>
-      </nav>
+      </nav>  
 
       <!-- User Footer -->
       <div class="border-t border-gray-200 p-4 shrink-0">
@@ -179,7 +180,7 @@ const pageTitle = computed(() => {
     'profil': 'Profil',
     'pengaturan': 'Pengaturan',
   }
-  return titles[name] || 'Biz-Mon-R'
+  return titles[name] || 'PantauBisnis'
 })
 
 const navItems = computed(() => {
@@ -221,8 +222,7 @@ function isActive(to: string): boolean {
 function switchBranch(branchId: string) {
   biz.setBranch(branchId)
   showBizDropdown.value = false
-  // Stay on the same page and reload to fetch data for the new branch
-  window.location.reload()
+  // window.location.reload() // Commented out per user request: use seamless reactive state updates without full page refresh
 }
 
 // Close dropdown on click outside

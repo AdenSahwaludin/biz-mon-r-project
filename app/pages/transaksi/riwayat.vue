@@ -1,27 +1,56 @@
 <template>
   <div>
-    <!-- Toolbar -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-      <div class="flex flex-col sm:flex-row gap-3">
+    <!-- Toolbar & Filters -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
+      <div class="flex flex-col md:flex-row gap-3">
         <!-- Search -->
         <div class="relative flex-1">
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             v-model="search"
             type="text"
-            placeholder="Cari ID transaksi atau kasir..."
+            placeholder="Cari ID transaksi atau nama kasir..."
             class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
           />
         </div>
-        <!-- Filters -->
-        <select v-if="auth.isAdmin" v-model="filterBranchId" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
-          <option value="">Semua Cabang</option>
-          <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
-            <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
-              {{ branch.name }}
-            </option>
-          </optgroup>
-        </select>
+
+        <!-- Filters Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <!-- Cabang -->
+          <select v-if="auth.isAdmin" v-model="filterBranchId" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+            <option value="">Semua Cabang</option>
+            <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
+              <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
+                {{ branch.name }}
+              </option>
+            </optgroup>
+          </select>
+
+          <!-- Metode Pembayaran -->
+          <select v-model="filterMethod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+            <option value="">Semua Metode</option>
+            <option value="Tunai">Tunai</option>
+            <option value="QRIS">QRIS</option>
+            <option value="Transfer">Transfer</option>
+          </select>
+
+          <!-- Periode Tanggal -->
+          <select v-model="filterPeriod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+            <option value="all">Semua Waktu</option>
+            <option value="today">Hari Ini</option>
+            <option value="7days">7 Hari Terakhir</option>
+            <option value="30days">30 Hari Terakhir</option>
+            <option value="month">Bulan Ini</option>
+          </select>
+
+          <!-- Urutan / Sorting -->
+          <select v-model="sortBy" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+            <option value="newest">Terbaru</option>
+            <option value="oldest">Terlama</option>
+            <option value="highest">Nominal Tertinggi</option>
+            <option value="lowest">Nominal Terendah</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -57,7 +86,11 @@
               <td class="py-3 px-4 text-sm text-gray-600">{{ trx.branch?.business?.name }} - {{ trx.branch?.name }}</td>
               <td class="py-3 px-4 text-sm text-gray-600">{{ trx.cashier?.name }}</td>
               <td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">{{ fmt.format(trx.total) }}</td>
-              <td class="py-3 px-4 text-sm text-gray-500 text-center">{{ trx.paymentMethod }}</td>
+              <td class="py-3 px-4 text-sm text-gray-500 text-center">
+                <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                  {{ trx.paymentMethod }}
+                </span>
+              </td>
               <td v-if="auth.isAdmin" class="py-3 px-4 text-center" @click.stop>
                 <button
                   @click="confirmDelete(trx)"
@@ -72,7 +105,7 @@
         </table>
         <div v-if="!paginatedData.length" class="py-12 text-center">
           <ClipboardList class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p class="text-gray-500 font-medium">Belum ada transaksi</p>
+          <p class="text-gray-500 font-medium">Tidak ada data transaksi yang cocok</p>
         </div>
       </div>
 
@@ -80,7 +113,7 @@
       <div class="sm:hidden space-y-3">
         <div v-if="!paginatedData.length" class="bg-white rounded-xl border border-gray-200 py-12 text-center">
           <ClipboardList class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p class="text-gray-500 font-medium">Belum ada transaksi</p>
+          <p class="text-gray-500 font-medium">Tidak ada data transaksi yang cocok</p>
         </div>
         <div
           v-for="trx in paginatedData"
@@ -165,6 +198,10 @@ const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 const search = ref('')
 const filterBranchId = ref('')
+const filterMethod = ref('')
+const filterPeriod = ref('all')
+const sortBy = ref('newest')
+
 const page = ref(1)
 const perPage = 10
 const isLoading = ref(false)
@@ -184,12 +221,19 @@ watch(filterBranchId, async () => {
   await fetchTransactions()
 })
 
+watch(() => bizStore.activeBranchId, async (newBranch) => {
+  if (!filterBranchId.value) {
+    await fetchTransactions()
+  }
+})
+
 async function fetchTransactions(forceRefresh = false) {
   if (transactions.value.length === 0) {
     isLoading.value = true
   }
   try {
-    const url = filterBranchId.value ? `/transactions?branchId=${filterBranchId.value}` : `/transactions`
+    const activeB = filterBranchId.value || bizStore.activeBranchId
+    const url = activeB ? `/transactions?branchId=${activeB}` : `/transactions`
     const res = await fetchWithCache<any>(url, {
       forceRefresh,
       onRevalidated: (fresh) => {
@@ -236,9 +280,52 @@ async function doDelete() {
 const filteredData = computed(() => {
   let data = [...transactions.value]
 
+  // Filter Search Text
   if (search.value) {
     const q = search.value.toLowerCase()
-    data = data.filter((t) => t.id?.toLowerCase().includes(q) || t.cashier?.name?.toLowerCase().includes(q))
+    data = data.filter((t) => 
+      t.id?.toLowerCase().includes(q) || 
+      t.cashier?.name?.toLowerCase().includes(q)
+    )
+  }
+
+  // Filter Metode Pembayaran
+  if (filterMethod.value) {
+    data = data.filter((t) => t.paymentMethod === filterMethod.value)
+  }
+
+  // Filter Periode Tanggal
+  if (filterPeriod.value !== 'all') {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+    data = data.filter((t) => {
+      const txTime = new Date(t.createdAt).getTime()
+      if (filterPeriod.value === 'today') {
+        return txTime >= today
+      } else if (filterPeriod.value === '7days') {
+        const d7 = today - 7 * 24 * 60 * 60 * 1000
+        return txTime >= d7
+      } else if (filterPeriod.value === '30days') {
+        const d30 = today - 30 * 24 * 60 * 60 * 1000
+        return txTime >= d30
+      } else if (filterPeriod.value === 'month') {
+        const txDate = new Date(t.createdAt)
+        return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+      }
+      return true
+    })
+  }
+
+  // Sorting
+  if (sortBy.value === 'newest') {
+    data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  } else if (sortBy.value === 'oldest') {
+    data.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  } else if (sortBy.value === 'highest') {
+    data.sort((a, b) => b.total - a.total)
+  } else if (sortBy.value === 'lowest') {
+    data.sort((a, b) => a.total - b.total)
   }
 
   return data
@@ -260,5 +347,5 @@ const visiblePages = computed(() => {
   return pages
 })
 
-watch([search, filterBranchId], () => { page.value = 1 })
+watch([search, filterBranchId, filterMethod, filterPeriod, sortBy], () => { page.value = 1 })
 </script>
