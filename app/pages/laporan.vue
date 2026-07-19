@@ -1,14 +1,14 @@
 <template>
   <div>
     <!-- Filters Toolbar -->
-    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
       <div class="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
-        <!-- Filter Cabang -->
+        <!-- Filter Cabang (Default ke Cabang Aktif) -->
         <select v-model="filterBranchId" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
           <option value="">Semua Cabang</option>
           <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
             <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
-              {{ branch.name }}
+              {{ biz.name }} - {{ branch.name }}
             </option>
           </optgroup>
         </select>
@@ -16,27 +16,49 @@
         <!-- Filter Periode Waktu -->
         <select v-model="filterPeriod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
           <option value="all">Semua Data (Bulan Ini)</option>
+          <option value="today">Hari Ini</option>
           <option value="7days">7 Hari Terakhir</option>
           <option value="30days">30 Hari Terakhir</option>
           <option value="month">Bulan Ini</option>
+          <option value="custom">Kustom Tanggal</option>
         </select>
 
-        <!-- Filter Metode Pembayaran -->
+        <!-- Filter Metode Pembayaran (Hanya Tunai & QRIS) -->
         <select v-model="filterPaymentMethod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
           <option value="">Semua Metode Pembayaran</option>
           <option value="Tunai">Tunai</option>
           <option value="QRIS">QRIS</option>
-          <option value="Transfer">Transfer</option>
-        </select>
-
-        <!-- Sort Detail -->
-        <select v-model="sortBy" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-          <option value="newest">Tanggal Terbaru</option>
-          <option value="oldest">Tanggal Terlama</option>
-          <option value="highest">Omzet Tertinggi</option>
-          <option value="lowest">Omzet Terendah</option>
         </select>
       </div>
+
+      <!-- Custom Date Range Picker -->
+      <Transition name="fade">
+        <div v-if="filterPeriod === 'custom'" class="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-gray-100">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <span class="text-xs text-gray-500 font-medium whitespace-nowrap">Dari:</span>
+            <input
+              v-model="startDate"
+              type="date"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white w-full sm:w-auto"
+            />
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <span class="text-xs text-gray-500 font-medium whitespace-nowrap">Sampai:</span>
+            <input
+              v-model="endDate"
+              type="date"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white w-full sm:w-auto"
+            />
+          </div>
+          <button
+            v-if="startDate || endDate"
+            @click="startDate = ''; endDate = ''"
+            class="text-xs text-gray-500 hover:text-red-500 font-medium underline"
+          >
+            Reset Tanggal
+          </button>
+        </div>
+      </Transition>
     </div>
 
     <!-- Loading -->
@@ -45,7 +67,7 @@
     </div>
 
     <template v-else>
-      <!-- Stats -->
+      <!-- Stats Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-xl border border-gray-200 p-5">
           <p class="text-sm text-gray-500 mb-1">Total Omzet</p>
@@ -61,7 +83,7 @@
         </div>
       </div>
 
-      <!-- Chart -->
+      <!-- Chart Card -->
       <div class="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-base font-semibold text-gray-900">Tren Penjualan</h3>
@@ -78,13 +100,24 @@
         </div>
       </div>
 
-      <!-- Detail Table -->
+      <!-- Detail Table Section with Moved Omzet Sort Filter -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
-        <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+        <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h3 class="text-base font-semibold text-gray-900">Detail Laporan Harian</h3>
-          <div class="flex gap-2">
-            <button @click="exportReport('pdf')" class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Export PDF</button>
-            <button @click="exportReport('csv')" class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Export CSV</button>
+          
+          <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+            <!-- Filter Omzet / Sorting Dipindahkan ke Sini -->
+            <select v-model="detailSortBy" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium outline-none bg-white focus:ring-2 focus:ring-primary-500">
+              <option value="newest">Tanggal Terbaru</option>
+              <option value="oldest">Tanggal Terlama</option>
+              <option value="highest">Omzet Tertinggi</option>
+              <option value="lowest">Omzet Terendah</option>
+            </select>
+
+            <div class="flex gap-2">
+              <button @click="exportReport('pdf')" class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Export PDF</button>
+              <button @click="exportReport('csv')" class="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Export CSV</button>
+            </div>
           </div>
         </div>
 
@@ -99,13 +132,13 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in filteredReportData" :key="row.tanggal" class="border-t border-gray-50 hover:bg-gray-50">
+            <tr v-for="row in sortedReportData" :key="row.tanggal" class="border-t border-gray-50 hover:bg-gray-50">
               <td class="py-3 px-4 text-sm text-gray-700 font-medium">{{ fmt.formatDate(row.tanggal) }}</td>
               <td class="py-3 px-4 text-sm text-gray-700 text-center font-medium">{{ row.transaksi }}</td>
               <td class="py-3 px-4 text-sm font-bold text-gray-900 text-right">{{ fmt.format(row.omzet) }}</td>
               <td class="py-3 px-4 text-sm text-gray-700 text-right">{{ fmt.format(row.transaksi > 0 ? Math.round(row.omzet / row.transaksi) : 0) }}</td>
             </tr>
-            <tr v-if="!filteredReportData.length">
+            <tr v-if="!sortedReportData.length">
               <td colspan="4" class="py-6 text-center text-gray-500 text-sm">Tidak ada data transaksi yang sesuai filter.</td>
             </tr>
           </tbody>
@@ -113,14 +146,14 @@
 
         <!-- Mobile View -->
         <div class="sm:hidden divide-y divide-gray-100">
-          <div v-for="row in filteredReportData" :key="row.tanggal" class="p-4">
+          <div v-for="row in sortedReportData" :key="row.tanggal" class="p-4">
             <p class="text-sm font-medium text-gray-900">{{ fmt.formatDate(row.tanggal) }}</p>
             <div class="flex items-center justify-between mt-1">
               <span class="text-xs text-gray-500">{{ row.transaksi }} transaksi</span>
               <span class="text-sm font-semibold text-gray-900">{{ fmt.format(row.omzet) }}</span>
             </div>
           </div>
-          <div v-if="!filteredReportData.length" class="p-4 text-center text-gray-500 text-sm">
+          <div v-if="!sortedReportData.length" class="p-4 text-center text-gray-500 text-sm">
             Tidak ada data transaksi yang sesuai filter.
           </div>
         </div>
@@ -143,10 +176,13 @@ const fmt = useFormatCurrency()
 const toast = useToastStore()
 const { fetchWithCache } = useCachedFetch()
 
-const filterBranchId = ref('')
+// Default branch filter matches active branch selected in header
+const filterBranchId = ref(bizStore.activeBranchId || '')
 const filterPeriod = ref('all')
+const startDate = ref('')
+const endDate = ref('')
 const filterPaymentMethod = ref('')
-const sortBy = ref('newest')
+const detailSortBy = ref('newest')
 
 const chartMode = ref<'omzet' | 'transaksi'>('omzet')
 const isLoading = ref(false)
@@ -157,15 +193,19 @@ onMounted(async () => {
   if (businessList.value.length === 0) {
     await bizStore.fetchAll()
   }
+  if (!filterBranchId.value && bizStore.activeBranchId) {
+    filterBranchId.value = bizStore.activeBranchId
+  }
   await fetchReport()
 })
 
-watch(filterBranchId, async () => {
+watch([filterBranchId, filterPaymentMethod], async () => {
   await fetchReport()
 })
 
-watch(() => bizStore.activeBranchId, async () => {
-  if (!filterBranchId.value) {
+watch(() => bizStore.activeBranchId, async (newBranch) => {
+  if (newBranch) {
+    filterBranchId.value = newBranch
     await fetchReport()
   }
 })
@@ -175,8 +215,12 @@ async function fetchReport() {
     isLoading.value = true
   }
   try {
-    const activeB = filterBranchId.value || bizStore.activeBranchId
-    const url = activeB ? `/reports/omzet?branchId=${activeB}` : `/reports/omzet`
+    const activeB = filterBranchId.value
+    let url = activeB ? `/reports/omzet?branchId=${activeB}` : `/reports/omzet`
+    if (filterPaymentMethod.value) {
+      url += (url.includes('?') ? '&' : '?') + `paymentMethod=${filterPaymentMethod.value}`
+    }
+
     const res = await fetchWithCache<any>(url, {
       forceRefresh: true,
       onRevalidated: (fresh) => {
@@ -204,28 +248,46 @@ const filteredReportData = computed(() => {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 
-    list = list.filter((r) => {
-      const rowTime = new Date(r.tanggal).getTime()
-      if (filterPeriod.value === '7days') {
-        return rowTime >= (today - 7 * 24 * 60 * 60 * 1000)
-      } else if (filterPeriod.value === '30days') {
-        return rowTime >= (today - 30 * 24 * 60 * 60 * 1000)
-      } else if (filterPeriod.value === 'month') {
-        const rowDate = new Date(r.tanggal)
-        return rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()
+    if (filterPeriod.value === 'custom') {
+      if (startDate.value) {
+        const startMs = new Date(startDate.value + 'T00:00:00').getTime()
+        list = list.filter((r) => new Date(r.tanggal).getTime() >= startMs)
       }
-      return true
-    })
+      if (endDate.value) {
+        const endMs = new Date(endDate.value + 'T23:59:59').getTime()
+        list = list.filter((r) => new Date(r.tanggal).getTime() <= endMs)
+      }
+    } else {
+      list = list.filter((r) => {
+        const rowTime = new Date(r.tanggal).getTime()
+        if (filterPeriod.value === 'today') {
+          return rowTime >= today
+        } else if (filterPeriod.value === '7days') {
+          return rowTime >= (today - 7 * 24 * 60 * 60 * 1000)
+        } else if (filterPeriod.value === '30days') {
+          return rowTime >= (today - 30 * 24 * 60 * 60 * 1000)
+        } else if (filterPeriod.value === 'month') {
+          const rowDate = new Date(r.tanggal)
+          return rowDate.getMonth() === now.getMonth() && rowDate.getFullYear() === now.getFullYear()
+        }
+        return true
+      })
+    }
   }
 
-  // Sorting
-  if (sortBy.value === 'newest') {
+  return list
+})
+
+const sortedReportData = computed(() => {
+  let list = [...filteredReportData.value]
+
+  if (detailSortBy.value === 'newest') {
     list.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
-  } else if (sortBy.value === 'oldest') {
+  } else if (detailSortBy.value === 'oldest') {
     list.sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime())
-  } else if (sortBy.value === 'highest') {
+  } else if (detailSortBy.value === 'highest') {
     list.sort((a, b) => b.omzet - a.omzet)
-  } else if (sortBy.value === 'lowest') {
+  } else if (detailSortBy.value === 'lowest') {
     list.sort((a, b) => a.omzet - b.omzet)
   }
 

@@ -10,28 +10,36 @@
             v-model="search"
             type="text"
             placeholder="Cari ID transaksi atau nama kasir..."
-            class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
           />
+          <button
+            v-if="search"
+            @click="search = ''"
+            type="button"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+            title="Hapus"
+          >
+            <X class="w-4 h-4" />
+          </button>
         </div>
 
         <!-- Filters Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <!-- Cabang -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <!-- Cabang (Default ke Cabang Aktif) -->
           <select v-if="auth.isAdmin" v-model="filterBranchId" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
             <option value="">Semua Cabang</option>
             <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
               <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
-                {{ branch.name }}
+                {{ biz.name }} - {{ branch.name }}
               </option>
             </optgroup>
           </select>
 
-          <!-- Metode Pembayaran -->
+          <!-- Metode Pembayaran (Hanya Tunai & QRIS) -->
           <select v-model="filterMethod" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
             <option value="">Semua Metode</option>
             <option value="Tunai">Tunai</option>
             <option value="QRIS">QRIS</option>
-            <option value="Transfer">Transfer</option>
           </select>
 
           <!-- Periode Tanggal -->
@@ -41,17 +49,39 @@
             <option value="7days">7 Hari Terakhir</option>
             <option value="30days">30 Hari Terakhir</option>
             <option value="month">Bulan Ini</option>
-          </select>
-
-          <!-- Urutan / Sorting -->
-          <select v-model="sortBy" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-            <option value="newest">Terbaru</option>
-            <option value="oldest">Terlama</option>
-            <option value="highest">Nominal Tertinggi</option>
-            <option value="lowest">Nominal Terendah</option>
+            <option value="custom">Kustom Tanggal</option>
           </select>
         </div>
       </div>
+
+      <!-- Custom Date Range Picker -->
+      <Transition name="fade">
+        <div v-if="filterPeriod === 'custom'" class="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-gray-100">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <span class="text-xs text-gray-500 font-medium whitespace-nowrap">Dari:</span>
+            <input
+              v-model="startDate"
+              type="date"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white w-full sm:w-auto"
+            />
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <span class="text-xs text-gray-500 font-medium whitespace-nowrap">Sampai:</span>
+            <input
+              v-model="endDate"
+              type="date"
+              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white w-full sm:w-auto"
+            />
+          </div>
+          <button
+            v-if="startDate || endDate"
+            @click="startDate = ''; endDate = ''"
+            class="text-xs text-gray-500 hover:text-red-500 font-medium underline"
+          >
+            Reset Tanggal
+          </button>
+        </div>
+      </Transition>
     </div>
 
     <!-- Loading -->
@@ -65,7 +95,6 @@
         <table class="w-full">
           <thead>
             <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">ID</th>
               <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Tanggal</th>
               <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Cabang</th>
               <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Kasir</th>
@@ -81,13 +110,15 @@
               @click="navigateTo(`/transaksi/${trx.id}`)"
               class="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
             >
-              <td class="py-3 px-4 text-sm font-medium text-primary-600">{{ trx.id }}</td>
-              <td class="py-3 px-4 text-sm text-gray-600">{{ fmt.formatDateTime(trx.createdAt) }}</td>
+              <td class="py-3 px-4 text-sm font-medium text-gray-900">{{ fmt.formatDateTime(trx.createdAt) }}</td>
               <td class="py-3 px-4 text-sm text-gray-600">{{ trx.branch?.business?.name }} - {{ trx.branch?.name }}</td>
               <td class="py-3 px-4 text-sm text-gray-600">{{ trx.cashier?.name }}</td>
               <td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">{{ fmt.format(trx.total) }}</td>
               <td class="py-3 px-4 text-sm text-gray-500 text-center">
-                <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                <span
+                  class="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium"
+                  :class="trx.paymentMethod === 'QRIS' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'"
+                >
                   {{ trx.paymentMethod }}
                 </span>
               </td>
@@ -122,10 +153,13 @@
           class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md cursor-pointer transition-shadow"
         >
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm font-semibold text-primary-600">{{ trx.id }}</span>
+            <span class="text-xs text-gray-500">{{ fmt.formatDateTime(trx.createdAt) }}</span>
             <div class="flex items-center gap-2">
-              <span class="text-xs font-medium px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
-                Selesai
+              <span
+                class="text-xs font-medium px-2 py-0.5 rounded-full"
+                :class="trx.paymentMethod === 'QRIS' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'"
+              >
+                {{ trx.paymentMethod }}
               </span>
               <button
                 v-if="auth.isAdmin"
@@ -137,8 +171,7 @@
               </button>
             </div>
           </div>
-          <p class="text-xs text-gray-500">{{ fmt.formatDateTime(trx.createdAt) }}</p>
-          <p class="text-xs text-gray-400 mt-0.5">{{ trx.branch?.business?.name }} · {{ trx.cashier?.name }} · {{ trx.paymentMethod }}</p>
+          <p class="text-xs text-gray-400 mt-0.5">{{ trx.branch?.business?.name }} - {{ trx.branch?.name }} · {{ trx.cashier?.name }}</p>
           <p class="text-base font-bold text-gray-900 mt-2">{{ fmt.format(trx.total) }}</p>
         </div>
       </div>
@@ -186,7 +219,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Search, ClipboardList, Trash2 } from 'lucide-vue-next'
+import { Search, ClipboardList, Trash2, X } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const bizStore = useBusinessStore()
@@ -197,10 +230,12 @@ const { fetchWithAuth } = useApi()
 const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 const search = ref('')
-const filterBranchId = ref('')
+// Default branch filter matches active branch selected in header
+const filterBranchId = ref(bizStore.activeBranchId || '')
 const filterMethod = ref('')
 const filterPeriod = ref('all')
-const sortBy = ref('newest')
+const startDate = ref('')
+const endDate = ref('')
 
 const page = ref(1)
 const perPage = 10
@@ -214,6 +249,9 @@ onMounted(async () => {
   if (businessList.value.length === 0) {
     await bizStore.fetchAll()
   }
+  if (!filterBranchId.value && bizStore.activeBranchId) {
+    filterBranchId.value = bizStore.activeBranchId
+  }
   await fetchTransactions()
 })
 
@@ -222,7 +260,8 @@ watch(filterBranchId, async () => {
 })
 
 watch(() => bizStore.activeBranchId, async (newBranch) => {
-  if (!filterBranchId.value) {
+  if (newBranch) {
+    filterBranchId.value = newBranch
     await fetchTransactions()
   }
 })
@@ -232,7 +271,7 @@ async function fetchTransactions(forceRefresh = false) {
     isLoading.value = true
   }
   try {
-    const activeB = filterBranchId.value || bizStore.activeBranchId
+    const activeB = filterBranchId.value
     const url = activeB ? `/transactions?branchId=${activeB}` : `/transactions`
     const res = await fetchWithCache<any>(url, {
       forceRefresh,
@@ -289,7 +328,7 @@ const filteredData = computed(() => {
     )
   }
 
-  // Filter Metode Pembayaran
+  // Filter Metode Pembayaran (Tunai / QRIS)
   if (filterMethod.value) {
     data = data.filter((t) => t.paymentMethod === filterMethod.value)
   }
@@ -299,34 +338,35 @@ const filteredData = computed(() => {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 
-    data = data.filter((t) => {
-      const txTime = new Date(t.createdAt).getTime()
-      if (filterPeriod.value === 'today') {
-        return txTime >= today
-      } else if (filterPeriod.value === '7days') {
-        const d7 = today - 7 * 24 * 60 * 60 * 1000
-        return txTime >= d7
-      } else if (filterPeriod.value === '30days') {
-        const d30 = today - 30 * 24 * 60 * 60 * 1000
-        return txTime >= d30
-      } else if (filterPeriod.value === 'month') {
-        const txDate = new Date(t.createdAt)
-        return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+    if (filterPeriod.value === 'custom') {
+      if (startDate.value) {
+        const startMs = new Date(startDate.value + 'T00:00:00').getTime()
+        data = data.filter((t) => new Date(t.createdAt).getTime() >= startMs)
       }
-      return true
-    })
+      if (endDate.value) {
+        const endMs = new Date(endDate.value + 'T23:59:59').getTime()
+        data = data.filter((t) => new Date(t.createdAt).getTime() <= endMs)
+      }
+    } else {
+      data = data.filter((t) => {
+        const txTime = new Date(t.createdAt).getTime()
+        if (filterPeriod.value === 'today') {
+          return txTime >= today
+        } else if (filterPeriod.value === '7days') {
+          return txTime >= (today - 7 * 24 * 60 * 60 * 1000)
+        } else if (filterPeriod.value === '30days') {
+          return txTime >= (today - 30 * 24 * 60 * 60 * 1000)
+        } else if (filterPeriod.value === 'month') {
+          const txDate = new Date(t.createdAt)
+          return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+        }
+        return true
+      })
+    }
   }
 
-  // Sorting
-  if (sortBy.value === 'newest') {
-    data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  } else if (sortBy.value === 'oldest') {
-    data.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  } else if (sortBy.value === 'highest') {
-    data.sort((a, b) => b.total - a.total)
-  } else if (sortBy.value === 'lowest') {
-    data.sort((a, b) => a.total - b.total)
-  }
+  // Always default sort newest first
+  data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   return data
 })
@@ -347,5 +387,5 @@ const visiblePages = computed(() => {
   return pages
 })
 
-watch([search, filterBranchId, filterMethod, filterPeriod, sortBy], () => { page.value = 1 })
+watch([search, filterBranchId, filterMethod, filterPeriod, startDate, endDate], () => { page.value = 1 })
 </script>

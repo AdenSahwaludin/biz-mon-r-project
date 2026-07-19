@@ -5,7 +5,16 @@
       <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div class="relative flex-1">
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input v-model="search" type="text" placeholder="Cari produk atau barcode..." class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+          <input v-model="search" type="text" placeholder="Cari produk atau barcode..." class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+          <button
+            v-if="search"
+            @click="search = ''"
+            type="button"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+            title="Hapus"
+          >
+            <X class="w-4 h-4" />
+          </button>
         </div>
         <select v-model="filterBisnis" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
           <option value="">Semua Bisnis</option>
@@ -133,7 +142,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Search, Plus, Edit, Trash2, Package } from 'lucide-vue-next'
+import { Search, Plus, Edit, Trash2, Package, X } from 'lucide-vue-next'
 
 const route = useRoute()
 const bizStore = useBusinessStore()

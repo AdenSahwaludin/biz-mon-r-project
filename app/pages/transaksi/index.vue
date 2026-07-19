@@ -8,15 +8,26 @@
           <!-- Barcode Input -->
           <div class="flex-1">
             <label class="block text-xs font-medium text-gray-500 mb-1">Scan Barcode</label>
-            <input
-              ref="barcodeInput"
-              v-model="barcodeValue"
-              @keydown.enter="handleBarcode"
-              type="text"
-              placeholder="Scan barcode di sini..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              autofocus
-            />
+            <div class="relative">
+              <input
+                ref="barcodeInput"
+                v-model="barcodeValue"
+                @keydown.enter="handleBarcode"
+                type="text"
+                placeholder="Scan barcode di sini..."
+                class="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                autofocus
+              />
+              <button
+                v-if="barcodeValue"
+                @click="barcodeValue = ''"
+                type="button"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+                title="Hapus"
+              >
+                <X class="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <!-- Search -->
           <div class="flex-1">
@@ -27,8 +38,17 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Ketik nama produk..."
-                class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
               />
+              <button
+                v-if="searchQuery"
+                @click="searchQuery = ''"
+                type="button"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+                title="Hapus"
+              >
+                <X class="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>

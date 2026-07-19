@@ -42,7 +42,7 @@ export function useFormatCurrency() {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    }).format(date)
+    }).format(date).replace(/\s*pukul\s*/i, ' ')
   }
 
   const formatTime = (dateStr: string): string => {

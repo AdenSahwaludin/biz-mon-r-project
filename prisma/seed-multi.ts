@@ -253,19 +253,30 @@ async function main() {
           icon: bData.icon,
           color: bData.color,
           branches: {
-            create: { name: 'Samarkrombeng' }
+            create: { name: 'Samakrombeng' }
           }
         }
       })
     }
 
     let branch = await prisma.branch.findFirst({
-      where: { businessId: biz.id, name: 'Samarkrombeng' }
+      where: { businessId: biz.id, name: 'Samakrombeng' }
     })
     if (!branch) {
-      branch = await prisma.branch.create({
-        data: { name: 'Samarkrombeng', businessId: biz.id }
+      // Check if old branch exists and rename it
+      const oldBranch = await prisma.branch.findFirst({
+        where: { businessId: biz.id, name: { in: ['Samarkrombeng', 'Samarkombeng', 'Pusat'] } }
       })
+      if (oldBranch) {
+        branch = await prisma.branch.update({
+          where: { id: oldBranch.id },
+          data: { name: 'Samakrombeng' }
+        })
+      } else {
+        branch = await prisma.branch.create({
+          data: { name: 'Samakrombeng', businessId: biz.id }
+        })
+      }
     }
 
     targetBusinesses.push({ biz, branch, data: bData })

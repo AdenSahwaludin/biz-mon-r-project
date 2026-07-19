@@ -39,8 +39,8 @@
         <!-- Top Products -->
         <div class="bg-white rounded-xl border border-gray-200 p-5">
           <h3 class="text-base font-semibold text-gray-900 mb-4">Produk Terlaris</h3>
-          <div v-if="bestSellers.length > 0" class="space-y-3">
-            <div v-for="(prod, i) in bestSellers" :key="prod.id" class="flex items-center gap-3">
+          <div v-if="topBestSellers.length > 0" class="space-y-3">
+            <div v-for="(prod, i) in topBestSellers" :key="prod.id" class="flex items-center gap-3">
               <div
                 class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                 :class="i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-400'"
@@ -187,22 +187,24 @@ const stats = computed(() => {
   ]
 })
 
+const topBestSellers = computed(() => bestSellers.value.slice(0, 5))
+
 watch(() => bizStore.activeBranchId, async () => {
-  await fetchDashboardData()
+  await fetchDashboardData(true)
 })
 
-async function fetchDashboardData() {
+async function fetchDashboardData(forceRefresh = false) {
   const branchId = bizStore.activeBranchId
   const queryParam = branchId ? `?branchId=${branchId}` : ''
 
-  if (!timeseries.value.length) {
+  if (!timeseries.value.length && !forceRefresh) {
     isLoading.value = true
   }
 
   try {
     const [omzetRes, sellersRes, trxRes] = await Promise.all([
       fetchWithCache<any>(`/reports/omzet${queryParam}`, {
-        forceRefresh: true,
+        forceRefresh,
         onRevalidated: (fresh) => {
           if (fresh.success) {
             summary.value = fresh.data.summary || {}
@@ -211,13 +213,13 @@ async function fetchDashboardData() {
         }
       }),
       fetchWithCache<any>(`/reports/best-sellers${queryParam}`, {
-        forceRefresh: true,
+        forceRefresh,
         onRevalidated: (fresh) => {
           if (fresh.success) bestSellers.value = fresh.data || []
         }
       }),
       fetchWithCache<any>(`/transactions${queryParam}&limit=5`, {
-        forceRefresh: true,
+        forceRefresh,
         onRevalidated: (fresh) => {
           if (fresh.success) recentTransactions.value = fresh.data || []
         }

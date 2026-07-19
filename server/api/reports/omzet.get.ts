@@ -8,6 +8,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const businessId = query.businessId as string | undefined
   const branchId = query.branchId as string | undefined
+  const paymentMethod = query.paymentMethod as string | undefined
 
   const where: any = {}
   if (branchId) {
@@ -15,10 +16,13 @@ export default defineEventHandler(async (event) => {
   } else if (businessId) {
     where.branch = { businessId }
   }
+  if (paymentMethod) {
+    where.paymentMethod = paymentMethod
+  }
 
   const transactions = await prisma.transaction.findMany({
     where,
-    select: { total: true, createdAt: true, branch: { select: { id: true, name: true, business: { select: { id: true, name: true } } } } }
+    select: { total: true, createdAt: true, paymentMethod: true, branch: { select: { id: true, name: true, business: { select: { id: true, name: true } } } } }
   })
 
   let totalOmzet = 0
