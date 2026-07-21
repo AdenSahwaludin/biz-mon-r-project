@@ -360,7 +360,12 @@ function getBusinessIcon(name: string) {
 
 const bizProducts = computed(() => {
   const branch = biz.activeBranch
-  if (!branch) return []
+  if (!branch) {
+    if (auth.isKaryawan && auth.userBranch) {
+        return products.value.filter((p) => p.businessId === auth.userBusiness?.id && p.isActive)
+    }
+    return []
+  }
   return products.value.filter((p) => p.businessId === branch.businessId && p.isActive)
 })
 
