@@ -28,7 +28,11 @@
       </div>
 
       <!-- Business Indicator -->
-      <div v-if="biz.activeBusiness" class="mx-4 mt-4 mb-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center" :style="{ backgroundColor: biz.activeBusiness.color + '15', color: biz.activeBusiness.color }">
+      <div v-if="auth.isKaryawan && auth.userBranch" class="mx-4 mt-4 mb-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center bg-gray-50 text-gray-700">
+        <component :is="getBusinessIcon(auth.userBusiness?.name)" class="w-4 h-4 mr-2 shrink-0" />
+        <span class="truncate">{{ auth.userBusiness?.name }} - {{ auth.userBranch.name }}</span>
+      </div>
+      <div v-else-if="biz.activeBusiness" class="mx-4 mt-4 mb-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center" :style="{ backgroundColor: biz.activeBusiness.color + '15', color: biz.activeBusiness.color }">
         <component :is="getBusinessIcon(biz.activeBusiness.icon)" class="w-4 h-4 mr-2 shrink-0" />
         <span class="truncate">{{ biz.activeBusiness.name }} - {{ biz.activeBranch?.name }}</span>
       </div>
