@@ -11,8 +11,13 @@ export default defineEventHandler(async (event) => {
   if (user.role === 'KARYAWAN') {
     businessId = user.businessId
   }
-
-  const where = businessId ? { businessId } : {}
+  
+  const where: any = {}
+  if (user.role === 'KARYAWAN') {
+    where.businessId = user.businessId
+  } else if (businessId) {
+    where.businessId = businessId
+  }
 
   const products = await prisma.product.findMany({
     where,
