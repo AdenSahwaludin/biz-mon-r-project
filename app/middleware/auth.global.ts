@@ -6,6 +6,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // 1. Restore auth state if cookie exists but store state is not hydrated
   if (token.value && !authStore.isLoggedIn) {
     await authStore.fetchUser()
+    if (authStore.user?.role === 'KARYAWAN' && authStore.user?.branchId) {
+      const bizStore = useBusinessStore()
+      bizStore.setBranch(authStore.user.branchId)
+    }
   }
 
   // 2. Protect non-public routes (all pages except /login)

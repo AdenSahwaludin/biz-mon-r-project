@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     }
     
     if (user && user.transactions.length > 0) {
-      throw createError(errorResponse(event, 400, 'Cannot delete user because they have recorded transactions'))
+      throw createError(errorResponse(event, 400, 'Pengguna tidak dapat dihapus karena memiliki transaksi.'))
     }
 
     await prisma.user.delete({
