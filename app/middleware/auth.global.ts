@@ -6,9 +6,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // 1. Restore auth state if cookie exists but store state is not hydrated
   if (token.value && !authStore.isLoggedIn) {
     await authStore.fetchUser()
-    if (authStore.user?.role === 'KARYAWAN' && authStore.user?.branchId) {
+    if (authStore.user?.role === 'KARYAWAN' && authStore.user?.branch?.id) {
       const bizStore = useBusinessStore()
-      bizStore.setBranch(authStore.user.branchId)
+      bizStore.setBranch(authStore.user.branch.id)
     }
   }
 
