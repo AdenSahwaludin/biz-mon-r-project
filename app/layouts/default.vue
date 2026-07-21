@@ -83,9 +83,9 @@
         <!-- Right section -->
         <div class="flex items-center gap-4">
           <!-- Business Indicator for Karyawan -->
-          <div v-if="auth.isKaryawan && auth.userBranch" class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
-            <component :is="getBusinessIcon(auth.userBusiness?.name)" class="w-4 h-4 text-gray-500" />
-            <span class="text-sm font-medium text-gray-700">
+          <div v-if="auth.isKaryawan && auth.userBranch" class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 max-w-[200px] sm:max-w-xs">
+            <component :is="getBusinessIcon(auth.userBusiness?.name)" class="w-4 h-4 text-gray-500 shrink-0" />
+            <span class="text-xs sm:text-sm font-medium text-gray-700 truncate">
               {{ auth.userBusiness?.name }}
               <span class="text-gray-400 font-normal"> - {{ auth.userBranch.name }}</span>
             </span>
