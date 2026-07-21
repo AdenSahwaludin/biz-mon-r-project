@@ -148,8 +148,11 @@
           <div class="bg-white rounded-xl max-w-sm w-full p-6 shadow-xl">
             <h3 class="text-lg font-bold text-gray-900 mb-2">Hapus Pengguna</h3>
             <p class="text-sm text-gray-500 mb-5">Yakin ingin menghapus <strong>{{ confirmDeleteUser.name }}</strong>?</p>
+            <div v-if="deleteError" class="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-200">
+              {{ deleteError }}
+            </div>
             <div class="flex gap-3">
-              <button @click="confirmDeleteUser = null" class="flex-1 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50">Batal</button>
+              <button @click="confirmDeleteUser = null; deleteError = null" class="flex-1 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50">Batal</button>
               <button @click="deleteUser" :disabled="isSaving" class="flex-1 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50">
                 {{ isSaving ? '...' : 'Hapus' }}
               </button>
@@ -180,6 +183,7 @@ const showModal = ref(false)
 const isEditing = ref(false)
 const editingId = ref<string | null>(null)
 const confirmDeleteUser = ref<any | null>(null)
+const deleteError = ref<string | null>(null)
 
 const mForm = reactive({
   name: '', username: '', role: '' as string, branchId: '', password: '', isActive: true,
@@ -284,6 +288,7 @@ async function saveUser() {
 async function deleteUser() {
   if (!confirmDeleteUser.value) return
   isSaving.value = true
+  deleteError.value = null
   try {
     const res = await fetchWithAuth<any>(`/users/${confirmDeleteUser.value.id}`, {
       method: 'DELETE'
@@ -293,14 +298,14 @@ async function deleteUser() {
       toast.success('Pengguna berhasil dihapus')
       invalidateCache('/users')
       await fetchUsers(true)
+      confirmDeleteUser.value = null
     } else {
-      toast.error(res.message || 'Gagal menghapus pengguna')
+      deleteError.value = res.message || 'Gagal menghapus pengguna'
     }
   } catch (e: any) {
-    toast.error(e.data?.message || 'Terjadi kesalahan saat menghapus')
+    deleteError.value = e.data?.message || 'Terjadi kesalahan saat menghapus'
   } finally {
     isSaving.value = false
-    confirmDeleteUser.value = null
   }
 }
 </script>
