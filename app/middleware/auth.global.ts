@@ -7,6 +7,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (token.value && !authStore.isLoggedIn) {
     await authStore.fetchUser()
     if (authStore.user?.role === 'KARYAWAN' && authStore.user?.branch?.id) {
+      console.log('Middleware: Setting branch for employee', authStore.user.branch.id)
       const bizStore = useBusinessStore()
       bizStore.setBranch(authStore.user.branch.id)
     }
