@@ -21,7 +21,7 @@
         <div class="w-7 h-7 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
           <img src="/logo.png" alt="PantauBisnis" class="w-10 h-10 object-contain" />
         </div>
-        <span class="text-lg font-bold text-gray-900">PantauBisnis <span class="text-xs font-normal text-gray-500">v.1.0.0</span></span>
+        <span class="text-lg font-bold text-gray-900">PantauBisnis <span class="text-[10px] font-normal text-gray-500 ml-1">v.1.0.0</span></span>
         <button @click="sidebarOpen = false" class="ml-auto lg:hidden text-gray-400 hover:text-gray-600">
           <X class="w-5 h-5" />
         </button>
