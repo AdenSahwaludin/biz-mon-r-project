@@ -359,13 +359,11 @@ function getBusinessIcon(name: string) {
 }
 
 const bizProducts = computed(() => {
-  const branch = biz.activeBranch
-  if (!branch) {
-    if (auth.isKaryawan && auth.userBranch) {
-        return products.value.filter((p) => p.businessId === auth.userBusiness?.id && p.isActive)
-    }
-    return []
+  if (auth.isKaryawan) {
+    return products.value.filter((p) => p.isActive)
   }
+  const branch = biz.activeBranch
+  if (!branch) return []
   return products.value.filter((p) => p.businessId === branch.businessId && p.isActive)
 })
 
@@ -430,7 +428,9 @@ function handleCancel() {
 }
 
 async function handlePay() {
-  if (!biz.activeBranchId) {
+  const targetBranchId = biz.activeBranchId || (auth.isKaryawan ? auth.userBranch?.id : null)
+
+  if (!targetBranchId) {
     toast.error('Pilih cabang terlebih dahulu')
     return
   }
@@ -439,7 +439,7 @@ async function handlePay() {
   
   try {
     const payload = {
-      branchId: biz.activeBranchId,
+      branchId: targetBranchId,
       paymentMethod: cart.metodePembayaran,
       total: cart.subtotal,
       details: cart.items.map(item => ({

@@ -10,12 +10,19 @@ export default defineEventHandler(async (event) => {
 
   if (user.role === 'KARYAWAN') {
     businessId = user.businessId
+    if (!businessId && user.branchId) {
+      const branch = await prisma.branch.findUnique({
+        where: { id: user.branchId },
+        select: { businessId: true }
+      })
+      if (branch) {
+        businessId = branch.businessId
+      }
+    }
   }
   
   const where: any = {}
-  if (user.role === 'KARYAWAN') {
-    where.businessId = user.businessId
-  } else if (businessId) {
+  if (businessId) {
     where.businessId = businessId
   }
 
