@@ -96,9 +96,9 @@
           </div>
 
           <!-- Business Selector Dropdown for Admin -->
-          <div class="relative" v-else-if="biz.activeBusiness">
+          <div class="relative" ref="bizDropdownRef" v-else-if="biz.activeBusiness">
             <button
-              @click="showBizDropdown = !showBizDropdown"
+              @click="toggleBizDropdown"
               class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-colors"
             >
               <component :is="getBusinessIcon(biz.activeBusiness.icon)" class="w-4 h-4" :style="{ color: biz.activeBusiness.color }" />
@@ -137,9 +137,48 @@
             </Transition>
           </div>
 
-          <!-- User Avatar -->
-          <div class="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold">
-            {{ auth.userInitials }}
+          <!-- User Avatar & Dropdown -->
+          <div class="relative" ref="userDropdownRef">
+            <button
+              @click="toggleUserDropdown"
+              class="w-9 h-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-semibold hover:bg-primary-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              title="Menu Pengguna"
+            >
+              {{ auth.userInitials }}
+            </button>
+
+            <Transition name="fade">
+              <div
+                v-if="showUserDropdown"
+                class="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-200 py-1.5 z-50 overflow-hidden"
+              >
+                <!-- User Summary -->
+                <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
+                  <p class="text-sm font-semibold text-gray-900 truncate">{{ auth.user?.name || 'Pengguna' }}</p>
+                  <p class="text-xs text-gray-500 capitalize truncate">{{ auth.user?.role?.toLowerCase() || '' }}</p>
+                </div>
+
+                <!-- Action Items -->
+                <div class="py-1">
+                  <NuxtLink
+                    to="/profil"
+                    @click="showUserDropdown = false"
+                    class="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 transition-colors"
+                  >
+                    <User class="w-4 h-4 text-gray-400" />
+                    <span>Profil</span>
+                  </NuxtLink>
+
+                  <button
+                    @click="handleLogout"
+                    class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left font-medium cursor-pointer"
+                  >
+                    <LogOut class="w-4 h-4 text-red-500" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </div>
+            </Transition>
           </div>
         </div>
       </header>
@@ -162,6 +201,29 @@ const route = useRoute()
 
 const sidebarOpen = ref(false)
 const showBizDropdown = ref(false)
+const showUserDropdown = ref(false)
+
+const userDropdownRef = ref<HTMLElement | null>(null)
+const bizDropdownRef = ref<HTMLElement | null>(null)
+
+function toggleUserDropdown() {
+  showUserDropdown.value = !showUserDropdown.value
+  if (showUserDropdown.value) {
+    showBizDropdown.value = false
+  }
+}
+
+function toggleBizDropdown() {
+  showBizDropdown.value = !showBizDropdown.value
+  if (showBizDropdown.value) {
+    showUserDropdown.value = false
+  }
+}
+
+function handleLogout() {
+  showUserDropdown.value = false
+  auth.logout()
+}
 
 function getBusinessIcon(name: string | undefined) {
   if (!name) return Store
@@ -237,7 +299,10 @@ onMounted(async () => {
 
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement
-    if (!target.closest('.relative')) {
+    if (userDropdownRef.value && !userDropdownRef.value.contains(target)) {
+      showUserDropdown.value = false
+    }
+    if (bizDropdownRef.value && !bizDropdownRef.value.contains(target)) {
       showBizDropdown.value = false
     }
   })
