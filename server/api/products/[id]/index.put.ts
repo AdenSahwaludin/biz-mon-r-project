@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireAdmin } from '../../../utils/authGuard'
+import { requireAuth } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
@@ -15,7 +15,7 @@ const updateSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   try {
-    requireAdmin(event)
+    requireAuth(event)
     const id = event.context.params?.id
     if (!id) {
       throw createError(errorResponse(event, 400, 'Product ID is required'))
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
         price: data.price,
         stock: data.stock,
         unit: data.unit,
-        categoryId: data.categoryId,
+        categoryId: data.categoryId || null,
         ...(data.isActive !== undefined && { isActive: data.isActive })
       }
     })

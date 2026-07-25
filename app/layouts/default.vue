@@ -255,6 +255,9 @@ const navItems = computed(() => {
       { label: 'Menu', divider: true },
       { to: '/transaksi', label: 'Transaksi', icon: CreditCard },
       { to: '/transaksi/riwayat', label: 'Riwayat', icon: ClipboardList },
+      { label: 'Kelola', divider: true },
+      { to: '/produk', label: 'Produk', icon: Package },
+      { to: '/produk/kategori', label: 'Kategori', icon: Tag },
       { label: 'Akun', divider: true },
       { to: '/profil', label: 'Profil', icon: User },
     ]

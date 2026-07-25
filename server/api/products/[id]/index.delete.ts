@@ -1,9 +1,9 @@
-import { requireAdmin } from '../../../utils/authGuard'
+import { requireAuth } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
 export default defineEventHandler(async (event) => {
-  requireAdmin(event)
+  requireAuth(event)
   
   const id = getRouterParam(event, 'id')
   if (!id) {

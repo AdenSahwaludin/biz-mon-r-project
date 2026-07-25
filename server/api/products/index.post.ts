@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireAdmin } from '../../utils/authGuard'
+import { requireAuth } from '../../utils/authGuard'
 import { prisma } from '../../utils/prisma'
 import { successResponse, errorResponse } from '../../utils/response'
 
@@ -16,7 +16,7 @@ const createSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   try {
-    requireAdmin(event)
+    requireAuth(event)
     const body = await readBody(event)
     const data = createSchema.parse(body)
 
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
         stock: data.stock,
         unit: data.unit,
         businessId: data.businessId,
-        categoryId: data.categoryId,
+        categoryId: data.categoryId || null,
         isActive: data.isActive
       }
     })

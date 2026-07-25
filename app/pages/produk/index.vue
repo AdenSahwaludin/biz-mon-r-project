@@ -30,6 +30,7 @@
         </select>
         <select v-model="filterKategori" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
           <option value="">Semua Kategori</option>
+          <option value="NONE">Tanpa Kategori</option>
           <option v-for="c in filteredCategories" :key="c.id" :value="c.id">{{ c.name }} ({{ c.business?.name }})</option>
         </select>
         <select v-model="filterStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
@@ -69,7 +70,7 @@
               <p class="text-xs text-gray-400 font-mono">{{ prod.barcode }}</p>
             </td>
             <td class="py-3 px-4 text-sm text-gray-600">{{ prod.business?.name }}</td>
-            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.category?.name }}</td>
+            <td class="py-3 px-4 text-sm text-gray-600">{{ prod.category?.name || 'Tanpa Kategori' }}</td>
             <td class="py-3 px-4 text-sm font-medium text-gray-900 text-right">{{ fmt.format(prod.price) }}</td>
             <td class="py-3 px-4 text-sm text-center">
               <span :class="prod.stock <= 10 ? 'text-red-600 font-semibold' : 'text-gray-600'">{{ prod.stock }} {{ prod.unit }}</span>
@@ -101,7 +102,7 @@
         <div class="flex items-start justify-between mb-2">
           <div>
             <p class="text-sm font-semibold text-gray-900">{{ prod.name }}</p>
-            <p class="text-xs text-gray-400">{{ prod.business?.name }} · {{ prod.category?.name }}</p>
+            <p class="text-xs text-gray-400">{{ prod.business?.name }} · {{ prod.category?.name || 'Tanpa Kategori' }}</p>
           </div>
           <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="prod.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
             {{ prod.isActive ? 'Aktif' : 'Nonaktif' }}
@@ -239,7 +240,11 @@ async function fetchProducts(forceRefresh = false) {
 const filteredData = computed(() => {
   let data = [...products.value]
   if (filterBisnis.value) data = data.filter((p) => p.businessId === filterBisnis.value)
-  if (filterKategori.value) data = data.filter((p) => p.categoryId === filterKategori.value)
+  if (filterKategori.value === 'NONE') {
+    data = data.filter((p) => !p.categoryId)
+  } else if (filterKategori.value) {
+    data = data.filter((p) => p.categoryId === filterKategori.value)
+  }
   if (filterStatus.value !== '') data = data.filter((p) => p.isActive === filterStatus.value)
   if (search.value) {
     const q = search.value.toLowerCase()

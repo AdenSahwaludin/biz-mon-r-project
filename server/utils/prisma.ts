@@ -7,12 +7,15 @@ declare global {
 }
 
 function createPrismaClient(): PrismaClient {
-  let url = (process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL)?.trim()
-  const rawToken = process.env.TURSO_AUTH_TOKEN
-  const authToken = rawToken ? rawToken.replace(/\s+/g, '') : undefined
+  const isProduction = process.env.NODE_ENV === 'production'
+  const useTursoExplicit = process.env.USE_TURSO === 'true'
+  const useTurso = useTursoExplicit || (isProduction && Boolean(process.env.TURSO_DATABASE_URL))
 
-  if (url && (url.startsWith('libsql://') || url.startsWith('https://'))) {
-    // Convert libsql:// to https:// for Vercel Serverless / HTTP compatibility
+  if (useTurso && process.env.TURSO_DATABASE_URL) {
+    let url = process.env.TURSO_DATABASE_URL.trim()
+    const rawToken = process.env.TURSO_AUTH_TOKEN
+    const authToken = rawToken ? rawToken.replace(/\s+/g, '') : undefined
+
     if (url.startsWith('libsql://')) {
       url = url.replace('libsql://', 'https://')
     }

@@ -183,12 +183,14 @@ const modalError = ref('')
 const deleteTarget = ref<any | null>(null)
 const viewingCategory = ref<any | null>(null)
 
+const authStore = useAuthStore()
+
 onMounted(async () => {
   if (businessList.value.length === 0) {
     await bizStore.fetchAll()
   }
-  if (businessList.value.length > 0) {
-    activeTabId.value = businessList.value[0].id
+  if (!activeTabId.value) {
+    activeTabId.value = bizStore.activeBusiness?.id || authStore.userBusiness?.id || (businessList.value.length > 0 ? businessList.value[0].id : null)
   }
 })
 

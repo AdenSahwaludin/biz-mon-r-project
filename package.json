@@ -8,6 +8,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "seed:multi": "bun prisma/seed-multi.ts",
+    "db:push": "prisma db push",
+    "db:import-turso": "bun prisma/import-from-turso.ts",
     "postinstall": "prisma generate && nuxt prepare"
   },
   "dependencies": {

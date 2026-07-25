@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireAdmin } from '../../../utils/authGuard'
+import { requireAuth } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
@@ -9,7 +9,7 @@ const updateSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   try {
-    requireAdmin(event)
+    requireAuth(event)
     const id = getRouterParam(event, 'id')
     if (!id) {
       throw createError(errorResponse(event, 400, 'Category ID is required'))
