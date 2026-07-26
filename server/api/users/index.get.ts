@@ -6,7 +6,10 @@ export default defineEventHandler(async (event) => {
   requireAdmin(event)
   
   const users = await prisma.user.findMany({
-    include: { branch: { include: { business: true } } },
+    include: {
+      branch: { include: { business: true } },
+      branches: { include: { business: true } }
+    },
     orderBy: { createdAt: 'desc' }
   })
 

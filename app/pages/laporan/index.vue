@@ -77,18 +77,22 @@
 
     <template v-else>
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <p class="text-sm text-gray-500 mb-1">Total Omzet</p>
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Omzet</p>
           <p class="text-2xl font-bold text-gray-900">{{ fmt.format(filteredSummary.totalOmzet) }}</p>
         </div>
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <p class="text-sm text-gray-500 mb-1">Jumlah Transaksi</p>
-          <p class="text-2xl font-bold text-gray-900">{{ filteredSummary.transactionCount }}</p>
+        <div class="bg-white rounded-xl border border-emerald-100 bg-emerald-50/20 p-5">
+          <p class="text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-1">Pendapatan Tunai</p>
+          <p class="text-2xl font-bold text-emerald-900">{{ fmt.format(filteredSummary.totalCash) }}</p>
+        </div>
+        <div class="bg-white rounded-xl border border-blue-100 bg-blue-50/20 p-5">
+          <p class="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-1">Pendapatan QRIS</p>
+          <p class="text-2xl font-bold text-blue-900">{{ fmt.format(filteredSummary.totalQris) }}</p>
         </div>
         <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <p class="text-sm text-gray-500 mb-1">Rata-rata per Transaksi</p>
-          <p class="text-2xl font-bold text-gray-900">{{ fmt.format(rataRata) }}</p>
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Transaksi</p>
+          <p class="text-2xl font-bold text-gray-900">{{ filteredSummary.transactionCount }}</p>
         </div>
       </div>
 
@@ -112,7 +116,7 @@
       <!-- Detail Table Section -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
         <div class="p-4 sm:p-5 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <h3 class="text-base font-semibold text-gray-900">Detail Laporan Harian</h3>
+          <h3 class="text-base font-semibold text-gray-900">Detail Rekapitulasi Omzet</h3>
           
           <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
             <!-- Filter Omzet / Sorting -->
@@ -178,8 +182,28 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
+const auth = useAuthStore()
 const bizStore = useBusinessStore()
-const businessList = computed(() => bizStore.groupedBusinesses)
+
+const businessList = computed(() => {
+  const activeList = bizStore.activeGroupedBusinesses
+  if (!auth.isKaryawan) {
+    return activeList
+  }
+
+  const assignedBranchIds = new Set(
+    (auth.userBranches && auth.userBranches.length > 0)
+      ? auth.userBranches.map((b: any) => b.id)
+      : (auth.userBranch ? [auth.userBranch.id] : [])
+  )
+
+  return activeList
+    .map(b => ({
+      ...b,
+      branches: b.branches.filter(br => assignedBranchIds.has(br.id))
+    }))
+    .filter(b => b.branches.length > 0)
+})
 
 const fmt = useFormatCurrency()
 const toast = useToastStore()
@@ -304,8 +328,10 @@ const sortedReportData = computed(() => {
 
 const filteredSummary = computed(() => {
   const totalOmzet = filteredReportData.value.reduce((acc, curr) => acc + (curr.omzet || 0), 0)
+  const totalCash = filteredReportData.value.reduce((acc, curr) => acc + (curr.cash || 0), 0)
+  const totalQris = filteredReportData.value.reduce((acc, curr) => acc + (curr.qris || 0), 0)
   const transactionCount = filteredReportData.value.reduce((acc, curr) => acc + (curr.transaksi || 0), 0)
-  return { totalOmzet, transactionCount }
+  return { totalOmzet, totalCash, totalQris, transactionCount }
 })
 
 const rataRata = computed(() => filteredSummary.value.transactionCount ? Math.round(filteredSummary.value.totalOmzet / filteredSummary.value.transactionCount) : 0)

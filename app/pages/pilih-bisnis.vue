@@ -99,18 +99,34 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Ikon</label>
-            <div class="flex gap-2">
-              <button v-for="icon in ['Store', 'Soup', 'CupSoda', 'Utensils']" :key="icon" @click="newBiz.icon = icon" :class="['w-10 h-10 flex items-center justify-center rounded-lg border', newBiz.icon === icon ? 'border-primary-500 bg-primary-50 text-primary-600' : 'border-gray-200 text-gray-500 hover:bg-gray-50']">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Ikon Bisnis</label>
+            <div class="grid grid-cols-6 gap-2 max-h-40 overflow-y-auto p-1 border border-gray-200 rounded-lg">
+              <button
+                v-for="icon in ['Store', 'Coffee', 'CupSoda', 'Soup', 'Utensils', 'Pizza', 'Sandwich', 'Cake', 'ShoppingBag', 'Shirt', 'Scissors', 'Wrench', 'Sparkles', 'Package', 'Building', 'Heart', 'Star']"
+                :key="icon"
+                type="button"
+                @click="newBiz.icon = icon"
+                :class="['w-10 h-10 flex items-center justify-center rounded-lg border transition-all', newBiz.icon === icon ? 'border-primary-500 bg-primary-50 text-primary-600 ring-2 ring-primary-200 font-bold' : 'border-gray-200 text-gray-500 hover:bg-gray-50']"
+                :title="icon"
+              >
                 <component :is="getBusinessIcon(icon)" class="w-5 h-5" />
               </button>
             </div>
           </div>
           
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Warna Aksen</label>
-            <div class="flex gap-2">
-              <button v-for="color in ['#3B82F6', '#14B8A6', '#F97316', '#F43F5E', '#8B5CF6', '#22C55E']" :key="color" @click="newBiz.color = color" class="w-8 h-8 rounded-full border-2 focus:outline-none" :class="[newBiz.color === color ? 'border-gray-900 shadow-md scale-110' : 'border-transparent']" :style="{ backgroundColor: color }"></button>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Warna Aksen</label>
+            <div class="flex flex-wrap gap-2.5 p-1">
+              <button
+                v-for="color in ['#3B82F6', '#14B8A6', '#F97316', '#F43F5E', '#8B5CF6', '#22C55E', '#EC4899', '#EAB308', '#6366F1', '#06B6D4', '#84CC16', '#64748B']"
+                :key="color"
+                type="button"
+                @click="newBiz.color = color"
+                class="w-8 h-8 rounded-full border-2 transition-all focus:outline-none cursor-pointer"
+                :class="[newBiz.color === color ? 'border-gray-900 shadow-md scale-110 ring-2 ring-offset-1 ring-gray-400' : 'border-transparent hover:scale-105']"
+                :style="{ backgroundColor: color }"
+                :title="color"
+              ></button>
             </div>
           </div>
         </div>
@@ -128,8 +144,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Soup, CupSoda, Utensils, Store, Plus } from 'lucide-vue-next'
+import {
+  Store, Soup, CupSoda, Utensils, Coffee, ShoppingBag, Shirt,
+  Scissors, Wrench, Sparkles, Package, Building, Heart, Star, Pizza, Sandwich, Cake, Plus
+} from 'lucide-vue-next'
 import type { Business } from '~/stores/business'
 
 definePageMeta({ layout: 'select' })
@@ -154,7 +172,11 @@ const newBiz = ref({
 })
 
 function getBusinessIcon(name: string) {
-  return { Soup, CupSoda, Utensils, Store }[name] || Store
+  const map: Record<string, any> = {
+    Store, Soup, CupSoda, Utensils, Coffee, ShoppingBag, Shirt,
+    Scissors, Wrench, Sparkles, Package, Building, Heart, Star, Pizza, Sandwich, Cake
+  }
+  return map[name] || Store
 }
 
 function selectBranch(branchId: string) {

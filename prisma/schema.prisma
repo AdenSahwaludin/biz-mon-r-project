@@ -15,8 +15,9 @@ model User {
   password   String
   role       String   // 'ADMIN' | 'KARYAWAN'
   
-  branchId   String?  // Optional, if role is KARYAWAN
-  branch     Branch?  @relation(fields: [branchId], references: [id])
+  branchId   String?  // Optional primary/default branch
+  branch     Branch?  @relation("UserPrimaryBranch", fields: [branchId], references: [id])
+  branches   Branch[] @relation("UserAssignedBranches")
   
   isActive   Boolean  @default(true)
   
@@ -50,8 +51,9 @@ model Branch {
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  users        User[]
-  transactions Transaction[]
+  users         User[] @relation("UserPrimaryBranch")
+  assignedUsers User[] @relation("UserAssignedBranches")
+  transactions  Transaction[]
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

@@ -50,6 +50,16 @@ export const useBusinessStore = defineStore('business', () => {
     }))
   })
 
+  const activeGroupedBusinesses = computed<(Business & { branches: Branch[] })[]>(() => {
+    return businesses.value
+      .filter(biz => biz.isActive)
+      .map(biz => ({
+        ...biz,
+        branches: branches.value.filter(br => br.businessId === biz.id && br.isActive)
+      }))
+      .filter(biz => biz.branches.length > 0)
+  })
+
   async function fetchAll(forceRefresh = false) {
     if (businesses.value.length === 0) {
       isLoading.value = true
@@ -168,6 +178,7 @@ export const useBusinessStore = defineStore('business', () => {
     activeBranch,
     activeBusiness,
     groupedBusinesses,
+    activeGroupedBusinesses,
     fetchAll,
     setBranch,
     clearBranch,

@@ -20,8 +20,18 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const data = createSchema.parse(body)
 
-    if (user.role === 'KARYAWAN' && user.branchId !== data.branchId) {
-      throw createError(errorResponse(event, 403, 'Forbidden: You can only create transactions for your assigned branch'))
+    if (user.role === 'KARYAWAN') {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: { branches: true }
+      })
+      const userBranchIds = [
+        ...(dbUser?.branchId ? [dbUser.branchId] : []),
+        ...(dbUser?.branches ? dbUser.branches.map(b => b.id) : [])
+      ]
+      if (userBranchIds.length > 0 && !userBranchIds.includes(data.branchId)) {
+        throw createError(errorResponse(event, 403, 'Forbidden: You can only create transactions for your assigned branches'))
+      }
     }
 
     // Verify branch is active
@@ -44,9 +54,6 @@ export default defineEventHandler(async (event) => {
       }
       if (!product.isActive) {
         throw createError(errorResponse(event, 400, `Product ${product.name} is inactive and cannot be sold`))
-      }
-      if (product.businessId !== branch.businessId) {
-        throw createError(errorResponse(event, 400, `Product ${product.name} does not belong to this business`))
       }
 
       const subtotal = product.price * item.qty

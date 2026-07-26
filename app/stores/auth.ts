@@ -7,6 +7,7 @@ interface User {
   role: string
   branch?: { id: string; name: string } | null
   business?: { id: string; name: string } | null
+  branches?: { id: string; name: string; businessId?: string; businessName?: string }[]
 }
 
 interface AuthState {
@@ -27,6 +28,7 @@ export const useAuthStore = defineStore('auth', {
     isKaryawan: (state) => state.user?.role === 'KARYAWAN',
     userBranch: (state) => state.user?.branch || null,
     userBusiness: (state) => state.user?.business || null,
+    userBranches: (state) => state.user?.branches || [],
     userInitials: (state) => {
       if (!state.user) return ''
       return state.user.name

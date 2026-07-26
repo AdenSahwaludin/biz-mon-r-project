@@ -19,41 +19,6 @@
       </div>
     </div>
 
-    <!-- Tampilan -->
-    <div class="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 class="text-base font-semibold text-gray-900 mb-4">Tampilan</h3>
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-medium text-gray-700">Tema</label>
-          <select v-model="settings.tema" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
-            <option value="terang">Terang</option>
-            <option value="gelap">Gelap</option>
-          </select>
-        </div>
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-medium text-gray-700">Bahasa</label>
-          <select disabled class="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-500 cursor-not-allowed">
-            <option>Indonesia</option>
-          </select>
-        </div>
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-medium text-gray-700">Format Tanggal</label>
-          <select v-model="settings.formatTanggal" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
-            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-          </select>
-        </div>
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-medium text-gray-700">Item per Halaman</label>
-          <select v-model.number="settings.itemPerHalaman" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
-            <option :value="10">10</option>
-            <option :value="25">25</option>
-            <option :value="50">50</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
     <!-- Struk -->
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <h3 class="text-base font-semibold text-gray-900 mb-4">Struk</h3>
@@ -74,10 +39,24 @@
         </div>
       </div>
     </div>
+
     <!-- Kelola Bisnis -->
     <div class="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 class="text-base font-semibold text-gray-900 mb-4">Kelola Bisnis & Cabang</h3>
-      <p class="text-sm text-gray-500 mb-4">Aktifkan atau nonaktifkan bisnis dan cabang agar tampil atau tersembunyi di sistem.</p>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-gray-900">Kelola Bisnis & Cabang</h3>
+          <p class="text-xs text-gray-500 mt-0.5">Aktifkan atau nonaktifkan bisnis dan cabang agar tampil atau tersembunyi di sistem.</p>
+        </div>
+        
+        <button
+          type="button"
+          @click="navigateTo('/pilih-bisnis')"
+          class="px-3.5 py-2 text-xs font-bold text-primary-600 bg-primary-50 border border-primary-200 rounded-lg hover:bg-primary-100 transition-colors flex items-center justify-center gap-1.5 shrink-0 shadow-2xs"
+        >
+          <Building class="w-4 h-4 text-primary-600" /> Atur Semua Bisnis →
+        </button>
+      </div>
+
       <div class="space-y-4">
         <div v-for="biz in bizStore.groupedBusinesses" :key="biz.id" class="border border-gray-200 rounded-lg overflow-hidden">
           <!-- Business Row -->
@@ -122,6 +101,9 @@
 </template>
 
 <script setup lang="ts">
+import { reactive } from 'vue'
+import { Building } from 'lucide-vue-next'
+
 const toast = useToastStore()
 const bizStore = useBusinessStore()
 const settingsStore = useSettingsStore()

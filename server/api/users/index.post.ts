@@ -10,6 +10,7 @@ const createSchema = z.object({
   password: z.string().min(6),
   role: z.enum(['ADMIN', 'KARYAWAN']),
   branchId: z.string().optional().nullable(),
+  branchIds: z.array(z.string()).optional(),
   isActive: z.boolean().optional()
 })
 
@@ -24,11 +25,16 @@ export default defineEventHandler(async (event) => {
       throw createError(errorResponse(event, 400, 'Username already exists'))
     }
 
-    if (data.role === 'KARYAWAN' && !data.branchId) {
-      throw createError(errorResponse(event, 400, 'Karyawan must be assigned to a branch'))
+    const branchIds = data.branchIds && data.branchIds.length > 0
+      ? data.branchIds
+      : (data.branchId ? [data.branchId] : [])
+
+    if (data.role === 'KARYAWAN' && branchIds.length === 0) {
+      throw createError(errorResponse(event, 400, 'Karyawan must be assigned to at least one branch'))
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10)
+    const primaryBranchId = data.role === 'KARYAWAN' ? (data.branchId || branchIds[0]) : null
 
     const user = await prisma.user.create({
       data: {
@@ -36,8 +42,17 @@ export default defineEventHandler(async (event) => {
         username: data.username,
         password: hashedPassword,
         role: data.role,
-        branchId: data.role === 'KARYAWAN' ? data.branchId : null,
-        isActive: data.isActive !== undefined ? data.isActive : true
+        branchId: primaryBranchId,
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        ...(data.role === 'KARYAWAN' && branchIds.length > 0 && {
+          branches: {
+            connect: branchIds.map(id => ({ id }))
+          }
+        })
+      },
+      include: {
+        branch: { include: { business: true } },
+        branches: { include: { business: true } }
       }
     })
 

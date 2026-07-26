@@ -248,7 +248,11 @@ const filteredData = computed(() => {
   if (filterStatus.value !== '') data = data.filter((p) => p.isActive === filterStatus.value)
   if (search.value) {
     const q = search.value.toLowerCase()
-    data = data.filter((p) => p.name.toLowerCase().includes(q) || p.barcode.includes(q))
+    data = data.filter((p) =>
+      p.name.toLowerCase().includes(q) ||
+      (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+      (p.category?.name && p.category.name.toLowerCase().includes(q))
+    )
   }
   return data
 })

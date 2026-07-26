@@ -17,24 +17,64 @@
       ]"
     >
       <!-- Logo -->
-      <div class="h-16 flex items-center gap-2 px-5 border-b border-gray-200 shrink-0">
-        <div class="w-7 h-7 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+      <div class="h-16 flex items-center gap-2.5 px-5 border-b border-gray-200 shrink-0">
+        <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
           <img src="/logo.png" alt="PantauBisnis" class="w-10 h-10 object-contain" />
         </div>
-        <span class="text-lg font-bold text-gray-900">PantauBisnis <span class="text-[10px] font-normal text-gray-500 ml-1">v.1.0.0</span></span>
-        <button @click="sidebarOpen = false" class="ml-auto lg:hidden text-gray-400 hover:text-gray-600">
+        <div class="flex flex-col justify-center min-w-0">
+          <span class="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">PantauBisnis</span>
+          <span class="text-[10px] font-medium text-gray-400 leading-tight">v.1.0.0</span>
+        </div>
+        <button @click="sidebarOpen = false" class="ml-auto lg:hidden text-gray-400 hover:text-gray-600 p-1">
           <X class="w-5 h-5" />
         </button>
       </div>
 
-      <!-- Business Indicator -->
-      <div v-if="auth.isKaryawan && auth.userBranch" class="mx-4 mt-4 mb-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center bg-gray-50 text-gray-700">
-        <component :is="getBusinessIcon(auth.userBusiness?.name)" class="w-4 h-4 mr-2 shrink-0" />
-        <span class="truncate">{{ auth.userBusiness?.name }} - {{ auth.userBranch.name }}</span>
-      </div>
-      <div v-else-if="biz.activeBusiness" class="mx-4 mt-4 mb-2 px-3 py-2 rounded-lg text-sm font-medium flex items-center" :style="{ backgroundColor: biz.activeBusiness.color + '15', color: biz.activeBusiness.color }">
-        <component :is="getBusinessIcon(biz.activeBusiness.icon)" class="w-4 h-4 mr-2 shrink-0" />
-        <span class="truncate">{{ biz.activeBusiness.name }} - {{ biz.activeBranch?.name }}</span>
+      <!-- Business Indicator & Selector in Sidebar -->
+      <div class="relative mx-4 mt-4 mb-2" ref="sidebarBizDropdownRef" v-if="biz.activeBusiness">
+        <button
+          @click="toggleSidebarBizDropdown"
+          class="w-full px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-between transition-all cursor-pointer border border-transparent hover:border-gray-200"
+          :style="{ backgroundColor: biz.activeBusiness.color + '15', color: biz.activeBusiness.color }"
+          title="Ganti Bisnis / Cabang"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <component :is="getBusinessIcon(biz.activeBusiness.icon)" class="w-4 h-4 shrink-0" />
+            <span class="truncate font-semibold">{{ biz.activeBusiness.name }} - {{ biz.activeBranch?.name }}</span>
+          </div>
+          <ChevronDown class="w-4 h-4 shrink-0 opacity-70 ml-1" />
+        </button>
+
+        <Transition name="fade">
+          <div v-if="showSidebarBizDropdown" class="absolute left-0 right-0 mt-1.5 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <div class="max-h-64 overflow-y-auto">
+              <div v-for="b in displayedGroupedBusinesses" :key="b.id">
+                <div class="px-3 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 flex items-center gap-1.5">
+                  <component :is="getBusinessIcon(b.icon)" class="w-3 h-3" :style="{ color: b.color }" />
+                  {{ b.name }}
+                </div>
+                <button
+                  v-for="branch in b.branches"
+                  :key="branch.id"
+                  @click="switchBranch(branch.id); showSidebarBizDropdown = false"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left"
+                  :class="branch.id === biz.activeBranchId ? 'bg-primary-50 text-primary-600 font-semibold' : 'text-gray-700'"
+                >
+                  <span class="ml-4 truncate">{{ branch.name }}</span>
+                </button>
+              </div>
+            </div>
+            <div v-if="auth.isAdmin" class="border-t border-gray-100 mt-1 pt-1">
+              <NuxtLink
+                to="/pilih-bisnis"
+                @click="showSidebarBizDropdown = false"
+                class="block px-3 py-1.5 text-xs text-center text-primary-600 font-medium hover:bg-gray-50"
+              >
+                Atur Semua Bisnis
+              </NuxtLink>
+            </div>
+          </div>
+        </Transition>
       </div>
 
       <!-- Navigation -->
@@ -86,29 +126,20 @@
 
         <!-- Right section -->
         <div class="flex items-center gap-4">
-          <!-- Business Indicator for Karyawan -->
-          <div v-if="auth.isKaryawan && auth.userBranch" class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 max-w-[200px] sm:max-w-xs">
-            <component :is="getBusinessIcon(auth.userBusiness?.name)" class="w-4 h-4 text-gray-500 shrink-0" />
-            <span class="text-xs sm:text-sm font-medium text-gray-700 truncate">
-              {{ auth.userBusiness?.name }}
-              <span class="text-gray-400 font-normal"> - {{ auth.userBranch.name }}</span>
-            </span>
-          </div>
-
-          <!-- Business Selector Dropdown for Admin -->
-          <div class="relative" ref="bizDropdownRef" v-else-if="biz.activeBusiness">
+          <!-- Business Selector Dropdown for Admin & Karyawan -->
+          <div class="relative" ref="bizDropdownRef" v-if="biz.activeBusiness">
             <button
               @click="toggleBizDropdown"
-              class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-colors"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-colors cursor-pointer"
             >
               <component :is="getBusinessIcon(biz.activeBusiness.icon)" class="w-4 h-4" :style="{ color: biz.activeBusiness.color }" />
-              <span class="hidden sm:block text-gray-700">{{ biz.activeBusiness.name }} - {{ biz.activeBranch?.name }}</span>
+              <span class="hidden sm:block text-gray-700 font-medium">{{ biz.activeBusiness.name }} - {{ biz.activeBranch?.name }}</span>
               <ChevronDown class="w-4 h-4 text-gray-400" />
             </button>
             <Transition name="fade">
               <div v-if="showBizDropdown" class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                 <div class="max-h-64 overflow-y-auto">
-                  <div v-for="b in biz.groupedBusinesses" :key="b.id">
+                  <div v-for="b in displayedGroupedBusinesses" :key="b.id">
                     <div class="px-4 py-1.5 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50 flex items-center gap-2">
                       <component :is="getBusinessIcon(b.icon)" class="w-3 h-3" :style="{ color: b.color }" />
                       {{ b.name }}
@@ -117,14 +148,14 @@
                       v-for="branch in b.branches"
                       :key="branch.id"
                       @click="switchBranch(branch.id)"
-                      class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                      :class="branch.id === biz.activeBranchId ? 'bg-primary-50 text-primary-600' : 'text-gray-700'"
+                      class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors text-left"
+                      :class="branch.id === biz.activeBranchId ? 'bg-primary-50 text-primary-600 font-semibold' : 'text-gray-700'"
                     >
                       <span class="ml-5">{{ branch.name }}</span>
                     </button>
                   </div>
                 </div>
-                <div class="border-t border-gray-100 mt-1 pt-1">
+                <div v-if="auth.isAdmin" class="border-t border-gray-100 mt-1 pt-1">
                   <NuxtLink
                     to="/pilih-bisnis"
                     @click="showBizDropdown = false"
@@ -193,7 +224,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { BarChart2, CreditCard, Package, Tag, ClipboardList, TrendingUp, Users, User, Settings, LogOut, Menu, ChevronDown, ChevronLeft, ChevronRight, X, Soup, CupSoda, Utensils, Store } from 'lucide-vue-next'
+import { BarChart2, CreditCard, Package, Tag, ClipboardList, TrendingUp, Users, User, Settings, LogOut, Menu, ChevronDown, ChevronLeft, ChevronRight, X, Soup, CupSoda, Utensils, Store, Coffee, ShoppingBag, Shirt, Scissors, Wrench, Sparkles, Building, Heart, Star, Pizza, Sandwich, Cake, CalendarDays } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const biz = useBusinessStore()
@@ -201,15 +232,18 @@ const route = useRoute()
 
 const sidebarOpen = ref(false)
 const showBizDropdown = ref(false)
+const showSidebarBizDropdown = ref(false)
 const showUserDropdown = ref(false)
 
 const userDropdownRef = ref<HTMLElement | null>(null)
 const bizDropdownRef = ref<HTMLElement | null>(null)
+const sidebarBizDropdownRef = ref<HTMLElement | null>(null)
 
 function toggleUserDropdown() {
   showUserDropdown.value = !showUserDropdown.value
   if (showUserDropdown.value) {
     showBizDropdown.value = false
+    showSidebarBizDropdown.value = false
   }
 }
 
@@ -217,6 +251,15 @@ function toggleBizDropdown() {
   showBizDropdown.value = !showBizDropdown.value
   if (showBizDropdown.value) {
     showUserDropdown.value = false
+    showSidebarBizDropdown.value = false
+  }
+}
+
+function toggleSidebarBizDropdown() {
+  showSidebarBizDropdown.value = !showSidebarBizDropdown.value
+  if (showSidebarBizDropdown.value) {
+    showUserDropdown.value = false
+    showBizDropdown.value = false
   }
 }
 
@@ -227,7 +270,11 @@ function handleLogout() {
 
 function getBusinessIcon(name: string | undefined) {
   if (!name) return Store
-  return { Soup, CupSoda, Utensils, Store }[name] || Store
+  const map: Record<string, any> = {
+    Store, Soup, CupSoda, Utensils, Coffee, ShoppingBag, Shirt,
+    Scissors, Wrench, Sparkles, Package, Building, Heart, Star, Pizza, Sandwich, Cake
+  }
+  return map[name] || Store
 }
 
 const pageTitle = computed(() => {
@@ -242,6 +289,7 @@ const pageTitle = computed(() => {
     'transaksi-riwayat': 'Riwayat Transaksi',
     'transaksi-id': 'Detail Transaksi',
     'laporan': 'Laporan',
+    'laporan-harian': 'Laporan Harian',
     'pengguna': 'Pengguna',
     'profil': 'Profil',
     'pengaturan': 'Pengaturan',
@@ -258,6 +306,7 @@ const navItems = computed(() => {
       { label: 'Kelola', divider: true },
       { to: '/produk', label: 'Produk', icon: Package },
       { to: '/produk/kategori', label: 'Kategori', icon: Tag },
+      { to: '/laporan/harian', label: 'Laporan Harian', icon: CalendarDays },
       { label: 'Akun', divider: true },
       { to: '/profil', label: 'Profil', icon: User },
     ]
@@ -271,6 +320,7 @@ const navItems = computed(() => {
     { to: '/produk/kategori', label: 'Kategori', icon: Tag },
     { to: '/transaksi/riwayat', label: 'Riwayat Transaksi', icon: ClipboardList },
     { to: '/laporan', label: 'Laporan', icon: TrendingUp },
+    { to: '/laporan/harian', label: 'Laporan Harian', icon: CalendarDays },
     { label: 'Administrasi', divider: true },
     { to: '/pengguna', label: 'Pengguna', icon: Users },
     { to: '/profil', label: 'Profil', icon: User },
@@ -284,20 +334,47 @@ function isActive(to: string): boolean {
   
   if (to === '/transaksi' && route.path.startsWith('/transaksi/riwayat')) return false
   if (to === '/produk' && route.path.startsWith('/produk/kategori')) return false
+  if (to === '/laporan' && route.path.startsWith('/laporan/harian')) return false
 
   return route.path.startsWith(to + '/')
 }
 
+const displayedGroupedBusinesses = computed(() => {
+  const activeList = biz.activeGroupedBusinesses
+  if (!auth.isKaryawan) {
+    return activeList
+  }
+
+  const assignedBranchIds = new Set(
+    (auth.userBranches && auth.userBranches.length > 0)
+      ? auth.userBranches.map((b: any) => b.id)
+      : (auth.userBranch ? [auth.userBranch.id] : [])
+  )
+
+  return activeList
+    .map(b => ({
+      ...b,
+      branches: b.branches.filter(br => assignedBranchIds.has(br.id))
+    }))
+    .filter(b => b.branches.length > 0)
+})
+
 function switchBranch(branchId: string) {
   biz.setBranch(branchId)
   showBizDropdown.value = false
-  // window.location.reload() // Commented out per user request: use seamless reactive state updates without full page refresh
 }
 
 // Close dropdown on click outside
 onMounted(async () => {
   if (biz.businesses.length === 0) {
     await biz.fetchAll()
+  }
+
+  const validActiveBranches = displayedGroupedBusinesses.value.flatMap(b => b.branches)
+  const isCurrentActiveValid = validActiveBranches.some(br => br.id === biz.activeBranchId)
+
+  if (!isCurrentActiveValid && validActiveBranches.length > 0) {
+    biz.setBranch(validActiveBranches[0].id)
   }
 
   document.addEventListener('click', (e) => {
@@ -307,6 +384,9 @@ onMounted(async () => {
     }
     if (bizDropdownRef.value && !bizDropdownRef.value.contains(target)) {
       showBizDropdown.value = false
+    }
+    if (sidebarBizDropdownRef.value && !sidebarBizDropdownRef.value.contains(target)) {
+      showSidebarBizDropdown.value = false
     }
   })
 })

@@ -10,6 +10,7 @@ const updateSchema = z.object({
   password: z.string().min(6).optional().nullable(),
   role: z.enum(['ADMIN', 'KARYAWAN']).optional(),
   branchId: z.string().optional().nullable(),
+  branchIds: z.array(z.string()).optional(),
   isActive: z.boolean().optional()
 })
 
@@ -31,8 +32,12 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    if (data.role === 'KARYAWAN' && !data.branchId) {
-      throw createError(errorResponse(event, 400, 'Karyawan must be assigned to a branch'))
+    const branchIds = data.branchIds !== undefined
+      ? data.branchIds
+      : (data.branchId ? [data.branchId] : undefined)
+
+    if (data.role === 'KARYAWAN' && branchIds && branchIds.length === 0) {
+      throw createError(errorResponse(event, 400, 'Karyawan must be assigned to at least one branch'))
     }
 
     const updateData: any = {
@@ -46,8 +51,12 @@ export default defineEventHandler(async (event) => {
       updateData.password = await bcrypt.hash(data.password, 10)
     }
 
-    if (data.role !== undefined) {
-      updateData.branchId = data.role === 'KARYAWAN' ? data.branchId : null
+    if (data.role === 'ADMIN') {
+      updateData.branchId = null
+      updateData.branches = { set: [] }
+    } else if (branchIds !== undefined) {
+      updateData.branchId = data.branchId || branchIds[0] || null
+      updateData.branches = { set: branchIds.map(bId => ({ id: bId })) }
     }
 
     // Clean up undefined
@@ -55,7 +64,11 @@ export default defineEventHandler(async (event) => {
 
     const user = await prisma.user.update({
       where: { id },
-      data: updateData
+      data: updateData,
+      include: {
+        branch: { include: { business: true } },
+        branches: { include: { business: true } }
+      }
     })
 
     const { password, ...rest } = user

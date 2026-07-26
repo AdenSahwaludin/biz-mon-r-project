@@ -105,7 +105,7 @@
             <tr
               v-for="trx in paginatedData"
               :key="trx.id"
-              @click="navigateTo(`/transaksi/${trx.id}`)"
+              @click="navigateTo(`/transaksi/${encodeURIComponent(trx.id)}`)"
               class="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
             >
               <td class="py-3 px-4 text-sm font-medium text-gray-900">{{ fmt.formatDateTime(trx.createdAt) }}</td>
@@ -147,7 +147,7 @@
         <div
           v-for="trx in paginatedData"
           :key="trx.id"
-          @click="navigateTo(`/transaksi/${trx.id}`)"
+          @click="navigateTo(`/transaksi/${encodeURIComponent(trx.id)}`)"
           class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md cursor-pointer transition-shadow"
         >
           <div class="flex items-center justify-between mb-2">

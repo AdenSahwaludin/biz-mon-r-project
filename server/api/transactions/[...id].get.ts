@@ -5,7 +5,8 @@ import { successResponse, errorResponse } from '../../utils/response'
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
   
-  const id = getRouterParam(event, 'id')
+  const rawId = getRouterParam(event, 'id') || ''
+  const id = decodeURIComponent(rawId)
   if (!id) throw createError(errorResponse(event, 400, 'Transaction ID is required'))
 
   const transaction = await prisma.transaction.findUnique({

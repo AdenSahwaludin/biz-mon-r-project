@@ -10,6 +10,7 @@
     "seed:multi": "bun prisma/seed-multi.ts",
     "db:push": "prisma db push",
     "db:import-turso": "bun prisma/import-from-turso.ts",
+    "db:seed-transactions": "bun prisma/seed-transactions.ts",
     "postinstall": "prisma generate && nuxt prepare"
   },
   "dependencies": {

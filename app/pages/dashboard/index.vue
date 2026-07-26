@@ -125,7 +125,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
-import { Coins, Calendar, CalendarDays, Receipt } from 'lucide-vue-next'
+import { Coins, Banknote, QrCode, Calendar, CalendarDays, Receipt } from 'lucide-vue-next'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -180,10 +180,10 @@ onMounted(async () => {
 
 const stats = computed(() => {
   return [
-    { icon: Coins, label: 'Omzet Hari Ini', value: fmt.format(summary.value.daily || 0) },
-    { icon: Calendar, label: 'Omzet 7 Hari', value: fmt.format(summary.value.weekly || 0) },
-    { icon: CalendarDays, label: 'Omzet 30 Hari', value: fmt.format(summary.value.monthly || 0) },
-    { icon: Receipt, label: 'Total Transaksi', value: (summary.value.transactionCount || 0).toString() },
+    { icon: Coins, label: 'Total Omzet', value: fmt.format(summary.value.totalOmzet || summary.value.daily || 0), color: 'text-primary-600' },
+    { icon: Banknote, label: 'Pendapatan Tunai', value: fmt.format(summary.value.cashRevenue || 0), color: 'text-emerald-600' },
+    { icon: QrCode, label: 'Pendapatan QRIS', value: fmt.format(summary.value.qrisRevenue || 0), color: 'text-blue-600' },
+    { icon: Receipt, label: 'Total Transaksi', value: (summary.value.transactionCount || 0).toString(), color: 'text-amber-600' },
   ]
 })
 

@@ -359,9 +359,6 @@ function getBusinessIcon(name: string) {
 }
 
 const bizProducts = computed(() => {
-  if (auth.isKaryawan) {
-    return products.value.filter((p) => p.isActive)
-  }
   const branch = biz.activeBranch
   if (!branch) return []
   return products.value.filter((p) => p.businessId === branch.businessId && p.isActive)
@@ -371,7 +368,9 @@ const filteredProducts = computed(() => {
   if (!searchQuery.value) return bizProducts.value
   const q = searchQuery.value.toLowerCase()
   return bizProducts.value.filter((p) =>
-    p.name.toLowerCase().includes(q) || (p.barcode && p.barcode.includes(q))
+    p.name.toLowerCase().includes(q) ||
+    (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+    (p.category?.name && p.category.name.toLowerCase().includes(q))
   )
 })
 

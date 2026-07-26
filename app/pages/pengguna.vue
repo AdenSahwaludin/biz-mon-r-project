@@ -42,7 +42,7 @@
             <td class="py-3 px-4 text-center">
               <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'">{{ u.role }}</span>
             </td>
-            <td class="py-3 px-4 text-sm text-gray-500 text-center">{{ u.branch ? (u.branch.business?.name + ' - ' + u.branch.name) : '—' }}</td>
+            <td class="py-3 px-4 text-sm text-gray-500 text-center">{{ getUserBranchesDisplay(u) }}</td>
             <td class="py-3 px-4 text-center">
               <span class="text-xs font-medium px-2 py-0.5 rounded-full" :class="u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">{{ u.isActive ? 'Aktif' : 'Nonaktif' }}</span>
             </td>
@@ -71,7 +71,7 @@
         </div>
         <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
           <span class="font-medium px-2 py-0.5 rounded-full" :class="u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'">{{ u.role }}</span>
-          <span v-if="u.branch">· {{ u.branch.business?.name }} - {{ u.branch.name }}</span>
+          <span v-if="getUserBranchesDisplay(u) !== '—'">· {{ getUserBranchesDisplay(u) }}</span>
         </div>
         <div class="flex gap-2 pt-3 border-t border-gray-100">
           <button @click="openModal(u)" class="flex-1 py-2 text-sm text-center font-medium border border-gray-200 rounded-lg hover:bg-gray-50">Edit</button>
@@ -107,15 +107,24 @@
                 <p v-if="mErrors.role" class="mt-1 text-xs text-red-500">{{ mErrors.role }}</p>
               </div>
               <div v-if="mForm.role === 'KARYAWAN'">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Cabang <span class="text-red-500">*</span></label>
-                <select v-model="mForm.branchId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="{ 'border-red-400': mErrors.branchId }">
-                  <option value="">Pilih cabang</option>
-                  <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
-                    <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
-                      {{ branch.name }}
-                    </option>
-                  </optgroup>
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Bisnis / Cabang (Bisa centang lebih dari 1) <span class="text-red-500">*</span></label>
+                <div class="space-y-3 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50/50" :class="{ 'border-red-400': mErrors.branchId }">
+                  <div v-for="biz in businessList" :key="biz.id" class="space-y-1.5">
+                    <p class="text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-200 pb-1">{{ biz.name }}</p>
+                    <div v-for="branch in biz.branches" :key="branch.id" class="flex items-center gap-2 pl-2 py-0.5">
+                      <input
+                        type="checkbox"
+                        :id="`branch-${branch.id}`"
+                        :value="branch.id"
+                        v-model="mForm.branchIds"
+                        class="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500 cursor-pointer"
+                      />
+                      <label :for="`branch-${branch.id}`" class="text-sm text-gray-700 cursor-pointer select-none">
+                        {{ branch.name }}
+                      </label>
+                    </div>
+                  </div>
+                </div>
                 <p v-if="mErrors.branchId" class="mt-1 text-xs text-red-500">{{ mErrors.branchId }}</p>
               </div>
               <div>
@@ -186,7 +195,7 @@ const confirmDeleteUser = ref<any | null>(null)
 const deleteError = ref<string | null>(null)
 
 const mForm = reactive({
-  name: '', username: '', role: '' as string, branchId: '', password: '', isActive: true,
+  name: '', username: '', role: '' as string, branchId: '', branchIds: [] as string[], password: '', isActive: true,
 })
 const mErrors = reactive({ name: '', username: '', role: '', branchId: '', password: '' })
 
@@ -228,6 +237,17 @@ function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
+function getUserBranchesDisplay(u: any) {
+  if (u.role === 'ADMIN') return 'Semua Bisnis (Admin)'
+  if (u.branches && u.branches.length > 0) {
+    return u.branches.map((b: any) => `${b.business?.name || ''} - ${b.name}`).join(', ')
+  }
+  if (u.branch) {
+    return `${u.branch.business?.name || ''} - ${u.branch.name}`
+  }
+  return '—'
+}
+
 function openModal(user?: any) {
   Object.keys(mErrors).forEach((k) => ((mErrors as any)[k] = ''))
   if (user) {
@@ -237,12 +257,15 @@ function openModal(user?: any) {
     mForm.username = user.username
     mForm.role = user.role
     mForm.branchId = user.branchId || ''
+    mForm.branchIds = user.branches && user.branches.length > 0
+      ? user.branches.map((b: any) => b.id)
+      : (user.branchId ? [user.branchId] : [])
     mForm.password = ''
     mForm.isActive = user.isActive
   } else {
     isEditing.value = false
     editingId.value = null
-    mForm.name = ''; mForm.username = ''; mForm.role = ''; mForm.branchId = ''; mForm.password = ''; mForm.isActive = true
+    mForm.name = ''; mForm.username = ''; mForm.role = ''; mForm.branchId = ''; mForm.branchIds = []; mForm.password = ''; mForm.isActive = true
   }
   showModal.value = true
 }
@@ -253,13 +276,17 @@ async function saveUser() {
   if (!mForm.name || mForm.name.length < 3) { mErrors.name = 'Nama minimal 3 karakter'; valid = false }
   if (!mForm.username || mForm.username.length < 3) { mErrors.username = 'Username minimal 3 karakter'; valid = false }
   if (!mForm.role) { mErrors.role = 'Role wajib dipilih'; valid = false }
-  if (mForm.role === 'KARYAWAN' && !mForm.branchId) { mErrors.branchId = 'Cabang wajib dipilih'; valid = false }
+  if (mForm.role === 'KARYAWAN' && mForm.branchIds.length === 0) { mErrors.branchId = 'Minimal 1 cabang wajib dipilih'; valid = false }
   if (!isEditing.value && (!mForm.password || mForm.password.length < 6)) { mErrors.password = 'Password minimal 6 karakter'; valid = false }
   if (!valid) return
 
   isSaving.value = true
   try {
-    const payload: any = { ...mForm }
+    const payload: any = {
+      ...mForm,
+      branchId: mForm.branchIds[0] || null,
+      branchIds: mForm.branchIds
+    }
     if (isEditing.value && !payload.password) delete payload.password
 
     const method = isEditing.value ? 'PUT' : 'POST'

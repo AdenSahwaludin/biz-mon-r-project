@@ -16,7 +16,10 @@ export default defineEventHandler(async (event) => {
 
     const user = await prisma.user.findUnique({
       where: { username: data.username },
-      include: { branch: { include: { business: true } } }
+      include: {
+        branch: { include: { business: true } },
+        branches: { include: { business: true } }
+      }
     })
 
     if (!user) {
@@ -42,6 +45,10 @@ export default defineEventHandler(async (event) => {
 
     const token = signToken(payload)
 
+    const userBranches = user.branches.length > 0
+      ? user.branches.map(b => ({ id: b.id, name: b.name, businessId: b.businessId, businessName: b.business?.name || '' }))
+      : (user.branch ? [{ id: user.branch.id, name: user.branch.name, businessId: user.branch.businessId, businessName: user.branch.business?.name || '' }] : [])
+
     return successResponse({
       token,
       user: {
@@ -50,7 +57,8 @@ export default defineEventHandler(async (event) => {
         username: user.username,
         role: user.role,
         branch: user.branch ? { id: user.branch.id, name: user.branch.name } : null,
-        business: user.branch?.business ? { id: user.branch.business.id, name: user.branch.business.name } : null
+        business: user.branch?.business ? { id: user.branch.business.id, name: user.branch.business.name } : null,
+        branches: userBranches
       }
     }, 'Login successful')
 
