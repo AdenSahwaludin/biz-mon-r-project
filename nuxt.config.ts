@@ -1,11 +1,17 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   srcDir: 'app',
-  dir: {
-    public: '../public'
-  },
+  serverDir: 'server',
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+
+  vite: {
+    vue: {
+      template: {
+        transformAssetUrls: false
+      }
+    }
+  },
 
   modules: ['@nuxtjs/tailwindcss', '@pinia/nuxt', '@vueuse/nuxt'],
 
