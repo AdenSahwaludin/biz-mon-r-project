@@ -1,31 +1,31 @@
 <template>
   <div>
-    <!-- Toolbar & Filters -->
+    <!-- Filter Toolbar -->
     <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
-      <!-- Full Width Search -->
-      <div class="relative w-full">
-        <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-        <input
-          v-model="search"
-          type="text"
-          placeholder="Cari ID transaksi atau nama kasir di sini..."
-          class="w-full pl-10 pr-9 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
-        />
-        <button
-          v-if="search"
-          @click="search = ''"
-          type="button"
-          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
-          title="Hapus"
-        >
-          <X class="w-4 h-4" />
-        </button>
-      </div>
+      <!-- Top Row: Search Bar & Branch Dropdown -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Search Input -->
+        <div class="relative md:col-span-2">
+          <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            v-model="search"
+            type="text"
+            placeholder="Cari ID transaksi atau nama kasir..."
+            class="w-full pl-10 pr-9 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          />
+          <button
+            v-if="search"
+            @click="search = ''"
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+            title="Hapus"
+          >
+            <X class="w-4 h-4" />
+          </button>
+        </div>
 
-      <!-- Filters Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <!-- Cabang (Default ke Cabang Aktif) -->
-        <select v-if="auth.isAdmin" v-model="filterBranchId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+        <!-- Filter Cabang -->
+        <select v-model="filterBranchId" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white font-medium truncate">
           <option value="">Semua Cabang</option>
           <optgroup v-for="biz in businessList" :key="biz.id" :label="biz.name">
             <option v-for="branch in biz.branches" :key="branch.id" :value="branch.id">
@@ -33,49 +33,51 @@
             </option>
           </optgroup>
         </select>
-
-        <!-- Metode Pembayaran (Hanya Tunai & QRIS) -->
-        <select v-model="filterMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-          <option value="">Semua Metode</option>
-          <option value="Tunai">Tunai</option>
-          <option value="QRIS">QRIS</option>
-        </select>
-
-        <!-- Periode Tanggal -->
-        <select v-model="filterPeriod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-          <option value="all">Semua Waktu</option>
-          <option value="today">Hari Ini</option>
-          <option value="7days">7 Hari Terakhir</option>
-          <option value="30days">30 Hari Terakhir</option>
-          <option value="month">Bulan Ini</option>
-          <option value="custom">Kustom Tanggal</option>
-        </select>
       </div>
 
-      <!-- Custom Date Range Picker -->
-      <Transition name="fade">
-        <div v-if="filterPeriod === 'custom'" class="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-gray-100">
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <span class="text-xs text-gray-500 font-medium whitespace-nowrap">Dari:</span>
-            <input
-              v-model="startDate"
-              type="date"
-              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white w-full sm:w-auto"
-            />
-          </div>
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <span class="text-xs text-gray-500 font-medium whitespace-nowrap">Sampai:</span>
-            <input
-              v-model="endDate"
-              type="date"
-              class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white w-full sm:w-auto"
-            />
-          </div>
+      <!-- Bottom Row: Filter Method & Quick Date Selectors -->
+      <div class="flex flex-wrap items-center gap-3 pt-1 border-t border-gray-100">
+        <!-- Filter Pembayaran -->
+        <div class="w-full sm:w-auto">
+          <select v-model="filterMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white font-medium truncate">
+            <option value="">Semua Metode Pembayaran</option>
+            <option value="CASH">Tunai</option>
+            <option value="QRIS">QRIS</option>
+          </select>
+        </div>
+
+        <!-- Filter Periode Quick Buttons -->
+        <div class="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600">
           <button
-            v-if="startDate || endDate"
-            @click="startDate = ''; endDate = ''"
-            class="text-xs text-gray-500 hover:text-red-500 font-medium underline"
+            v-for="p in [
+              { key: 'all', label: 'Semua Waktu' },
+              { key: 'today', label: 'Hari Ini' },
+              { key: '7days', label: '7 Hari Terakhir' },
+              { key: '30days', label: '30 Hari' },
+              { key: 'custom', label: 'Kustom Tanggal' }
+            ]"
+            :key="p.key"
+            @click="filterPeriod = p.key"
+            class="px-2.5 py-1.5 rounded-md transition-colors"
+            :class="filterPeriod === p.key ? 'bg-white text-primary-600 shadow-2xs' : 'hover:bg-gray-200/60'"
           >
+            {{ p.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Custom Date Pickers (if Kustom Tanggal selected) -->
+      <Transition name="fade">
+        <div v-if="filterPeriod === 'custom'" class="flex flex-wrap items-center gap-3 pt-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-gray-500">Dari:</span>
+            <input v-model="startDate" type="date" class="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs outline-none bg-white" />
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-gray-500">Sampai:</span>
+            <input v-model="endDate" type="date" class="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs outline-none bg-white" />
+          </div>
+          <button @click="startDate = ''; endDate = ''" class="text-xs font-semibold text-gray-500 hover:text-gray-700 underline">
             Reset Tanggal
           </button>
         </div>
@@ -92,13 +94,53 @@
       <div class="hidden sm:block bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table class="w-full">
           <thead>
-            <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Tanggal</th>
-              <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Cabang</th>
-              <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Kasir</th>
-              <th class="text-right text-xs font-medium text-gray-500 uppercase py-3 px-4">Total</th>
-              <th class="text-center text-xs font-medium text-gray-500 uppercase py-3 px-4">Metode</th>
-              <th v-if="auth.isAdmin" class="text-center text-xs font-medium text-gray-500 uppercase py-3 px-4">Aksi</th>
+            <tr class="bg-gray-50 border-b border-gray-200 select-none">
+              <th @click="toggleSort('createdAt')" class="text-left text-xs font-semibold text-gray-500 uppercase py-3 px-4 cursor-pointer hover:bg-gray-100 hover:text-gray-700 transition-colors group">
+                <div class="flex items-center gap-1.5">
+                  <span>Tanggal</span>
+                  <ArrowUp v-if="sortField === 'createdAt' && sortDirection === 'asc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowDown v-else-if="sortField === 'createdAt' && sortDirection === 'desc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowUpDown v-else class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              </th>
+
+              <th @click="toggleSort('branch')" class="text-left text-xs font-semibold text-gray-500 uppercase py-3 px-4 cursor-pointer hover:bg-gray-100 hover:text-gray-700 transition-colors group">
+                <div class="flex items-center gap-1.5">
+                  <span>Cabang</span>
+                  <ArrowUp v-if="sortField === 'branch' && sortDirection === 'asc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowDown v-else-if="sortField === 'branch' && sortDirection === 'desc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowUpDown v-else class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              </th>
+
+              <th @click="toggleSort('cashier')" class="text-left text-xs font-semibold text-gray-500 uppercase py-3 px-4 cursor-pointer hover:bg-gray-100 hover:text-gray-700 transition-colors group">
+                <div class="flex items-center gap-1.5">
+                  <span>Kasir</span>
+                  <ArrowUp v-if="sortField === 'cashier' && sortDirection === 'asc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowDown v-else-if="sortField === 'cashier' && sortDirection === 'desc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowUpDown v-else class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              </th>
+
+              <th @click="toggleSort('total')" class="text-right text-xs font-semibold text-gray-500 uppercase py-3 px-4 cursor-pointer hover:bg-gray-100 hover:text-gray-700 transition-colors group">
+                <div class="flex items-center justify-end gap-1.5">
+                  <span>Total</span>
+                  <ArrowUp v-if="sortField === 'total' && sortDirection === 'asc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowDown v-else-if="sortField === 'total' && sortDirection === 'desc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowUpDown v-else class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              </th>
+
+              <th @click="toggleSort('paymentMethod')" class="text-center text-xs font-semibold text-gray-500 uppercase py-3 px-4 cursor-pointer hover:bg-gray-100 hover:text-gray-700 transition-colors group">
+                <div class="flex items-center justify-center gap-1.5">
+                  <span>Metode</span>
+                  <ArrowUp v-if="sortField === 'paymentMethod' && sortDirection === 'asc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowDown v-else-if="sortField === 'paymentMethod' && sortDirection === 'desc'" class="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <ArrowUpDown v-else class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              </th>
+
+              <th v-if="auth.isAdmin" class="text-center text-xs font-semibold text-gray-500 uppercase py-3 px-4">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -140,10 +182,6 @@
 
       <!-- Mobile Cards -->
       <div class="sm:hidden space-y-3">
-        <div v-if="!paginatedData.length" class="bg-white rounded-xl border border-gray-200 py-12 text-center">
-          <ClipboardList class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p class="text-gray-500 font-medium">Tidak ada data transaksi yang cocok</p>
-        </div>
         <div
           v-for="trx in paginatedData"
           :key="trx.id"
@@ -151,44 +189,36 @@
           class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md cursor-pointer transition-shadow"
         >
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-gray-500">{{ fmt.formatDateTime(trx.createdAt) }}</span>
-            <div class="flex items-center gap-2">
-              <span
-                class="text-xs font-medium px-2 py-0.5 rounded-full"
-                :class="trx.paymentMethod === 'QRIS' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'"
-              >
-                {{ trx.paymentMethod }}
-              </span>
-              <button
-                v-if="auth.isAdmin"
-                @click.stop="confirmDelete(trx)"
-                class="text-gray-400 hover:text-red-500 p-1"
-                title="Hapus Transaksi"
-              >
-                <Trash2 class="w-4 h-4" />
-              </button>
-            </div>
+            <span class="text-xs font-mono font-bold text-primary-600">{{ trx.id }}</span>
+            <span
+              class="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+              :class="trx.paymentMethod === 'QRIS' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'"
+            >
+              {{ trx.paymentMethod }}
+            </span>
           </div>
-          <p class="text-xs text-gray-400 mt-0.5">{{ trx.branch?.business?.name }} - {{ trx.branch?.name }} · {{ trx.cashier?.name }}</p>
-          <p class="text-base font-bold text-gray-900 mt-2">{{ fmt.format(trx.total) }}</p>
+          <div class="flex items-baseline justify-between">
+            <p class="text-base font-bold text-gray-900">{{ fmt.format(trx.total) }}</p>
+            <p class="text-xs text-gray-400">{{ fmt.formatDateTime(trx.createdAt) }}</p>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
+            <span>Kasir: <strong class="text-gray-700">{{ trx.cashier?.name }}</strong></span>
+            <span>{{ trx.branch?.name }}</span>
+          </div>
+        </div>
+        <div v-if="!paginatedData.length" class="py-12 text-center bg-white rounded-xl border border-gray-200">
+          <ClipboardList class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p class="text-gray-500 font-medium">Tidak ada data transaksi yang cocok</p>
         </div>
       </div>
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="flex items-center justify-between mt-4 bg-white rounded-xl border border-gray-200 px-4 py-3">
-        <p class="text-sm text-gray-500">
-          Menampilkan {{ (page - 1) * perPage + 1 }}–{{ Math.min(page * perPage, filteredData.length) }} dari {{ filteredData.length }}
-        </p>
+        <p class="text-sm text-gray-500">{{ (page - 1) * perPage + 1 }}–{{ Math.min(page * perPage, filteredData.length) }} dari {{ filteredData.length }}</p>
         <div class="flex gap-1">
-          <button @click="page = Math.max(1, page - 1)" :disabled="page === 1" class="px-3 py-1 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">←</button>
-          <button
-            v-for="p in visiblePages"
-            :key="p"
-            @click="page = p"
-            class="px-3 py-1 text-sm rounded-md transition-colors"
-            :class="p === page ? 'bg-primary-600 text-white' : 'border border-gray-200 hover:bg-gray-50 text-gray-700'"
-          >{{ p }}</button>
-          <button @click="page = Math.min(totalPages, page + 1)" :disabled="page === totalPages" class="px-3 py-1 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">→</button>
+          <button @click="page = Math.max(1, page - 1)" :disabled="page === 1" class="px-3 py-1 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40">←</button>
+          <button v-for="p in visiblePages" :key="p" @click="page = p" class="px-3 py-1 text-sm rounded-md" :class="p === page ? 'bg-primary-600 text-white' : 'border border-gray-200 hover:bg-gray-50'">{{ p }}</button>
+          <button @click="page = Math.min(totalPages, page + 1)" :disabled="page === totalPages" class="px-3 py-1 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40">→</button>
         </div>
       </div>
     </template>
@@ -217,7 +247,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Search, ClipboardList, Trash2, X } from 'lucide-vue-next'
+import { Search, ClipboardList, Trash2, X, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const bizStore = useBusinessStore()
@@ -228,12 +258,13 @@ const { fetchWithAuth } = useApi()
 const { fetchWithCache, invalidateCache } = useCachedFetch()
 
 const search = ref('')
-// Default branch filter matches active branch selected in header
 const filterBranchId = ref(bizStore.activeBranchId || '')
 const filterMethod = ref('')
 const filterPeriod = ref('all')
 const startDate = ref('')
 const endDate = ref('')
+const sortField = ref<'createdAt' | 'branch' | 'cashier' | 'total' | 'paymentMethod' | null>(null)
+const sortDirection = ref<'asc' | 'desc'>('asc')
 
 const page = ref(1)
 const perPage = 10
@@ -258,7 +289,7 @@ watch(filterBranchId, async () => {
 })
 
 watch(() => bizStore.activeBranchId, async (newBranch) => {
-  if (newBranch) {
+  if (newBranch && filterBranchId.value !== newBranch) {
     filterBranchId.value = newBranch
     await fetchTransactions()
   }
@@ -269,8 +300,10 @@ async function fetchTransactions(forceRefresh = false) {
     isLoading.value = true
   }
   try {
-    const activeB = filterBranchId.value
-    const url = activeB ? `/transactions?branchId=${activeB}` : `/transactions`
+    let url = '/transactions'
+    if (filterBranchId.value) {
+      url += `?branchId=${filterBranchId.value}`
+    }
     const res = await fetchWithCache<any>(url, {
       forceRefresh,
       onRevalidated: (fresh) => {
@@ -281,10 +314,25 @@ async function fetchTransactions(forceRefresh = false) {
       transactions.value = res.data.data
     }
   } catch (error) {
-    toast.error('Gagal memuat transaksi')
+    toast.error('Gagal memuat riwayat transaksi')
   } finally {
     isLoading.value = false
   }
+}
+
+function toggleSort(field: 'createdAt' | 'branch' | 'cashier' | 'total' | 'paymentMethod') {
+  if (sortField.value === field) {
+    if (sortDirection.value === 'asc') {
+      sortDirection.value = 'desc'
+    } else {
+      sortField.value = null
+      sortDirection.value = 'asc'
+    }
+  } else {
+    sortField.value = field
+    sortDirection.value = 'asc'
+  }
+  page.value = 1
 }
 
 function confirmDelete(trx: any) {
@@ -317,7 +365,6 @@ async function doDelete() {
 const filteredData = computed(() => {
   let data = [...transactions.value]
 
-  // Filter Search Text
   if (search.value) {
     const q = search.value.toLowerCase()
     data = data.filter((t) => 
@@ -326,45 +373,70 @@ const filteredData = computed(() => {
     )
   }
 
-  // Filter Metode Pembayaran (Tunai / QRIS)
   if (filterMethod.value) {
     data = data.filter((t) => t.paymentMethod === filterMethod.value)
   }
 
-  // Filter Periode Tanggal
   if (filterPeriod.value !== 'all') {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 
     if (filterPeriod.value === 'custom') {
       if (startDate.value) {
-        const startMs = new Date(startDate.value + 'T00:00:00').getTime()
-        data = data.filter((t) => new Date(t.createdAt).getTime() >= startMs)
+        const start = new Date(startDate.value).getTime()
+        data = data.filter((t) => new Date(t.createdAt).getTime() >= start)
       }
       if (endDate.value) {
-        const endMs = new Date(endDate.value + 'T23:59:59').getTime()
-        data = data.filter((t) => new Date(t.createdAt).getTime() <= endMs)
+        const end = new Date(endDate.value).getTime() + (24 * 60 * 60 * 1000 - 1)
+        data = data.filter((t) => new Date(t.createdAt).getTime() <= end)
       }
-    } else {
-      data = data.filter((t) => {
-        const txTime = new Date(t.createdAt).getTime()
-        if (filterPeriod.value === 'today') {
-          return txTime >= today
-        } else if (filterPeriod.value === '7days') {
-          return txTime >= (today - 7 * 24 * 60 * 60 * 1000)
-        } else if (filterPeriod.value === '30days') {
-          return txTime >= (today - 30 * 24 * 60 * 60 * 1000)
-        } else if (filterPeriod.value === 'month') {
-          const txDate = new Date(t.createdAt)
-          return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
-        }
-        return true
-      })
+    } else if (filterPeriod.value === 'today') {
+      data = data.filter((t) => new Date(t.createdAt).getTime() >= today)
+    } else if (filterPeriod.value === '7days') {
+      const past7 = today - (7 * 24 * 60 * 60 * 1000)
+      data = data.filter((t) => new Date(t.createdAt).getTime() >= past7)
+    } else if (filterPeriod.value === '30days') {
+      const past30 = today - (30 * 24 * 60 * 60 * 1000)
+      data = data.filter((t) => new Date(t.createdAt).getTime() >= past30)
     }
   }
 
-  // Always default sort newest first
-  data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  if (sortField.value) {
+    data.sort((a, b) => {
+      let valA: any
+      let valB: any
+
+      switch (sortField.value) {
+        case 'createdAt':
+          valA = new Date(a.createdAt).getTime()
+          valB = new Date(b.createdAt).getTime()
+          break
+        case 'branch':
+          valA = `${a.branch?.business?.name || ''} ${a.branch?.name || ''}`
+          valB = `${b.branch?.business?.name || ''} ${b.branch?.name || ''}`
+          break
+        case 'cashier':
+          valA = a.cashier?.name || ''
+          valB = b.cashier?.name || ''
+          break
+        case 'total':
+          valA = a.total || 0
+          valB = b.total || 0
+          break
+        case 'paymentMethod':
+          valA = a.paymentMethod || ''
+          valB = b.paymentMethod || ''
+          break
+      }
+
+      if (typeof valA === 'string') {
+        const comp = valA.localeCompare(valB, 'id', { sensitivity: 'base', numeric: true })
+        return sortDirection.value === 'asc' ? comp : -comp
+      } else {
+        return sortDirection.value === 'asc' ? valA - valB : valB - valA
+      }
+    })
+  }
 
   return data
 })
@@ -374,16 +446,11 @@ const paginatedData = computed(() => {
   const start = (page.value - 1) * perPage
   return filteredData.value.slice(start, start + perPage)
 })
-
 const visiblePages = computed(() => {
   const pages: number[] = []
-  const total = totalPages.value
-  const current = page.value
-  for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
-    pages.push(i)
-  }
+  for (let i = Math.max(1, page.value - 2); i <= Math.min(totalPages.value, page.value + 2); i++) pages.push(i)
   return pages
 })
 
-watch([search, filterBranchId, filterMethod, filterPeriod, startDate, endDate], () => { page.value = 1 })
+watch([search, filterMethod, filterPeriod, startDate, endDate], () => { page.value = 1 })
 </script>

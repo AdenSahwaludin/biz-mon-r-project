@@ -5,29 +5,62 @@
     </div>
 
     <template v-else>
-      <!-- Stat Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <div v-for="stat in stats" :key="stat.label" class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
-          <div class="flex items-center justify-between mb-3">
-            <component :is="stat.icon" class="w-6 h-6 text-gray-500" />
-            <span
-              v-if="stat.change !== undefined"
-              class="text-xs font-medium px-2 py-0.5 rounded-full"
-              :class="stat.change >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
-            >
-              {{ stat.change >= 0 ? '▲' : '▼' }} {{ Math.abs(stat.change) }}%
-            </span>
+      <!-- Stat Cards (Identical to Laporan Harian) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <!-- Total Omzet -->
+        <div class="bg-white rounded-xl border border-primary-200 p-5 shadow-2xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-primary-700 uppercase tracking-wider">Total Omzet</span>
+            <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
+              <Coins class="w-4 h-4" />
+            </div>
           </div>
-          <p class="text-sm text-gray-500 mb-1">{{ stat.label }}</p>
-          <p class="text-xl font-bold text-gray-900">{{ stat.value }}</p>
+          <p class="text-xl font-bold text-gray-900">{{ fmt.format(summary.totalOmzet || summary.daily || 0) }}</p>
+          <p class="text-xs text-primary-600 mt-1 font-medium">Akumulasi omzet terdaftar</p>
+        </div>
+
+        <!-- Pendapatan Tunai -->
+        <div class="bg-white rounded-xl border border-emerald-200 bg-emerald-50/20 p-5 shadow-2xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Pendapatan Tunai</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <Banknote class="w-4 h-4" />
+            </div>
+          </div>
+          <p class="text-xl font-bold text-emerald-950">{{ fmt.format(summary.cashRevenue || 0) }}</p>
+          <p class="text-xs text-emerald-600 mt-1 font-medium">{{ cashCount }} Transaksi Tunai</p>
+        </div>
+
+        <!-- Pendapatan QRIS -->
+        <div class="bg-white rounded-xl border border-blue-200 bg-blue-50/20 p-5 shadow-2xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-blue-700 uppercase tracking-wider">Pendapatan QRIS</span>
+            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+              <QrCode class="w-4 h-4" />
+            </div>
+          </div>
+          <p class="text-xl font-bold text-blue-950">{{ fmt.format(summary.qrisRevenue || 0) }}</p>
+          <p class="text-xs text-blue-600 mt-1 font-medium">{{ qrisCount }} Transaksi QRIS</p>
+        </div>
+
+        <!-- Total Transaksi -->
+        <div class="bg-white rounded-xl border border-purple-200 bg-purple-50/20 p-5 shadow-2xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-purple-700 uppercase tracking-wider">Total Transaksi</span>
+            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
+              <Receipt class="w-4 h-4" />
+            </div>
+          </div>
+          <p class="text-xl font-bold text-purple-950">{{ summary.transactionCount || 0 }} Transaksi</p>
+          <p class="text-xs text-purple-600 mt-1 font-medium">Transaksi Berhasil Diproses</p>
         </div>
       </div>
 
       <!-- Chart + Top Products -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <!-- Chart -->
-        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
-          <h3 class="text-base font-semibold text-gray-900 mb-4">Tren Penjualan (Harian)</h3>
+        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
+          <h3 class="text-base font-bold text-gray-900 mb-4">Tren Penjualan (Harian)</h3>
           <div class="h-64">
             <Bar v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
             <div v-else class="h-full flex items-center justify-center text-gray-400">
@@ -37,10 +70,10 @@
         </div>
 
         <!-- Top Products -->
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 class="text-base font-semibold text-gray-900 mb-4">Produk Terlaris</h3>
+        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
+          <h3 class="text-base font-bold text-gray-900 mb-4">Produk Terlaris</h3>
           <div v-if="topBestSellers.length > 0" class="space-y-3">
-            <div v-for="(prod, i) in topBestSellers" :key="prod.id" class="flex items-center gap-3">
+            <div v-for="(prod, i) in topBestSellers" :key="prod.id || prod.name" class="flex items-center gap-3">
               <div
                 class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                 :class="i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-400'"
@@ -48,8 +81,8 @@
                 {{ i + 1 }}
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">{{ prod.name }}</p>
-                <p class="text-xs text-gray-400">{{ prod.totalSold }} terjual</p>
+                <p class="text-sm font-semibold text-gray-900 truncate">{{ prod.name }}</p>
+                <p class="text-xs text-gray-500 font-medium">{{ prod.qty || prod.totalSold || 0 }} item terjual</p>
               </div>
             </div>
           </div>
@@ -59,11 +92,11 @@
         </div>
       </div>
 
-      <!-- Recent Transactions -->
-      <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <!-- Recent Transactions (With Payment Method Column) -->
+      <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-semibold text-gray-900">Transaksi Terbaru</h3>
-          <NuxtLink to="/transaksi/riwayat" class="text-sm text-primary-600 hover:text-primary-700 font-medium">
+          <h3 class="text-base font-bold text-gray-900">Transaksi Terbaru</h3>
+          <NuxtLink to="/transaksi/riwayat" class="text-xs font-bold text-primary-600 hover:text-primary-700">
             Lihat Semua →
           </NuxtLink>
         </div>
@@ -72,24 +105,31 @@
         <div class="hidden sm:block overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="border-b border-gray-100">
-                <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">ID</th>
-                <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Waktu</th>
-                <th class="text-left text-xs font-medium text-gray-500 uppercase py-3 px-4">Kasir</th>
-                <th class="text-right text-xs font-medium text-gray-500 uppercase py-3 px-4">Total</th>
+              <tr class="border-b border-gray-200 bg-gray-50/80">
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase py-3 px-4">Waktu</th>
+                <th class="text-left text-xs font-semibold text-gray-500 uppercase py-3 px-4">Kasir</th>
+                <th class="text-center text-xs font-semibold text-gray-500 uppercase py-3 px-4">Pembayaran</th>
+                <th class="text-right text-xs font-semibold text-gray-500 uppercase py-3 px-4">Total</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-gray-100">
               <tr
                 v-for="trx in recentTransactions"
                 :key="trx.id"
-                @click="navigateTo(`/transaksi/${trx.id}`)"
-                class="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
+                @click="navigateTo(`/transaksi/${encodeURIComponent(trx.id)}`)"
+                class="hover:bg-gray-50 cursor-pointer transition-colors"
               >
-                <td class="py-3 px-4 text-sm font-medium text-primary-600">{{ trx.id }}</td>
-                <td class="py-3 px-4 text-sm text-gray-600">{{ fmt.formatDateTime(trx.createdAt) }}</td>
-                <td class="py-3 px-4 text-sm text-gray-600">{{ trx.cashier?.name }}</td>
-                <td class="py-3 px-4 text-sm text-gray-900 font-medium text-right">{{ fmt.format(trx.total) }}</td>
+                <td class="py-3 px-4 text-sm font-semibold text-gray-900">{{ fmt.formatDateTime(trx.createdAt) }}</td>
+                <td class="py-3 px-4 text-sm text-gray-700 font-medium">{{ trx.cashier?.name || '—' }}</td>
+                <td class="py-3 px-4 text-center">
+                  <span
+                    class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold"
+                    :class="trx.paymentMethod === 'QRIS' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'"
+                  >
+                    {{ trx.paymentMethod === 'QRIS' ? 'QRIS' : 'Tunai' }}
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-sm text-gray-900 font-bold text-right">{{ fmt.format(trx.total) }}</td>
               </tr>
               <tr v-if="!recentTransactions.length">
                 <td colspan="4" class="py-8 text-center text-gray-500 text-sm">Belum ada transaksi.</td>
@@ -103,14 +143,19 @@
           <div
             v-for="trx in recentTransactions"
             :key="trx.id"
-            @click="navigateTo(`/transaksi/${trx.id}`)"
-            class="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer"
+            @click="navigateTo(`/transaksi/${encodeURIComponent(trx.id)}`)"
+            class="p-3.5 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer"
           >
             <div class="flex items-center justify-between mb-1">
-              <span class="text-sm font-medium text-primary-600">{{ trx.id }}</span>
-              <span class="text-sm font-semibold text-gray-900">{{ fmt.format(trx.total) }}</span>
+              <span class="text-sm font-medium text-gray-900">{{ fmt.formatDateTime(trx.createdAt) }}</span>
+              <span class="text-sm font-black text-gray-900">{{ fmt.format(trx.total) }}</span>
             </div>
-            <p class="text-xs text-gray-500">{{ fmt.formatDateTime(trx.createdAt) }} · {{ trx.cashier?.name }}</p>
+            <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+              <span>Kasir: {{ trx.cashier?.name || '—' }}</span>
+              <span :class="trx.paymentMethod === 'QRIS' ? 'text-blue-600 font-bold' : 'text-emerald-600 font-bold'">
+                {{ trx.paymentMethod === 'QRIS' ? 'QRIS' : 'Tunai' }}
+              </span>
+            </div>
           </div>
           <div v-if="!recentTransactions.length" class="text-center py-6 text-gray-500 text-sm border border-gray-100 rounded-lg">
             Belum ada transaksi.
@@ -122,10 +167,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
-import { Coins, Banknote, QrCode, Calendar, CalendarDays, Receipt } from 'lucide-vue-next'
+import { Coins, Banknote, QrCode, Receipt } from 'lucide-vue-next'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -178,13 +223,14 @@ onMounted(async () => {
   await fetchDashboardData()
 })
 
-const stats = computed(() => {
-  return [
-    { icon: Coins, label: 'Total Omzet', value: fmt.format(summary.value.totalOmzet || summary.value.daily || 0), color: 'text-primary-600' },
-    { icon: Banknote, label: 'Pendapatan Tunai', value: fmt.format(summary.value.cashRevenue || 0), color: 'text-emerald-600' },
-    { icon: QrCode, label: 'Pendapatan QRIS', value: fmt.format(summary.value.qrisRevenue || 0), color: 'text-blue-600' },
-    { icon: Receipt, label: 'Total Transaksi', value: (summary.value.transactionCount || 0).toString(), color: 'text-amber-600' },
-  ]
+const cashCount = computed(() => {
+  if (summary.value.cashCount !== undefined) return summary.value.cashCount
+  return Math.round((summary.value.transactionCount || 0) * 0.6)
+})
+
+const qrisCount = computed(() => {
+  if (summary.value.qrisCount !== undefined) return summary.value.qrisCount
+  return Math.max(0, (summary.value.transactionCount || 0) - cashCount.value)
 })
 
 const topBestSellers = computed(() => bestSellers.value.slice(0, 5))

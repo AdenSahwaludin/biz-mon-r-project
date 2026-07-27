@@ -21,11 +21,33 @@
           <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name }}</p>
         </div>
 
-        <!-- Barcode -->
+        <!-- SKU / Barcode Input with Lock Toggle -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Barcode</label>
-          <input v-model="form.barcode" type="text" placeholder="Scan atau masukkan barcode" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
-          <p v-if="errors.barcode" class="mt-1 text-xs text-red-500">{{ errors.barcode }}</p>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-sm font-medium text-gray-700">SKU / Barcode</label>
+            <button
+              type="button"
+              @click="toggleEditSku"
+              class="text-xs font-semibold text-primary-600 hover:text-primary-700 flex items-center gap-1 transition-colors"
+            >
+              <Lock v-if="!isEditingSku" class="w-3.5 h-3.5" />
+              <Unlock v-else class="w-3.5 h-3.5" />
+              <span>{{ isEditingSku ? 'Kunci (Otomatis)' : 'Ubah SKU Manual' }}</span>
+            </button>
+          </div>
+          
+          <input
+            v-model="form.barcode"
+            :disabled="!isEditingSku"
+            type="text"
+            :placeholder="isEditingSku ? 'Scan atau masukkan SKU/barcode manual' : autoSkuPlaceholder"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
+            :class="!isEditingSku ? 'bg-gray-100/90 text-gray-500 font-mono cursor-not-allowed' : 'bg-white text-gray-900 font-mono'"
+          />
+          <p v-if="!isEditingSku" class="mt-1 text-[11px] text-gray-500">
+            🔒 SKU dikunci. Kode unik rapi akan dibuatkan secara otomatis oleh sistem saat disimpan.
+          </p>
+          <p v-else-if="errors.barcode" class="mt-1 text-xs text-red-500">{{ errors.barcode }}</p>
         </div>
 
         <!-- Kategori -->
@@ -82,6 +104,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { Lock, Unlock } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const bizStore = useBusinessStore()
@@ -91,6 +114,7 @@ const { fetchWithAuth } = useApi()
 
 const isLoading = ref(false)
 const isCategoriesLoading = ref(false)
+const isEditingSku = ref(false)
 const availableCategories = ref<any[]>([])
 
 const form = reactive({
@@ -113,6 +137,24 @@ const errors = reactive({
   stock: '',
   unit: '',
 })
+
+const selectedBusinessName = computed(() => {
+  const biz = businessList.value.find(b => b.id === form.businessId)
+  return biz?.name || ''
+})
+
+const autoSkuPlaceholder = computed(() => {
+  if (!selectedBusinessName.value) return 'Otomatis (Pilih bisnis terlebih dahulu)'
+  const prefix = selectedBusinessName.value.split(' ').map(w => w[0]).join('').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'PRD'
+  return `Otomatis (Contoh: ${prefix}-001)`
+})
+
+function toggleEditSku() {
+  isEditingSku.value = !isEditingSku.value
+  if (!isEditingSku.value) {
+    form.barcode = ''
+  }
+}
 
 onMounted(async () => {
   if (businessList.value.length === 0) {
@@ -169,7 +211,7 @@ async function handleSubmit() {
       navigateTo('/produk')
     } else {
       toast.error(res.message || 'Gagal menyimpan produk')
-      if (res.message?.includes('Barcode')) {
+      if (res.message?.includes('Barcode') || res.message?.includes('SKU')) {
         errors.barcode = res.message
       }
     }

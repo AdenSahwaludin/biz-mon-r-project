@@ -61,15 +61,15 @@
       <!-- Stat Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Omzet Hari Ini -->
-        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
+        <div class="bg-white rounded-xl border border-primary-200 p-5 shadow-2xs">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Omzet Harian</span>
+            <span class="text-xs font-bold text-primary-700 uppercase tracking-wider">Total Omzet Harian</span>
             <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center">
               <Coins class="w-4 h-4" />
             </div>
           </div>
-          <p class="text-2xl font-black text-gray-900">{{ fmt.format(dailySummary.totalOmzet) }}</p>
-          <p class="text-xs text-gray-400 mt-1">{{ dailySummary.transactionCount }} Transaksi Terdaftar</p>
+          <p class="text-xl font-bold text-gray-900">{{ fmt.format(dailySummary.totalOmzet) }}</p>
+          <p class="text-xs text-primary-600 mt-1 font-medium">Akumulasi omzet terdaftar</p>
         </div>
 
         <!-- Pendapatan Tunai -->
@@ -80,7 +80,7 @@
               <Banknote class="w-4 h-4" />
             </div>
           </div>
-          <p class="text-2xl font-black text-emerald-950">{{ fmt.format(dailySummary.cashRevenue) }}</p>
+          <p class="text-xl font-bold text-emerald-950">{{ fmt.format(dailySummary.cashRevenue) }}</p>
           <p class="text-xs text-emerald-600 mt-1 font-medium">{{ dailySummary.cashCount }} Transaksi Tunai</p>
         </div>
 
@@ -92,20 +92,20 @@
               <QrCode class="w-4 h-4" />
             </div>
           </div>
-          <p class="text-2xl font-black text-blue-950">{{ fmt.format(dailySummary.qrisRevenue) }}</p>
+          <p class="text-xl font-bold text-blue-950">{{ fmt.format(dailySummary.qrisRevenue) }}</p>
           <p class="text-xs text-blue-600 mt-1 font-medium">{{ dailySummary.qrisCount }} Transaksi QRIS</p>
         </div>
 
-        <!-- Rata-rata Transaksi -->
+        <!-- Total Transaksi -->
         <div class="bg-white rounded-xl border border-purple-200 bg-purple-50/20 p-5 shadow-2xs">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-purple-700 uppercase tracking-wider">Rata-rata Transaksi</span>
+            <span class="text-xs font-bold text-purple-700 uppercase tracking-wider">Total Transaksi</span>
             <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
-              <Calculator class="w-4 h-4" />
+              <Receipt class="w-4 h-4" />
             </div>
           </div>
-          <p class="text-2xl font-black text-purple-950">{{ fmt.format(rataRataTransaksi) }}</p>
-          <p class="text-xs text-purple-600 mt-1 font-medium">Rata-rata per Invoice Harian</p>
+          <p class="text-xl font-bold text-purple-950">{{ dailySummary.transactionCount }} Transaksi</p>
+          <p class="text-xs text-purple-600 mt-1 font-medium">Transaksi Berhasil Diproses</p>
         </div>
       </div>
 
@@ -334,7 +334,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
-import { Calendar, Coins, Banknote, QrCode, Calculator, Clock, Users, Package, FileText, Download } from 'lucide-vue-next'
+import { Calendar, Coins, Banknote, QrCode, Receipt, Clock, Users, Package, FileText, Download } from 'lucide-vue-next'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 

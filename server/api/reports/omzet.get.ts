@@ -4,7 +4,7 @@ import { successResponse } from '../../utils/response'
 
 export default defineEventHandler(async (event) => {
   requireAuth(event)
-  
+
   const query = getQuery(event)
   const businessId = query.businessId as string | undefined
   const branchId = query.branchId as string | undefined
