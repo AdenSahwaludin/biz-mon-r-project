@@ -23,7 +23,7 @@
         </div>
         <div class="flex flex-col justify-center min-w-0">
           <span class="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">PantauBisnis</span>
-          <span class="text-[10px] font-medium text-gray-400 leading-tight">v.1.0.3</span>
+          <span class="text-[10px] font-medium text-gray-400 leading-tight">v.1.0.4</span>
         </div>
         <button @click="sidebarOpen = false" class="ml-auto lg:hidden text-gray-400 hover:text-gray-600 p-1">
           <X class="w-5 h-5" />

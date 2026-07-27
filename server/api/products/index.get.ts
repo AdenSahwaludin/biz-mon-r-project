@@ -36,9 +36,27 @@ export default defineEventHandler(async (event) => {
 
   const products = await prisma.product.findMany({
     where,
-    include: { category: true, business: true },
+    include: {
+      category: true,
+      business: true,
+      _count: { select: { transactionDetails: true } }
+    },
     orderBy: { createdAt: 'desc' }
   })
 
-  return successResponse(products)
+  // Calculate total qty sold per product
+  const productIds = products.map((p: any) => p.id)
+  const soldAgg = await prisma.transactionDetail.groupBy({
+    by: ['productId'],
+    where: { productId: { in: productIds } },
+    _sum: { qty: true }
+  })
+  const soldMap = new Map(soldAgg.map((s: any) => [s.productId, s._sum.qty || 0]))
+
+  const productsWithSold = products.map((p: any) => ({
+    ...p,
+    totalSold: soldMap.get(p.id) || 0
+  }))
+
+  return successResponse(productsWithSold)
 })

@@ -54,6 +54,22 @@
         </div>
       </div>
 
+      <!-- Sort Filter Bar -->
+      <div class="flex gap-2 mb-3 shrink-0 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          v-for="opt in sortOptions"
+          :key="opt.value"
+          @click="sortBy = sortBy === opt.value ? '' : opt.value"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-all shrink-0"
+          :class="sortBy === opt.value
+            ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+            : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300 hover:text-primary-600'"
+        >
+          <component :is="opt.icon" class="w-3.5 h-3.5" />
+          {{ opt.label }}
+        </button>
+      </div>
+
       <!-- Product Grid -->
       <div class="flex-1 overflow-y-auto">
         <div v-if="isLoading" class="flex flex-col items-center justify-center py-16 text-center">
@@ -73,6 +89,9 @@
             <p class="text-xs text-gray-400 mt-0.5">{{ prod.category?.name }}</p>
             <p class="text-sm font-bold text-primary-600 mt-1">{{ fmt.format(prod.price) }}</p>
             <p class="text-xs text-gray-400 mt-0.5">Stok: {{ prod.stock }}</p>
+            <p v-if="sortBy === 'terlaris'" class="text-xs text-orange-500 font-medium mt-0.5 flex items-center gap-1">
+              <TrendingUp class="w-3 h-3" /> Terjual {{ prod.totalSold || 0 }}
+            </p>
           </button>
         </div>
         <div v-else class="flex flex-col items-center justify-center py-16 text-center">
@@ -292,7 +311,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Search, Package, ShoppingCart, X, Minus, Plus, Banknote, Smartphone, CheckCircle, Soup, CupSoda, Utensils, Store } from 'lucide-vue-next'
+import { Search, Package, ShoppingCart, X, Minus, Plus, Banknote, Smartphone, CheckCircle, Soup, CupSoda, Utensils, Store, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, TrendingUp } from 'lucide-vue-next'
 
 const cart = useCartStore()
 const auth = useAuthStore()
@@ -306,6 +325,7 @@ const { fetchWithCache, invalidateCache } = useCachedFetch()
 const barcodeInput = ref<HTMLInputElement>()
 const barcodeValue = ref('')
 const searchQuery = ref('')
+const sortBy = ref('')
 const showCart = ref(false)
 const showSuccess = ref(false)
 const successData = ref<{ id: string; createdAt: string; total: number; bayar: number; kembalian: number; metode: string } | null>(null)
@@ -364,15 +384,33 @@ const bizProducts = computed(() => {
   return products.value.filter((p) => p.businessId === branch.businessId && p.isActive)
 })
 
+const sortOptions = [
+  { value: 'price_asc',  label: 'Harga Terendah', icon: ArrowUpDown },
+  { value: 'price_desc', label: 'Harga Tertinggi', icon: ArrowDownUp },
+  { value: 'name_asc',   label: 'Nama A–Z',        icon: SortAsc },
+  { value: 'name_desc',  label: 'Nama Z–A',        icon: SortDesc },
+  { value: 'terlaris',   label: 'Terlaris',         icon: TrendingUp },
+]
+
 const filteredProducts = computed(() => {
-  if (!searchQuery.value) return bizProducts.value
-  const q = searchQuery.value.toLowerCase()
-  return bizProducts.value.filter((p) =>
-    p.name.toLowerCase().includes(q) ||
-    (p.sku && p.sku.toLowerCase().includes(q)) ||
-    (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-    (p.category?.name && p.category.name.toLowerCase().includes(q))
-  )
+  let list = bizProducts.value
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter((p) =>
+      p.name.toLowerCase().includes(q) ||
+      (p.sku && p.sku.toLowerCase().includes(q)) ||
+      (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+      (p.category?.name && p.category.name.toLowerCase().includes(q))
+    )
+  }
+  switch (sortBy.value) {
+    case 'price_asc':  return [...list].sort((a, b) => a.price - b.price)
+    case 'price_desc': return [...list].sort((a, b) => b.price - a.price)
+    case 'name_asc':   return [...list].sort((a, b) => a.name.localeCompare(b.name, 'id'))
+    case 'name_desc':  return [...list].sort((a, b) => b.name.localeCompare(a.name, 'id'))
+    case 'terlaris':   return [...list].sort((a, b) => (b.totalSold || 0) - (a.totalSold || 0))
+    default:           return list
+  }
 })
 
 const quickAmounts = computed(() => {
