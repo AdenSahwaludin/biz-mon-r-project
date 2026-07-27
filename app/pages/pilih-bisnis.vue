@@ -21,31 +21,57 @@
             </div>
             <h2 class="text-lg font-bold text-gray-900">{{ biz.name }}</h2>
           </div>
-          <button @click="openAddBranchModal(biz)" class="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
-            <Plus class="w-4 h-4" /> Tambah Cabang
-          </button>
+          
+          <div class="flex items-center gap-3">
+            <button @click="openAddBranchModal(biz)" class="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1">
+              <Plus class="w-4 h-4" /> Tambah Cabang
+            </button>
+
+            <button
+              @click="confirmDelete('business', biz.id, biz.name)"
+              class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Hapus Bisnis"
+            >
+              <Trash2 class="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <!-- Branches Grid -->
         <div class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button
+          <div
             v-for="branch in biz.branches"
             :key="branch.id"
-            @click="selectBranch(branch.id)"
-            class="group bg-white border border-gray-200 rounded-xl p-4 text-left hover:shadow-md hover:border-gray-300 transition-all duration-200 relative overflow-hidden flex flex-col"
+            class="group bg-white border border-gray-200 rounded-xl p-4 text-left hover:shadow-md hover:border-gray-300 transition-all duration-200 relative overflow-hidden flex flex-col justify-between"
           >
             <div class="absolute top-0 left-0 right-0 h-1 transition-all group-hover:h-1.5" :style="{ backgroundColor: biz.color }" />
             
-            <div class="flex items-start justify-between">
+            <div class="flex items-start justify-between cursor-pointer" @click="selectBranch(branch.id)">
               <div>
                 <h3 class="font-semibold text-gray-900 group-hover:text-gray-700">{{ branch.name }}</h3>
                 <span v-if="!branch.isActive" class="inline-block mt-1 px-2 py-0.5 bg-red-100 text-red-600 text-xs rounded-full font-medium">Nonaktif</span>
               </div>
+              
               <div class="text-gray-300 group-hover:text-gray-500 transition-colors">
                 <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
               </div>
             </div>
-          </button>
+
+            <!-- Branch Footer Actions -->
+            <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+              <button @click="selectBranch(branch.id)" class="text-xs font-semibold text-primary-600 hover:underline">
+                Kelola Cabang Ini →
+              </button>
+
+              <button
+                @click.stop="confirmDelete('branch', branch.id, branch.name, biz.name)"
+                class="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                title="Hapus Cabang"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
           
           <div v-if="!biz.branches || biz.branches.length === 0" class="col-span-full text-center py-4 text-sm text-gray-400 font-medium">
             Belum ada cabang.
@@ -57,7 +83,7 @@
       <div class="text-center pt-4">
         <button
           @click="showAddBusinessModal = true"
-          class="inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:text-primary-600 hover:border-primary-300 hover:bg-primary-50 transition-colors font-medium"
+          class="inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:text-primary-600 hover:border-primary-300 hover:bg-primary-50 transition-colors font-medium cursor-pointer"
         >
           <Plus class="w-5 h-5" />
           Daftarkan Bisnis Baru
@@ -140,13 +166,55 @@
       </div>
     </div>
 
+    <!-- Modal Konfirmasi Hapus -->
+    <Teleport to="body">
+      <div v-if="showDeleteModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 text-center shadow-xl">
+          <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+            <Trash2 class="w-6 h-6" />
+          </div>
+          
+          <h3 class="text-lg font-bold text-gray-900 mb-1">
+            Konfirmasi Hapus {{ deleteTarget?.type === 'business' ? 'Bisnis' : 'Cabang' }}
+          </h3>
+          
+          <p class="text-sm text-gray-600 mb-4">
+            Apakah Anda yakin ingin menghapus <strong class="text-gray-900">{{ deleteTarget?.name }}</strong>
+            <span v-if="deleteTarget?.type === 'branch'"> pada bisnis <strong>{{ deleteTarget?.parentName }}</strong></span>?
+          </p>
+
+          <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-xs mb-4 text-left font-medium">
+            ⚠️ {{ errorMessage }}
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              @click="closeDeleteModal"
+              :disabled="isDeleting"
+              class="flex-1 py-2.5 px-4 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              @click="executeDelete"
+              :disabled="isDeleting"
+              class="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <span v-if="isDeleting" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+              <span>Hapus Sekarang</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import {
   Store, Soup, CupSoda, Utensils, Coffee, ShoppingBag, Shirt,
-  Scissors, Wrench, Sparkles, Package, Building, Heart, Star, Pizza, Sandwich, Cake, Plus
+  Scissors, Wrench, Sparkles, Package, Building, Heart, Star, Pizza, Sandwich, Cake, Plus, Trash2
 } from 'lucide-vue-next'
 import type { Business } from '~/stores/business'
 
@@ -164,6 +232,11 @@ const showAddBranchModal = ref(false)
 const targetBusiness = ref<Business | null>(null)
 const newBranchName = ref('')
 const isSaving = ref(false)
+
+const showDeleteModal = ref(false)
+const deleteTarget = ref<{ type: 'business' | 'branch', id: string, name: string, parentName?: string } | null>(null)
+const isDeleting = ref(false)
+const errorMessage = ref('')
 
 const newBiz = ref({
   nama: '',
@@ -188,6 +261,48 @@ function openAddBranchModal(biz: Business) {
   targetBusiness.value = biz
   newBranchName.value = ''
   showAddBranchModal.value = true
+}
+
+function confirmDelete(type: 'business' | 'branch', id: string, name: string, parentName?: string) {
+  deleteTarget.value = { type, id, name, parentName }
+  errorMessage.value = ''
+  showDeleteModal.value = true
+}
+
+function closeDeleteModal() {
+  if (isDeleting.value) return
+  showDeleteModal.value = false
+  deleteTarget.value = null
+  errorMessage.value = ''
+}
+
+async function executeDelete() {
+  if (!deleteTarget.value) return
+  isDeleting.value = true
+  errorMessage.value = ''
+
+  try {
+    let res: any
+    if (deleteTarget.value.type === 'business') {
+      res = await bizStore.deleteBusiness(deleteTarget.value.id)
+    } else {
+      res = await bizStore.deleteBranch(deleteTarget.value.id)
+    }
+
+    if (res.success) {
+      toast.success(res.message || 'Berhasil dihapus')
+      closeDeleteModal()
+    } else {
+      errorMessage.value = res.message || 'Gagal menghapus'
+      toast.error(res.message || 'Gagal menghapus')
+    }
+  } catch (e: any) {
+    const msg = e.data?.message || e.message || 'Gagal menghapus'
+    errorMessage.value = msg
+    toast.error(msg)
+  } finally {
+    isDeleting.value = false
+  }
 }
 
 async function handleAddBranch() {
@@ -224,8 +339,6 @@ async function handleAddBusiness() {
     })
     
     if (res.success) {
-      // API currently creates business but wait, does API create default branch? No, API POST /businesses doesn't.
-      // But let's assume business is created, user can add branch manually.
       toast.success('Bisnis berhasil didaftarkan')
       showAddBusinessModal.value = false
       newBiz.value = { nama: '', icon: 'Store', color: '#3B82F6' }

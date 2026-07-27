@@ -170,6 +170,47 @@ export const useBusinessStore = defineStore('business', () => {
     }
   }
 
+  async function deleteBusiness(businessId: string) {
+    try {
+      const { fetchWithAuth } = useApi()
+      const { invalidateCache } = useCachedFetch()
+      const res = await fetchWithAuth<any>(`/businesses/${businessId}`, {
+        method: 'DELETE'
+      })
+      if (res.success) {
+        invalidateCache('/businesses')
+        invalidateCache('/branches')
+        await fetchAll(true)
+      }
+      return res
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.data?.message || error.message || 'Gagal menghapus bisnis'
+      }
+    }
+  }
+
+  async function deleteBranch(branchId: string) {
+    try {
+      const { fetchWithAuth } = useApi()
+      const { invalidateCache } = useCachedFetch()
+      const res = await fetchWithAuth<any>(`/branches/${branchId}`, {
+        method: 'DELETE'
+      })
+      if (res.success) {
+        invalidateCache('/branches')
+        await fetchAll(true)
+      }
+      return res
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.data?.message || error.message || 'Gagal menghapus cabang'
+      }
+    }
+  }
+
   return {
     businesses,
     branches,
@@ -185,6 +226,8 @@ export const useBusinessStore = defineStore('business', () => {
     addBusiness,
     addBranch,
     toggleBusinessStatus,
-    toggleBranchStatus
+    toggleBranchStatus,
+    deleteBusiness,
+    deleteBranch
   }
 })
