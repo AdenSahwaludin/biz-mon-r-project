@@ -25,10 +25,10 @@
           <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name }}</p>
         </div>
 
-        <!-- SKU / Barcode Input with Lock Toggle -->
+        <!-- SKU (Stock Keeping Unit) with Lock Toggle -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-sm font-medium text-gray-700">SKU / Barcode</label>
+            <label class="block text-sm font-medium text-gray-700">SKU <span class="text-xs text-gray-400 font-normal">(Kode Unik Stok)</span></label>
             <button
               type="button"
               @click="isEditingSku = !isEditingSku"
@@ -41,17 +41,29 @@
           </div>
           
           <input
-            v-model="form.barcode"
+            v-model="form.sku"
             :disabled="!isEditingSku"
             type="text"
-            placeholder="Scan atau masukkan SKU/barcode manual"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
-            :class="!isEditingSku ? 'bg-gray-100/90 text-gray-500 font-mono cursor-not-allowed' : 'bg-white text-gray-900 font-mono'"
+            placeholder="Masukkan kode SKU"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-colors font-mono font-bold"
+            :class="!isEditingSku ? 'bg-gray-100/90 text-gray-800 cursor-not-allowed' : 'bg-white text-gray-900'"
           />
           <p v-if="!isEditingSku" class="mt-1 text-[11px] text-gray-500">
-            🔒 SKU dikunci secara default. Klik "Ubah SKU Manual" untuk mengedit kode ini.
+            🔒 SKU dikunci secara default. Klik <span class="font-semibold text-primary-600">"Ubah SKU Manual"</span> untuk mengedit kode ini.
           </p>
-          <p v-else-if="errors.barcode" class="mt-1 text-xs text-red-500">{{ errors.barcode }}</p>
+          <p v-else-if="errors.sku" class="mt-1 text-xs text-red-500">{{ errors.sku }}</p>
+        </div>
+
+        <!-- Barcode Fisik (Opsional) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Barcode Fisik <span class="text-xs text-gray-400 font-normal">(Opsional - Scan kemasan/pabrik)</span></label>
+          <input
+            v-model="form.barcode"
+            type="text"
+            placeholder="Scan atau masukkan kode barcode fisik (opsional)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none font-mono"
+          />
+          <p v-if="errors.barcode" class="mt-1 text-xs text-red-500">{{ errors.barcode }}</p>
         </div>
 
         <!-- Kategori -->
@@ -126,6 +138,7 @@ const initialCategoryId = ref<string>('')
 const form = reactive({
   businessId: '',
   name: '',
+  sku: '',
   barcode: '',
   categoryId: '',
   price: 0,
@@ -137,6 +150,7 @@ const form = reactive({
 const errors = reactive({
   businessId: '',
   name: '',
+  sku: '',
   barcode: '',
   categoryId: '',
   price: '',
@@ -156,6 +170,7 @@ onMounted(async () => {
       if (prod) {
         form.businessId = prod.businessId
         form.name = prod.name
+        form.sku = prod.sku || ''
         form.barcode = prod.barcode || ''
         form.price = prod.price
         form.stock = prod.stock
@@ -233,7 +248,10 @@ async function handleSubmit() {
       navigateTo('/produk')
     } else {
       toast.error(res.message || 'Gagal memperbarui produk')
-      if (res.message?.includes('Barcode') || res.message?.includes('SKU')) {
+      if (res.message?.includes('SKU')) {
+        errors.sku = res.message
+      }
+      if (res.message?.includes('Barcode')) {
         errors.barcode = res.message
       }
     }

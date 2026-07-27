@@ -369,6 +369,7 @@ const filteredProducts = computed(() => {
   const q = searchQuery.value.toLowerCase()
   return bizProducts.value.filter((p) =>
     p.name.toLowerCase().includes(q) ||
+    (p.sku && p.sku.toLowerCase().includes(q)) ||
     (p.barcode && p.barcode.toLowerCase().includes(q)) ||
     (p.category?.name && p.category.name.toLowerCase().includes(q))
   )
@@ -378,24 +379,17 @@ const quickAmounts = computed(() => {
   const sub = cart.subtotal
   if (sub <= 0) return [10000, 20000, 50000, 100000]
   
-  const amounts = new Set<number>()
-  amounts.add(sub)
-  
-  amounts.add(Math.ceil(sub / 5000) * 5000)
-  amounts.add(Math.ceil(sub / 10000) * 10000)
-  amounts.add(Math.ceil(sub / 20000) * 20000)
-  amounts.add(Math.ceil(sub / 50000) * 50000)
-  amounts.add(Math.ceil(sub / 100000) * 100000)
+  const roundedUp = Math.ceil(sub / 10000) * 10000
+  const next50 = Math.ceil(sub / 50000) * 50000
+  const next100 = Math.ceil(sub / 100000) * 100000
 
-  const indonesianBills = [5000, 10000, 20000, 50000, 100000]
-  indonesianBills.forEach(bill => {
-    if (bill > sub) amounts.add(bill)
-  })
+  const set = new Set<number>()
+  if (sub > 0) set.add(sub)
+  set.add(roundedUp)
+  set.add(next50)
+  set.add(next100)
 
-  return Array.from(amounts)
-    .filter(v => v >= sub)
-    .sort((a, b) => a - b)
-    .slice(0, 4)
+  return Array.from(set).sort((a, b) => a - b).slice(0, 4)
 })
 
 const canPay = computed(() => {
@@ -405,10 +399,10 @@ const canPay = computed(() => {
 })
 
 function handleBarcode() {
-  const code = barcodeValue.value.trim()
+  const code = barcodeValue.value.trim().toLowerCase()
   if (!code) return
 
-  const prod = bizProducts.value.find((p) => p.barcode === code)
+  const prod = bizProducts.value.find((p) => (p.barcode && p.barcode.toLowerCase() === code) || (p.sku && p.sku.toLowerCase() === code))
   if (prod) {
     cart.addItem(prod)
     toast.success(`${prod.name} ditambahkan`)

@@ -149,7 +149,10 @@
             <td class="py-3.5 px-4">
               <div>
                 <p class="text-sm font-medium text-gray-900">{{ prod.name }}</p>
-                <p v-if="prod.barcode" class="text-xs text-gray-400 font-mono">{{ prod.barcode }}</p>
+                <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                  <span v-if="prod.sku" class="text-[11px] font-mono text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded font-bold">SKU: {{ prod.sku }}</span>
+                  <span v-if="prod.barcode" class="text-[11px] font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-bold">BC: {{ prod.barcode }}</span>
+                </div>
               </div>
             </td>
             <td class="py-3.5 px-4 text-sm text-gray-600">
@@ -327,11 +330,11 @@
 
         <!-- Instruction / Format Tip -->
         <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5 text-xs text-blue-800 space-y-1.5">
-          <p class="font-bold">Urutan Kolom File CSV (A - H):</p>
+          <p class="font-bold">Urutan Kolom File CSV (A - I):</p>
           <p class="font-mono text-[11px] bg-blue-100/80 p-2 rounded-lg text-blue-950">
-            A: SKU/Barcode | B: Nama Produk | C: Bisnis | D: Kategori | E: Harga | F: Stok | G: Satuan | H: Status
+            A: SKU | B: Barcode | C: Nama Produk | D: Bisnis | E: Kategori | F: Harga | G: Stok | H: Satuan | I: Status
           </p>
-          <p>• Produk dengan <strong>SKU</strong> atau <strong>Nama Produk yang sama</strong> pada bisnis terkait akan <strong>dilewati (*skipped*) secara otomatis</strong>.</p>
+          <p>• Produk dengan <strong>SKU</strong>, <strong>Barcode</strong>, atau <strong>Nama Produk yang sama</strong> pada bisnis terkait akan <strong>dilewati (*skipped*) secara otomatis</strong>.</p>
         </div>
 
         <!-- Upload File Drop Area -->
@@ -515,6 +518,7 @@ const filteredData = computed(() => {
     const q = search.value.toLowerCase()
     data = data.filter((p) =>
       p.name.toLowerCase().includes(q) ||
+      (p.sku && p.sku.toLowerCase().includes(q)) ||
       (p.barcode && p.barcode.toLowerCase().includes(q)) ||
       (p.category?.name && p.category.name.toLowerCase().includes(q))
     )
@@ -611,8 +615,9 @@ function exportCSV() {
     return
   }
 
-  const headers = ['SKU', 'Nama Produk', 'Bisnis', 'Kategori', 'Harga', 'Stok', 'Satuan', 'Status']
+  const headers = ['SKU', 'Barcode', 'Nama Produk', 'Bisnis', 'Kategori', 'Harga', 'Stok', 'Satuan', 'Status']
   const rows = dataToExport.map(p => [
+    `"${(p.sku || '').replace(/"/g, '""')}"`,
     `"${(p.barcode || '').replace(/"/g, '""')}"`,
     `"${(p.name || '').replace(/"/g, '""')}"`,
     `"${(p.business?.name || '').replace(/"/g, '""')}"`,
@@ -623,7 +628,7 @@ function exportCSV() {
     p.isActive ? 'Aktif' : 'Nonaktif'
   ])
 
-  // sep=; directive ensures Excel on Windows splits columns A, B, C, D, E, F, G, H automatically
+  // sep=; directive ensures Excel on Windows splits columns A to I automatically
   const csvContent = '\uFEFFsep=;\n' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n')
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
@@ -657,9 +662,10 @@ function exportPDF() {
   doc.setFont('helvetica', 'normal')
   doc.text(`Tanggal Cetak: ${dateStr} | Total: ${dataToExport.length} Produk`, 14, 25)
 
-  const tableHeaders = [['No', 'SKU', 'Nama Produk', 'Bisnis', 'Kategori', 'Harga', 'Stok', 'Status']]
+  const tableHeaders = [['No', 'SKU', 'Barcode', 'Nama Produk', 'Bisnis', 'Kategori', 'Harga', 'Stok', 'Status']]
   const tableData = dataToExport.map((p, index) => [
     index + 1,
+    p.sku || '-',
     p.barcode || '-',
     p.name,
     p.business?.name || '-',
@@ -759,24 +765,26 @@ function parseCSV(csvText: string) {
     h.includes('sku') || h.includes('barcode') || h.includes('nama') || h.includes('produk') || h.includes('harga') || h.includes('stok')
   )
 
-  // Explicit Column Order (A: SKU, B: Nama Produk, C: Bisnis, D: Kategori, E: Harga, F: Stok, G: Satuan, H: Status)
-  let skuIdx = isHeader ? firstRowLower.findIndex(h => h.includes('sku') || h.includes('barcode')) : 0
-  let nameIdx = isHeader ? firstRowLower.findIndex(h => h.includes('nama') || h.includes('name') || h.includes('produk')) : 1
-  let bizIdx = isHeader ? firstRowLower.findIndex(h => h.includes('bisnis') || h.includes('business')) : 2
-  let catIdx = isHeader ? firstRowLower.findIndex(h => h.includes('kategori') || h.includes('category')) : 3
-  let priceIdx = isHeader ? firstRowLower.findIndex(h => h.includes('harga') || h.includes('price')) : 4
-  let stockIdx = isHeader ? firstRowLower.findIndex(h => h.includes('stok') || h.includes('stock')) : 5
-  let unitIdx = isHeader ? firstRowLower.findIndex(h => h.includes('satuan') || h.includes('unit')) : 6
-  let statusIdx = isHeader ? firstRowLower.findIndex(h => h.includes('status')) : 7
+  // Explicit Column Order (A: SKU, B: Barcode, C: Nama Produk, D: Bisnis, E: Kategori, F: Harga, G: Stok, H: Satuan, I: Status)
+  let skuIdx = isHeader ? firstRowLower.findIndex(h => h === 'sku') : 0
+  let barcodeIdx = isHeader ? firstRowLower.findIndex(h => h.includes('barcode')) : 1
+  let nameIdx = isHeader ? firstRowLower.findIndex(h => h.includes('nama') || h.includes('name') || h.includes('produk')) : 2
+  let bizIdx = isHeader ? firstRowLower.findIndex(h => h.includes('bisnis') || h.includes('business')) : 3
+  let catIdx = isHeader ? firstRowLower.findIndex(h => h.includes('kategori') || h.includes('category')) : 4
+  let priceIdx = isHeader ? firstRowLower.findIndex(h => h.includes('harga') || h.includes('price')) : 5
+  let stockIdx = isHeader ? firstRowLower.findIndex(h => h.includes('stok') || h.includes('stock')) : 6
+  let unitIdx = isHeader ? firstRowLower.findIndex(h => h.includes('satuan') || h.includes('unit')) : 7
+  let statusIdx = isHeader ? firstRowLower.findIndex(h => h.includes('status')) : 8
 
   if (skuIdx === -1) skuIdx = 0
-  if (nameIdx === -1) nameIdx = 1
-  if (bizIdx === -1) bizIdx = 2
-  if (catIdx === -1) catIdx = 3
-  if (priceIdx === -1) priceIdx = 4
-  if (stockIdx === -1) stockIdx = 5
-  if (unitIdx === -1) unitIdx = 6
-  if (statusIdx === -1) statusIdx = 7
+  if (barcodeIdx === -1) barcodeIdx = 1
+  if (nameIdx === -1) nameIdx = 2
+  if (bizIdx === -1) bizIdx = 3
+  if (catIdx === -1) catIdx = 4
+  if (priceIdx === -1) priceIdx = 5
+  if (stockIdx === -1) stockIdx = 6
+  if (unitIdx === -1) unitIdx = 7
+  if (statusIdx === -1) statusIdx = 8
 
   const parsedProducts: any[] = []
   const startRowIndex = isHeader ? 1 : 0
@@ -785,7 +793,7 @@ function parseCSV(csvText: string) {
     const row = splitRow(lines[i])
     if (row.length === 0 || !row.some(cell => cell.length > 0)) continue
 
-    const nameVal = row[nameIdx] || row[1] || row[0]
+    const nameVal = row[nameIdx] || row[2] || row[1] || row[0]
     if (!nameVal) continue
 
     const priceVal = row[priceIdx] !== undefined ? row[priceIdx] : ''
@@ -794,6 +802,7 @@ function parseCSV(csvText: string) {
 
     parsedProducts.push({
       sku: row[skuIdx] || '',
+      barcode: row[barcodeIdx] || '',
       name: nameVal,
       businessName: row[bizIdx] || '',
       categoryName: row[catIdx] || '',

@@ -4,6 +4,7 @@ import { prisma } from '../../utils/prisma'
 import { successResponse, errorResponse } from '../../utils/response'
 
 const createSchema = z.object({
+  sku: z.string().optional().nullable(),
   barcode: z.string().optional().nullable(),
   name: z.string().min(1, 'Nama produk wajib diisi'),
   price: z.number().min(0, 'Harga tidak boleh negatif').max(2000000000, 'Harga terlalu besar'),
@@ -20,21 +21,22 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const data = createSchema.parse(body)
 
+    let finalSku = data.sku ? data.sku.trim() : ''
     let finalBarcode = data.barcode ? data.barcode.trim() : ''
 
-    if (finalBarcode) {
-      const existingBarcode = await prisma.product.findFirst({
+    // Check SKU Uniqueness if provided
+    if (finalSku) {
+      const existingSku = await prisma.product.findFirst({
         where: {
-          barcode: finalBarcode,
+          sku: finalSku,
           businessId: data.businessId
         }
       })
-
-      if (existingBarcode) {
-        return errorResponse(event, 400, 'Barcode/SKU sudah digunakan di bisnis ini')
+      if (existingSku) {
+        return errorResponse(event, 400, 'SKU sudah digunakan di bisnis ini')
       }
     } else {
-      // Auto-generate neat & clean SKU format if left empty (e.g., WS-001 or PRD-001)
+      // Auto-generate SKU (e.g. WS-001 or ET-001)
       const count = await prisma.product.count({
         where: { businessId: data.businessId }
       })
@@ -49,16 +51,30 @@ export default defineEventHandler(async (event) => {
       let candidate = `${prefix}-${String(count + 1).padStart(3, '0')}`
       let counter = count + 1
 
-      while (await prisma.product.findFirst({ where: { barcode: candidate, businessId: data.businessId } })) {
+      while (await prisma.product.findFirst({ where: { sku: candidate, businessId: data.businessId } })) {
         counter++
         candidate = `${prefix}-${String(counter).padStart(3, '0')}`
       }
-      finalBarcode = candidate
+      finalSku = candidate
+    }
+
+    // Check Barcode Uniqueness if provided
+    if (finalBarcode) {
+      const existingBarcode = await prisma.product.findFirst({
+        where: {
+          barcode: finalBarcode,
+          businessId: data.businessId
+        }
+      })
+      if (existingBarcode) {
+        return errorResponse(event, 400, 'Barcode sudah digunakan di bisnis ini')
+      }
     }
 
     const product = await prisma.product.create({
       data: {
-        barcode: finalBarcode,
+        sku: finalSku,
+        barcode: finalBarcode || null,
         name: data.name,
         price: data.price,
         stock: data.stock,

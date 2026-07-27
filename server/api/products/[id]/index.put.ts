@@ -4,6 +4,7 @@ import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
 const updateSchema = z.object({
+  sku: z.string().optional().nullable(),
   barcode: z.string().optional().nullable(),
   name: z.string().min(1, 'Nama produk wajib diisi'),
   price: z.number().min(0, 'Harga tidak boleh negatif').max(2000000000, 'Harga terlalu besar'),
@@ -29,24 +30,42 @@ export default defineEventHandler(async (event) => {
       throw createError(errorResponse(event, 404, 'Product not found'))
     }
 
-    if (data.barcode && data.barcode !== product.barcode) {
-      const existingBarcode = await prisma.product.findUnique({
+    const finalSku = data.sku ? data.sku.trim() : null
+    const finalBarcode = data.barcode ? data.barcode.trim() : null
+
+    // Check SKU Uniqueness if changed
+    if (finalSku && finalSku !== product.sku) {
+      const existingSku = await prisma.product.findFirst({
         where: {
-          barcode_businessId: {
-            barcode: data.barcode,
-            businessId: product.businessId
-          }
+          sku: finalSku,
+          businessId: product.businessId,
+          NOT: { id }
+        }
+      })
+      if (existingSku) {
+        return errorResponse(event, 400, 'SKU sudah digunakan di bisnis ini')
+      }
+    }
+
+    // Check Barcode Uniqueness if changed
+    if (finalBarcode && finalBarcode !== product.barcode) {
+      const existingBarcode = await prisma.product.findFirst({
+        where: {
+          barcode: finalBarcode,
+          businessId: product.businessId,
+          NOT: { id }
         }
       })
       if (existingBarcode) {
-        throw createError(errorResponse(event, 400, 'Barcode already exists in this business'))
+        return errorResponse(event, 400, 'Barcode sudah digunakan di bisnis ini')
       }
     }
 
     const updated = await prisma.product.update({
       where: { id },
       data: {
-        barcode: data.barcode || product.barcode,
+        sku: finalSku ?? product.sku,
+        barcode: finalBarcode,
         name: data.name,
         price: data.price,
         stock: data.stock,
@@ -56,7 +75,7 @@ export default defineEventHandler(async (event) => {
       }
     })
 
-    return successResponse(updated, 'Product updated successfully')
+    return successResponse(updated, 'Produk berhasil diperbarui')
   } catch (error: any) {
     if (error.name === 'ZodError') {
       return errorResponse(event, 400, 'Validation Error', error.errors)

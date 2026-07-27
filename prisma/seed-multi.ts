@@ -4,14 +4,6 @@ import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import bcrypt from 'bcryptjs'
 
 function getPrisma(): PrismaClient {
-  const url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL
-  const authToken = process.env.TURSO_AUTH_TOKEN
-
-  if (url && (url.startsWith('libsql://') || url.startsWith('https://'))) {
-    const libsql = createClient({ url, authToken })
-    const adapter = new PrismaLibSQL(libsql)
-    return new PrismaClient({ adapter } as any)
-  }
   return new PrismaClient()
 }
 
@@ -336,13 +328,14 @@ async function main() {
 
       for (const pItem of catItem.products) {
         let prod = await prisma.product.findFirst({
-          where: { barcode: pItem.barcode, businessId: tb.biz.id }
+          where: { sku: pItem.barcode, businessId: tb.biz.id }
         })
 
         if (!prod) {
           prod = await prisma.product.create({
             data: {
-              barcode: pItem.barcode,
+              sku: pItem.barcode,
+              barcode: null,
               name: pItem.name,
               price: pItem.price,
               unit: pItem.unit,

@@ -21,10 +21,10 @@
           <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name }}</p>
         </div>
 
-        <!-- SKU / Barcode Input with Lock Toggle -->
+        <!-- SKU (Stock Keeping Unit) with Lock Toggle -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-sm font-medium text-gray-700">SKU / Barcode</label>
+            <label class="block text-sm font-medium text-gray-700">SKU <span class="text-xs text-gray-400 font-normal">(Kode Unik Stok)</span></label>
             <button
               type="button"
               @click="toggleEditSku"
@@ -32,22 +32,40 @@
             >
               <Lock v-if="!isEditingSku" class="w-3.5 h-3.5" />
               <Unlock v-else class="w-3.5 h-3.5" />
-              <span>{{ isEditingSku ? 'Kunci (Otomatis)' : 'Ubah SKU Manual' }}</span>
+              <span>{{ isEditingSku ? 'Kunci (Preview Otomatis)' : 'Ubah SKU Manual' }}</span>
             </button>
           </div>
           
+          <div class="relative">
+            <input
+              v-model="form.sku"
+              :disabled="!isEditingSku"
+              type="text"
+              :placeholder="isEditingSku ? 'Masukkan kode SKU manual' : 'Memuat preview SKU...'"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-colors font-mono font-bold"
+              :class="!isEditingSku ? 'bg-gray-100/90 text-gray-800 cursor-not-allowed' : 'bg-white text-gray-900'"
+            />
+            <span v-if="!isEditingSku && autoSkuValue" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Otomatis
+            </span>
+          </div>
+
+          <p v-if="!isEditingSku" class="mt-1 text-[11px] text-gray-500">
+            🔒 SKU dikunci. Dibuatkan kode unik otomatis saat disimpan. Klik <span class="font-semibold text-primary-600">"Ubah SKU Manual"</span> jika ingin mengetik SKU sendiri.
+          </p>
+          <p v-else-if="errors.sku" class="mt-1 text-xs text-red-500">{{ errors.sku }}</p>
+        </div>
+
+        <!-- Barcode Fisik (Opsional) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Barcode Fisik <span class="text-xs text-gray-400 font-normal">(Opsional - Scan kemasan/pabrik)</span></label>
           <input
             v-model="form.barcode"
-            :disabled="!isEditingSku"
             type="text"
-            :placeholder="isEditingSku ? 'Scan atau masukkan SKU/barcode manual' : autoSkuPlaceholder"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-colors"
-            :class="!isEditingSku ? 'bg-gray-100/90 text-gray-500 font-mono cursor-not-allowed' : 'bg-white text-gray-900 font-mono'"
+            placeholder="Scan atau masukkan kode barcode fisik (opsional)"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none font-mono"
           />
-          <p v-if="!isEditingSku" class="mt-1 text-[11px] text-gray-500">
-            🔒 SKU dikunci. Kode unik rapi akan dibuatkan secara otomatis oleh sistem saat disimpan.
-          </p>
-          <p v-else-if="errors.barcode" class="mt-1 text-xs text-red-500">{{ errors.barcode }}</p>
+          <p v-if="errors.barcode" class="mt-1 text-xs text-red-500">{{ errors.barcode }}</p>
         </div>
 
         <!-- Kategori -->
@@ -115,11 +133,13 @@ const { fetchWithAuth } = useApi()
 const isLoading = ref(false)
 const isCategoriesLoading = ref(false)
 const isEditingSku = ref(false)
+const autoSkuValue = ref('')
 const availableCategories = ref<any[]>([])
 
 const form = reactive({
   businessId: '',
   name: '',
+  sku: '',
   barcode: '',
   categoryId: '',
   price: 0,
@@ -131,6 +151,7 @@ const form = reactive({
 const errors = reactive({
   businessId: '',
   name: '',
+  sku: '',
   barcode: '',
   categoryId: '',
   price: '',
@@ -138,21 +159,38 @@ const errors = reactive({
   unit: '',
 })
 
-const selectedBusinessName = computed(() => {
-  const biz = businessList.value.find(b => b.id === form.businessId)
-  return biz?.name || ''
-})
+async function updateAutoSku(businessId: string) {
+  if (!businessId) {
+    autoSkuValue.value = ''
+    if (!isEditingSku.value) form.sku = ''
+    return
+  }
 
-const autoSkuPlaceholder = computed(() => {
-  if (!selectedBusinessName.value) return 'Otomatis (Pilih bisnis terlebih dahulu)'
-  const prefix = selectedBusinessName.value.split(' ').map(w => w[0]).join('').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'PRD'
-  return `Otomatis (Contoh: ${prefix}-001)`
-})
+  const biz = businessList.value.find(b => b.id === businessId)
+  const rawPrefix = biz?.name ? biz.name.split(' ').map(w => w[0]).join('').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) : 'PRD'
+  const prefix = rawPrefix.length > 0 ? rawPrefix : 'PRD'
+
+  try {
+    const res = await fetchWithAuth<any>(`/products?businessId=${businessId}`)
+    if (res.success && Array.isArray(res.data)) {
+      const count = res.data.length
+      autoSkuValue.value = `${prefix}-${String(count + 1).padStart(3, '0')}`
+    } else {
+      autoSkuValue.value = `${prefix}-001`
+    }
+  } catch (e) {
+    autoSkuValue.value = `${prefix}-001`
+  }
+
+  if (!isEditingSku.value) {
+    form.sku = autoSkuValue.value
+  }
+}
 
 function toggleEditSku() {
   isEditingSku.value = !isEditingSku.value
   if (!isEditingSku.value) {
-    form.barcode = ''
+    form.sku = autoSkuValue.value
   }
 }
 
@@ -163,12 +201,16 @@ onMounted(async () => {
   if (!form.businessId) {
     form.businessId = bizStore.activeBusiness?.id || authStore.userBusiness?.id || ''
   }
+  if (form.businessId) {
+    await updateAutoSku(form.businessId)
+  }
 })
 
 watch(() => form.businessId, async (newId) => {
   form.categoryId = ''
   availableCategories.value = []
   if (newId) {
+    await updateAutoSku(newId)
     isCategoriesLoading.value = true
     try {
       const res = await fetchWithAuth<any>(`/categories?businessId=${newId}`)
@@ -211,7 +253,10 @@ async function handleSubmit() {
       navigateTo('/produk')
     } else {
       toast.error(res.message || 'Gagal menyimpan produk')
-      if (res.message?.includes('Barcode') || res.message?.includes('SKU')) {
+      if (res.message?.includes('SKU')) {
+        errors.sku = res.message
+      }
+      if (res.message?.includes('Barcode')) {
         errors.barcode = res.message
       }
     }

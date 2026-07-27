@@ -297,7 +297,8 @@ async function seedSembako() {
     for (const prod of catData.products) {
       allProductsToCreate.push({
         id: 'smb-' + prod.barcode.toLowerCase(),
-        barcode: prod.barcode,
+        sku: prod.barcode,
+        barcode: null,
         name: prod.name,
         price: prod.price,
         stock: 100,
