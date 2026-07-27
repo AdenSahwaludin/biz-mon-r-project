@@ -2,76 +2,135 @@
   <div class="h-[calc(100vh-7rem)] flex flex-col lg:flex-row gap-4">
     <!-- Left Panel: Products -->
     <div class="flex-1 flex flex-col min-h-0" :class="{ 'hidden lg:flex': showCart }">
-      <!-- Barcode + Search -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4 shrink-0">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <!-- Barcode Input -->
-          <div class="flex-1">
-            <label class="block text-xs font-medium text-gray-500 mb-1">Scan Barcode</label>
-            <div class="relative">
-              <input
-                ref="barcodeInput"
-                v-model="barcodeValue"
-                @keydown.enter="handleBarcode"
-                type="text"
-                placeholder="Scan barcode di sini..."
-                class="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                autofocus
-              />
-              <button
-                v-if="barcodeValue"
-                @click="barcodeValue = ''"
-                type="button"
-                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
-                title="Hapus"
-              >
-                <X class="w-4 h-4" />
-              </button>
-            </div>
+      <!-- Top Control Bar: Toggle Filter & Product Count -->
+      <div class="flex items-center justify-between mb-3 shrink-0 bg-white rounded-xl border border-gray-200 px-3 sm:px-4 py-2 sm:py-2.5 shadow-2xs gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <button
+            @click="showFilter = !showFilter"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all select-none whitespace-nowrap shrink-0"
+            :class="showFilter
+              ? 'bg-primary-50 text-primary-700 border border-primary-200 hover:bg-primary-100'
+              : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'"
+          >
+            <SlidersHorizontal class="w-3.5 h-3.5 shrink-0" />
+            <span class="whitespace-nowrap">
+              <span class="hidden sm:inline">{{ showFilter ? 'Sembunyikan' : 'Tampilkan' }} </span>Filter
+            </span>
+            <ChevronUp v-if="showFilter" class="w-3.5 h-3.5 text-primary-500 shrink-0" />
+            <ChevronDown v-else class="w-3.5 h-3.5 text-gray-500 shrink-0" />
+          </button>
+
+          <!-- Active Filter Badge -->
+          <div v-if="isAnyFilterActive" class="flex items-center gap-1 shrink-0">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              <span class="hidden sm:inline">Filter </span>Aktif
+            </span>
+            <button
+              @click="resetFilters"
+              class="text-gray-400 hover:text-red-600 transition-colors p-1 shrink-0"
+              title="Reset Semua Filter"
+            >
+              <XCircle class="w-3.5 h-3.5" />
+            </button>
           </div>
-          <!-- Search -->
-          <div class="flex-1">
-            <label class="block text-xs font-medium text-gray-500 mb-1">Cari Produk</label>
-            <div class="relative">
-              <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Ketik nama produk..."
-                class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              />
-              <button
-                v-if="searchQuery"
-                @click="searchQuery = ''"
-                type="button"
-                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
-                title="Hapus"
-              >
-                <X class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+        </div>
+
+        <div class="text-xs font-medium text-gray-500 whitespace-nowrap shrink-0">
+          Total: <span class="font-bold text-gray-900">{{ filteredProducts.length }}</span> Produk
         </div>
       </div>
 
-      <!-- Sort Filter Bar -->
-      <div class="flex gap-2 mb-3 shrink-0 overflow-x-auto pb-1 scrollbar-none">
+      <!-- Collapsible Filter Section -->
+      <Transition name="expand">
+        <div v-show="showFilter" class="mb-3 shrink-0">
+          <div class="bg-white rounded-xl border border-gray-200 p-3">
+            <div class="grid grid-cols-2 gap-2">
+              <!-- Barcode Input -->
+              <div class="relative col-span-2 sm:col-span-1">
+                <input
+                  ref="barcodeInput"
+                  v-model="barcodeValue"
+                  @keydown.enter="handleBarcode"
+                  type="text"
+                  placeholder="Scan barcode..."
+                  class="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                  autofocus
+                />
+                <button
+                  v-if="barcodeValue"
+                  @click="barcodeValue = ''"
+                  type="button"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+                >
+                  <X class="w-4 h-4" />
+                </button>
+              </div>
+              <!-- Search Input -->
+              <div class="relative col-span-2 sm:col-span-1">
+                <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Cari produk..."
+                  class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                />
+                <button
+                  v-if="searchQuery"
+                  @click="searchQuery = ''"
+                  type="button"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+                >
+                  <X class="w-4 h-4" />
+                </button>
+              </div>
+              <!-- Category Dropdown -->
+              <select
+                v-if="categories.length > 0"
+                v-model="selectedCategory"
+                class="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white font-medium truncate cursor-pointer"
+              >
+                <option value="">Semua Kategori</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+              </select>
+              <!-- Sort Dropdown -->
+              <select
+                v-model="sortBy"
+                class="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white font-medium truncate cursor-pointer"
+              >
+                <option value="">Urutkan</option>
+                <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Mini Active Filter Summary Bar when Filter is Collapsed -->
+      <div
+        v-if="!showFilter && isAnyFilterActive"
+        class="mb-3 shrink-0 flex items-center justify-between gap-2 bg-amber-50/90 border border-amber-200 rounded-xl px-3.5 py-2 text-xs text-amber-900 shadow-2xs"
+      >
+        <div class="flex items-center gap-2 truncate">
+          <SlidersHorizontal class="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <span class="truncate">
+            <span class="font-semibold">Filter aktif:</span>
+            <span v-if="searchQuery" class="ml-1 font-medium bg-amber-100/80 px-1.5 py-0.5 rounded text-amber-800">"{{ searchQuery }}"</span>
+            <span v-if="selectedCategory" class="ml-1 font-medium bg-amber-100/80 px-1.5 py-0.5 rounded text-amber-800">{{ getCategoryName(selectedCategory) }}</span>
+            <span v-if="sortBy" class="ml-1 font-medium bg-amber-100/80 px-1.5 py-0.5 rounded text-amber-800">{{ getSortLabel(sortBy) }}</span>
+          </span>
+        </div>
         <button
-          v-for="opt in sortOptions"
-          :key="opt.value"
-          @click="sortBy = sortBy === opt.value ? '' : opt.value"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-all shrink-0"
-          :class="sortBy === opt.value
-            ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
-            : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300 hover:text-primary-600'"
+          @click="resetFilters"
+          class="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 hover:underline shrink-0"
         >
-          <component :is="opt.icon" class="w-3.5 h-3.5" />
-          {{ opt.label }}
+          <X class="w-3.5 h-3.5" /> Reset
         </button>
       </div>
 
       <!-- Product Grid -->
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1 overflow-y-auto min-h-0">
         <div v-if="isLoading" class="flex flex-col items-center justify-center py-16 text-center">
           <p class="text-gray-500">Memuat produk...</p>
         </div>
@@ -80,18 +139,33 @@
             v-for="prod in filteredProducts"
             :key="prod.id"
             @click="cart.addItem(prod)"
-            class="bg-white border border-gray-200 rounded-xl p-4 text-left hover:shadow-md hover:border-primary-200 transition-all group"
+            class="bg-white border border-gray-200 rounded-xl p-3.5 text-left hover:shadow-md hover:border-primary-300 transition-all group flex flex-col justify-between"
+            :title="prod.name"
           >
-            <div class="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mb-2 group-hover:bg-primary-100 transition-colors text-primary-600">
-              <component :is="getBusinessIcon(bizIcon)" class="w-5 h-5" />
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <div class="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors text-primary-600 shrink-0">
+                  <component :is="getBusinessIcon(bizIcon)" class="w-4 h-4" />
+                </div>
+                <span v-if="prod.unit && prod.unit !== 'pcs'" class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[50%]">
+                  {{ prod.unit }}
+                </span>
+              </div>
+              <p class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 leading-tight min-h-[2.25rem] group-hover:text-primary-600 transition-colors" :title="prod.name">
+                {{ prod.name }}
+              </p>
+              <p class="text-[11px] text-gray-400 mt-1 truncate">{{ prod.category?.name || 'Umum' }}</p>
             </div>
-            <p class="text-sm font-medium text-gray-900 truncate">{{ prod.name }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ prod.category?.name }}</p>
-            <p class="text-sm font-bold text-primary-600 mt-1">{{ fmt.format(prod.price) }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">Stok: {{ prod.stock }}</p>
-            <p v-if="sortBy === 'terlaris'" class="text-xs text-orange-500 font-medium mt-0.5 flex items-center gap-1">
-              <TrendingUp class="w-3 h-3" /> Terjual {{ prod.totalSold || 0 }}
-            </p>
+
+            <div class="mt-2 pt-2 border-t border-gray-100 flex items-baseline justify-between gap-1">
+              <div>
+                <p class="text-xs sm:text-sm font-bold text-primary-600">{{ fmt.format(prod.price) }}</p>
+                <p class="text-[10px] text-gray-400">Stok: {{ prod.stock }}</p>
+              </div>
+              <p v-if="sortBy === 'terlaris'" class="text-[10px] text-orange-500 font-medium flex items-center gap-0.5 shrink-0">
+                <TrendingUp class="w-3 h-3" /> {{ prod.totalSold || 0 }}
+              </p>
+            </div>
           </button>
         </div>
         <div v-else class="flex flex-col items-center justify-center py-16 text-center">
@@ -310,8 +384,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Search, Package, ShoppingCart, X, Minus, Plus, Banknote, Smartphone, CheckCircle, Soup, CupSoda, Utensils, Store, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, TrendingUp } from 'lucide-vue-next'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Search, Package, ShoppingCart, X, Minus, Plus, Banknote, Smartphone, CheckCircle, Soup, CupSoda, Utensils, Store, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, TrendingUp, SlidersHorizontal, ChevronUp, ChevronDown, XCircle } from 'lucide-vue-next'
 
 const cart = useCartStore()
 const auth = useAuthStore()
@@ -325,7 +399,9 @@ const { fetchWithCache, invalidateCache } = useCachedFetch()
 const barcodeInput = ref<HTMLInputElement>()
 const barcodeValue = ref('')
 const searchQuery = ref('')
+const selectedCategory = ref('')
 const sortBy = ref('')
+const showFilter = ref(true)
 const showCart = ref(false)
 const showSuccess = ref(false)
 const successData = ref<{ id: string; createdAt: string; total: number; bayar: number; kembalian: number; metode: string } | null>(null)
@@ -335,11 +411,45 @@ const products = ref<any[]>([])
 
 const isMobile = ref(false)
 
+let barcodeBuffer = ''
+let barcodeTimer: any = null
+
+function handleGlobalKeydown(e: KeyboardEvent) {
+  const tag = (e.target as HTMLElement)?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+  if (e.key === 'Enter') {
+    if (barcodeBuffer.length >= 2) {
+      const code = barcodeBuffer.trim().toLowerCase()
+      const prod = bizProducts.value.find((p) => (p.barcode && p.barcode.toLowerCase() === code) || (p.sku && p.sku.toLowerCase() === code))
+      if (prod) {
+        cart.addItem(prod)
+        toast.success(`${prod.name} ditambahkan`)
+      } else {
+        toast.error('Produk tidak ditemukan')
+      }
+    }
+    barcodeBuffer = ''
+    return
+  }
+
+  if (e.key.length === 1) {
+    barcodeBuffer += e.key
+    clearTimeout(barcodeTimer)
+    barcodeTimer = setTimeout(() => {
+      barcodeBuffer = ''
+    }, 200)
+  }
+}
+
+function handleResize() {
+  isMobile.value = window.innerWidth < 1024
+}
+
 onMounted(async () => {
   isMobile.value = window.innerWidth < 1024
-  window.addEventListener('resize', () => {
-    isMobile.value = window.innerWidth < 1024
-  })
+  window.addEventListener('resize', handleResize)
+  window.addEventListener('keydown', handleGlobalKeydown)
   
   if (biz.businesses.length === 0) {
     await biz.fetchAll()
@@ -348,7 +458,14 @@ onMounted(async () => {
   await fetchProducts()
   
   // Auto-focus barcode input
-  barcodeInput.value?.focus()
+  if (showFilter.value) {
+    barcodeInput.value?.focus()
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
 async function fetchProducts(forceRefresh = false) {
@@ -384,6 +501,34 @@ const bizProducts = computed(() => {
   return products.value.filter((p) => p.businessId === branch.businessId && p.isActive)
 })
 
+const categories = computed(() => {
+  const map = new Map<string, string>()
+  bizProducts.value.forEach((p) => {
+    if (p.category?.id && p.category?.name) {
+      map.set(p.category.id, p.category.name)
+    }
+  })
+  return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
+})
+
+const isAnyFilterActive = computed(() => !!searchQuery.value || !!selectedCategory.value || !!sortBy.value)
+
+function resetFilters() {
+  searchQuery.value = ''
+  selectedCategory.value = ''
+  sortBy.value = ''
+}
+
+function getCategoryName(id: string) {
+  const found = categories.value.find((c) => c.id === id)
+  return found ? found.name : ''
+}
+
+function getSortLabel(val: string) {
+  const found = sortOptions.find((s) => s.value === val)
+  return found ? found.label : ''
+}
+
 const sortOptions = [
   { value: 'price_asc',  label: 'Harga Terendah', icon: ArrowUpDown },
   { value: 'price_desc', label: 'Harga Tertinggi', icon: ArrowDownUp },
@@ -402,6 +547,9 @@ const filteredProducts = computed(() => {
       (p.barcode && p.barcode.toLowerCase().includes(q)) ||
       (p.category?.name && p.category.name.toLowerCase().includes(q))
     )
+  }
+  if (selectedCategory.value) {
+    list = list.filter((p) => p.category?.id === selectedCategory.value || p.categoryId === selectedCategory.value)
   }
   switch (sortBy.value) {
     case 'price_asc':  return [...list].sort((a, b) => a.price - b.price)
@@ -528,6 +676,21 @@ function printReceipt() {
 </script>
 
 <style>
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 500px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
 @media print {
   body * {
     visibility: hidden;

@@ -204,9 +204,47 @@ export const useBusinessStore = defineStore('business', () => {
       }
       return res
     } catch (error: any) {
+    }
+  }
+
+  async function updateBusiness(id: string, data: any) {
+    try {
+      const { fetchWithAuth } = useApi()
+      const { invalidateCache } = useCachedFetch()
+      const res = await fetchWithAuth<any>(`/businesses/${id}`, {
+        method: 'PUT',
+        body: data
+      })
+      if (res.success) {
+        invalidateCache('/businesses')
+        await fetchAll(true)
+      }
+      return res
+    } catch (error: any) {
       return {
         success: false,
-        message: error.data?.message || error.message || 'Gagal menghapus cabang'
+        message: error.data?.message || error.message || 'Gagal memperbarui bisnis'
+      }
+    }
+  }
+
+  async function updateBranch(id: string, data: { name: string }) {
+    try {
+      const { fetchWithAuth } = useApi()
+      const { invalidateCache } = useCachedFetch()
+      const res = await fetchWithAuth<any>(`/branches/${id}`, {
+        method: 'PUT',
+        body: data
+      })
+      if (res.success) {
+        invalidateCache('/branches')
+        await fetchAll(true)
+      }
+      return res
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.data?.message || error.message || 'Gagal memperbarui cabang'
       }
     }
   }
@@ -228,6 +266,8 @@ export const useBusinessStore = defineStore('business', () => {
     toggleBusinessStatus,
     toggleBranchStatus,
     deleteBusiness,
-    deleteBranch
+    deleteBranch,
+    updateBusiness,
+    updateBranch
   }
 })
