@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "nuxt build",
+    "build": "prisma generate && nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
@@ -11,7 +11,7 @@
     "db:push": "prisma db push",
     "db:import-turso": "bun prisma/import-from-turso.ts",
     "db:seed-transactions": "bun prisma/seed-transactions.ts",
-    "postinstall": "prisma generate && nuxt prepare"
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
@@ -20,22 +20,22 @@
     "@prisma/adapter-libsql": "5.22.0",
     "@prisma/client": "^5.22.0",
     "@types/bcryptjs": "^3.0.0",
-    "@vueuse/core": "^14.3.0",
-    "@vueuse/nuxt": "^14.3.0",
+    "@vueuse/core": "^12.0.0",
+    "@vueuse/nuxt": "^12.0.0",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
-    "lucide-vue-next": "^1.0.0",
-    "nuxt": "^4.4.8",
+    "lucide-vue-next": "^0.469.0",
+    "nuxt": "^3.15.4",
     "pinia": "^3.0.4",
     "prisma": "^5.22.0",
-    "vite": "^8.1.4",
-    "vue": "^3.5.39",
+    "vite": "^6.0.0",
+    "vue": "^3.5.13",
     "vue-chartjs": "^5.3.4",
-    "vue-router": "^5.1.0",
-    "zod": "^4.4.3"
+    "vue-router": "^4.5.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10"
