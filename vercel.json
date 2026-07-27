@@ -1,4 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nuxtjs"
+  "framework": "nuxtjs",
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "prisma generate && nuxt prepare && nuxt build"
 }
