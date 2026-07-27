@@ -198,8 +198,8 @@ function confirmDelete(type: 'business' | 'branch', id: string, name: string, pa
   showDeleteModal.value = true
 }
 
-function closeDeleteModal() {
-  if (isDeleting.value) return
+function closeDeleteModal(force = false) {
+  if (isDeleting.value && !force) return
   showDeleteModal.value = false
   deleteTarget.value = null
   errorMessage.value = ''
@@ -220,11 +220,16 @@ async function executeDelete() {
 
     if (res.success) {
       toast.success(res.message || 'Berhasil dihapus')
-      closeDeleteModal()
+      isDeleting.value = false
+      closeDeleteModal(true)
     } else {
       errorMessage.value = res.message || 'Gagal menghapus'
       toast.error(res.message || 'Gagal menghapus')
     }
+  } catch (e: any) {
+    const msg = e.data?.message || e.message || 'Gagal menghapus'
+    errorMessage.value = msg
+    toast.error(msg)
   } finally {
     isDeleting.value = false
   }
