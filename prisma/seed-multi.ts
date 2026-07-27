@@ -4,6 +4,20 @@ import { PrismaLibSQL } from '@prisma/adapter-libsql'
 import bcrypt from 'bcryptjs'
 
 function getPrisma(): PrismaClient {
+  if (process.env.TURSO_DATABASE_URL) {
+    let rawUrl = process.env.TURSO_DATABASE_URL.trim().replace(/^["']|["']$/g, '')
+    const rawToken = process.env.TURSO_AUTH_TOKEN
+    const authToken = rawToken ? rawToken.trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '') : undefined
+
+    let url = rawUrl
+    if (url.startsWith('libsql://')) {
+      url = url.replace('libsql://', 'https://')
+    }
+
+    const libsql = createClient({ url, authToken })
+    const adapter = new PrismaLibSQL(libsql)
+    return new PrismaClient({ adapter } as any)
+  }
   return new PrismaClient()
 }
 

@@ -7,9 +7,8 @@ declare global {
 }
 
 function createPrismaClient(): PrismaClient {
-  const isProduction = process.env.NODE_ENV === 'production'
-  const useTursoExplicit = process.env.USE_TURSO === 'true'
-  const useTurso = useTursoExplicit || (isProduction && Boolean(process.env.TURSO_DATABASE_URL))
+  // Always use Turso if TURSO_DATABASE_URL is provided in both Development and Production
+  const useTurso = Boolean(process.env.TURSO_DATABASE_URL)
 
   if (useTurso && process.env.TURSO_DATABASE_URL) {
     let rawUrl = process.env.TURSO_DATABASE_URL.trim().replace(/^["']|["']$/g, '')
