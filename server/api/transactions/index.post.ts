@@ -55,6 +55,9 @@ export default defineEventHandler(async (event) => {
       if (!product.isActive) {
         throw createError(errorResponse(event, 400, `Product ${product.name} is inactive and cannot be sold`))
       }
+      if (product.stock < item.qty) {
+        throw createError(errorResponse(event, 400, `Stok produk "${product.name}" tidak mencukupi (Tersisa: ${product.stock}, diminta: ${item.qty})`))
+      }
 
       const subtotal = product.price * item.qty
       total += subtotal

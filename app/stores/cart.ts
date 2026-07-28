@@ -41,8 +41,18 @@ export const useCartStore = defineStore('cart', {
 
   actions: {
     addItem(product: Product) {
+      const toast = useToastStore()
+      if (product.stock <= 0) {
+        toast.error(`Stok "${product.name}" habis (Tersisa: 0)`)
+        return false
+      }
+
       const existing = this.items.find((item) => item.produk.id === product.id)
       if (existing) {
+        if (existing.qty >= product.stock) {
+          toast.error(`Maksimal pembelian untuk "${product.name}" adalah ${product.stock} ${product.unit || 'pcs'}`)
+          return false
+        }
         existing.qty += 1
         existing.subtotal = existing.qty * existing.produk.price
       } else {
@@ -52,6 +62,7 @@ export const useCartStore = defineStore('cart', {
           subtotal: product.price,
         })
       }
+      return true
     },
 
     removeItem(productId: string) {
@@ -64,7 +75,14 @@ export const useCartStore = defineStore('cart', {
         if (qty <= 0) {
           this.removeItem(productId)
         } else {
-          item.qty = qty
+          const maxStock = item.produk.stock
+          if (qty > maxStock) {
+            const toast = useToastStore()
+            toast.error(`Maksimal pembelian untuk "${item.produk.name}" adalah ${maxStock} ${item.produk.unit || 'pcs'}`)
+            item.qty = maxStock
+          } else {
+            item.qty = qty
+          }
           item.subtotal = item.qty * item.produk.price
         }
       }
@@ -73,6 +91,11 @@ export const useCartStore = defineStore('cart', {
     incrementQty(productId: string) {
       const item = this.items.find((item) => item.produk.id === productId)
       if (item) {
+        if (item.qty >= item.produk.stock) {
+          const toast = useToastStore()
+          toast.error(`Maksimal pembelian untuk "${item.produk.name}" adalah ${item.produk.stock} ${item.produk.unit || 'pcs'}`)
+          return
+        }
         item.qty += 1
         item.subtotal = item.qty * item.produk.price
       }

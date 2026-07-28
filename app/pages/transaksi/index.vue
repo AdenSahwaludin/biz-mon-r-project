@@ -73,7 +73,7 @@
                 <input
                   v-model="searchQuery"
                   type="text"
-                  placeholder="Cari produk..."
+                  placeholder="Cari produk/sku/kategori"
                   class="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                 />
                 <button
@@ -139,18 +139,36 @@
             v-for="prod in filteredProducts"
             :key="prod.id"
             @click="cart.addItem(prod)"
-            class="bg-white border border-gray-200 rounded-xl p-3.5 text-left hover:shadow-md hover:border-primary-300 transition-all group flex flex-col justify-between"
-            :title="prod.name"
+            class="bg-white border rounded-xl p-3.5 text-left transition-all group flex flex-col justify-between relative overflow-hidden"
+            :class="prod.stock <= 0
+              ? 'border-red-200 bg-red-50/20 opacity-70 cursor-not-allowed hover:border-red-300'
+              : 'border-gray-200 hover:shadow-md hover:border-primary-300'"
+            :title="prod.stock <= 0 ? `${prod.name} (Stok Habis)` : prod.name"
           >
             <div>
               <div class="flex items-center justify-between mb-2">
-                <div class="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center group-hover:bg-primary-100 transition-colors text-primary-600 shrink-0">
+                <div
+                  class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                  :class="prod.stock <= 0 ? 'bg-red-100 text-red-500' : 'bg-primary-50 text-primary-600 group-hover:bg-primary-100'"
+                >
                   <component :is="getBusinessIcon(bizIcon)" class="w-4 h-4" />
                 </div>
-                <span v-if="prod.unit && prod.unit !== 'pcs'" class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[50%]">
+                
+                <!-- Stock Badge or Unit Badge -->
+                <span
+                  v-if="prod.stock <= 0"
+                  class="text-[10px] font-bold text-red-600 bg-red-100 border border-red-200 px-1.5 py-0.5 rounded truncate"
+                >
+                  Stok Habis
+                </span>
+                <span
+                  v-else-if="prod.unit && prod.unit !== 'pcs'"
+                  class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[50%]"
+                >
                   {{ prod.unit }}
                 </span>
               </div>
+
               <p class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 leading-tight min-h-[2.25rem] group-hover:text-primary-600 transition-colors" :title="prod.name">
                 {{ prod.name }}
               </p>
@@ -160,7 +178,9 @@
             <div class="mt-2 pt-2 border-t border-gray-100 flex items-baseline justify-between gap-1">
               <div>
                 <p class="text-xs sm:text-sm font-bold text-primary-600">{{ fmt.format(prod.price) }}</p>
-                <p class="text-[10px] text-gray-400">Stok: {{ prod.stock }}</p>
+                <p v-if="prod.stock <= 0" class="text-[10px] font-bold text-red-500">Stok: 0 (Habis)</p>
+                <p v-else-if="prod.stock <= 5" class="text-[10px] font-bold text-amber-600">Stok: {{ prod.stock }} (Sisa sedikit)</p>
+                <p v-else class="text-[10px] text-gray-400">Stok: {{ prod.stock }}</p>
               </div>
               <p v-if="sortBy === 'terlaris'" class="text-[10px] text-orange-500 font-medium flex items-center gap-0.5 shrink-0">
                 <TrendingUp class="w-3 h-3" /> {{ prod.totalSold || 0 }}
@@ -221,7 +241,14 @@
           <div class="flex items-center gap-1 shrink-0">
             <button @click="cart.decrementQty(item.produk.id)" class="w-7 h-7 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100"><Minus class="w-3 h-3" /></button>
             <span class="w-8 text-center text-sm font-semibold">{{ item.qty }}</span>
-            <button @click="cart.incrementQty(item.produk.id)" class="w-7 h-7 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100"><Plus class="w-3 h-3" /></button>
+            <button
+              @click="cart.incrementQty(item.produk.id)"
+              :disabled="item.qty >= item.produk.stock"
+              class="w-7 h-7 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              :title="item.qty >= item.produk.stock ? 'Mencapai batas stok yang tersedia' : 'Tambah Qty'"
+            >
+              <Plus class="w-3 h-3" />
+            </button>
           </div>
 
           <div class="text-right shrink-0">
