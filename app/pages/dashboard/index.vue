@@ -116,7 +116,7 @@
               <tr
                 v-for="trx in recentTransactions"
                 :key="trx.id"
-                @click="navigateTo(`/transaksi/${encodeURIComponent(trx.id)}`)"
+                @click="navigateTo(`/riwayat-transaksi/${encodeURIComponent(trx.id)}`)"
                 class="hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 <td class="py-3 px-4 text-sm font-semibold text-gray-900">{{ fmt.formatDateTime(trx.createdAt) }}</td>
@@ -143,7 +143,7 @@
           <div
             v-for="trx in recentTransactions"
             :key="trx.id"
-            @click="navigateTo(`/transaksi/${encodeURIComponent(trx.id)}`)"
+            @click="navigateTo(`/riwayat-transaksi/${encodeURIComponent(trx.id)}`)"
             class="p-3.5 border border-gray-100 rounded-lg hover:bg-gray-50 cursor-pointer"
           >
             <div class="flex items-center justify-between mb-1">
