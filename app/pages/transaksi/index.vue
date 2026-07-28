@@ -139,17 +139,17 @@
             v-for="prod in filteredProducts"
             :key="prod.id"
             @click="cart.addItem(prod)"
-            class="bg-white border rounded-xl p-3.5 text-left transition-all group flex flex-col justify-between relative overflow-hidden"
+            class="rounded-xl p-3.5 text-left transition-all group flex flex-col justify-between relative overflow-hidden select-none"
             :class="prod.stock <= 0
-              ? 'border-red-200 bg-red-50/20 opacity-70 cursor-not-allowed hover:border-red-300'
-              : 'border-gray-200 hover:shadow-md hover:border-primary-300'"
+              ? 'bg-gray-100/90 border border-gray-200 opacity-60 cursor-not-allowed shadow-none'
+              : 'bg-white border border-gray-200 hover:shadow-md hover:border-primary-300'"
             :title="prod.stock <= 0 ? `${prod.name} (Stok Habis)` : prod.name"
           >
             <div>
               <div class="flex items-center justify-between mb-2">
                 <div
                   class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
-                  :class="prod.stock <= 0 ? 'bg-red-100 text-red-500' : 'bg-primary-50 text-primary-600 group-hover:bg-primary-100'"
+                  :class="prod.stock <= 0 ? 'bg-gray-200/80 text-gray-400' : 'bg-primary-50 text-primary-600 group-hover:bg-primary-100'"
                 >
                   <component :is="getBusinessIcon(bizIcon)" class="w-4 h-4" />
                 </div>
@@ -157,7 +157,7 @@
                 <!-- Stock Badge or Unit Badge -->
                 <span
                   v-if="prod.stock <= 0"
-                  class="text-[10px] font-bold text-red-600 bg-red-100 border border-red-200 px-1.5 py-0.5 rounded truncate"
+                  class="text-[10px] font-extrabold text-gray-600 bg-gray-200/90 border border-gray-300/60 px-2 py-0.5 rounded-md uppercase tracking-wider shadow-2xs"
                 >
                   Stok Habis
                 </span>
@@ -169,15 +169,24 @@
                 </span>
               </div>
 
-              <p class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 leading-tight min-h-[2.25rem] group-hover:text-primary-600 transition-colors" :title="prod.name">
+              <p
+                class="text-xs sm:text-sm font-semibold line-clamp-2 leading-tight min-h-[2.25rem] transition-colors"
+                :class="prod.stock <= 0 ? 'text-gray-400' : 'text-gray-900 group-hover:text-primary-600'"
+                :title="prod.name"
+              >
                 {{ prod.name }}
               </p>
               <p class="text-[11px] text-gray-400 mt-1 truncate">{{ prod.category?.name || 'Umum' }}</p>
             </div>
 
-            <div class="mt-2 pt-2 border-t border-gray-100 flex items-baseline justify-between gap-1">
+            <div class="mt-2 pt-2 border-t flex items-baseline justify-between gap-1" :class="prod.stock <= 0 ? 'border-gray-200/60' : 'border-gray-100'">
               <div>
-                <p class="text-xs sm:text-sm font-bold text-primary-600">{{ fmt.format(prod.price) }}</p>
+                <p
+                  class="text-xs sm:text-sm font-bold"
+                  :class="prod.stock <= 0 ? 'text-gray-400 line-through' : 'text-primary-600'"
+                >
+                  {{ fmt.format(prod.price) }}
+                </p>
                 <p v-if="prod.stock <= 0" class="text-[10px] font-bold text-red-500">Stok: 0 (Habis)</p>
                 <p v-else-if="prod.stock <= 5" class="text-[10px] font-bold text-amber-600">Stok: {{ prod.stock }} (Sisa sedikit)</p>
                 <p v-else class="text-[10px] text-gray-400">Stok: {{ prod.stock }}</p>
