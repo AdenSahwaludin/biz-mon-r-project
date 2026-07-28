@@ -4,7 +4,7 @@
       <p class="text-gray-500">Memuat detail transaksi...</p>
     </div>
 
-    <div v-else-if="trx" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div v-else-if="trx" class="bg-white rounded-xl border border-gray-200 overflow-hidden no-print">
       <!-- Header -->
       <div class="p-6 border-b border-gray-200">
         <div class="flex items-center justify-between mb-4">
@@ -20,7 +20,7 @@
       <div class="p-6 border-b border-gray-200 grid grid-cols-2 gap-4">
         <div>
           <p class="text-xs text-gray-400 mb-0.5">Cabang</p>
-          <p class="text-sm font-medium text-gray-900">{{ trx.branch.business.name }} - {{ trx.branch.name }}</p>
+          <p class="text-sm font-medium text-gray-900">{{ trx.branch?.business?.name || '' }} - {{ trx.branch?.name || '' }}</p>
         </div>
         <div>
           <p class="text-xs text-gray-400 mb-0.5">Tanggal</p>
@@ -28,7 +28,7 @@
         </div>
         <div>
           <p class="text-xs text-gray-400 mb-0.5">Kasir</p>
-          <p class="text-sm font-medium text-gray-900">{{ trx.cashier.name }}</p>
+          <p class="text-sm font-medium text-gray-900">{{ trx.cashier?.name || '—' }}</p>
         </div>
         <div>
           <p class="text-xs text-gray-400 mb-0.5">Metode</p>
@@ -42,7 +42,7 @@
         <div class="space-y-3">
           <div v-for="item in trx.details" :key="item.id" class="flex items-center justify-between">
             <div>
-              <p class="text-sm text-gray-900">{{ item.product.name }}</p>
+              <p class="text-sm text-gray-900">{{ item.product?.name }}</p>
               <p class="text-xs text-gray-400">{{ item.qty }} × {{ fmt.format(item.snapshotPrice) }}</p>
             </div>
             <p class="text-sm font-medium text-gray-900">{{ fmt.format(item.subtotal) }}</p>
@@ -71,55 +71,55 @@
           <span>Cetak Ulang Struk</span>
         </button>
       </div>
+    </div>
 
-      <!-- Thermal Print Area (Only visible during print) -->
-      <div id="print-area" class="print-only">
-        <div class="print-header">
-          <h2>{{ settingsStore.headerStruk || 'PANTAU BISNIS' }}</h2>
-          <p v-if="settingsStore.namaToko" class="font-bold">{{ settingsStore.namaToko }} - {{ trx.branch.name }}</p>
-          <p v-else class="font-bold">{{ trx.branch.business.name }} - {{ trx.branch.name }}</p>
-          <p v-if="settingsStore.alamat">{{ settingsStore.alamat }}</p>
-          <p v-if="settingsStore.telepon">Telp: {{ settingsStore.telepon }}</p>
-          <div class="divider"></div>
-          <p class="reprint-badge">*** CETAK ULANG (DUPLIKAT) ***</p>
-          <div class="divider"></div>
-        </div>
-        <div class="print-info">
-          <p>Tgl : {{ fmt.formatDateTime(trx.createdAt) }}</p>
-          <p>ID  : {{ trx.id }}</p>
-          <p>Ksr : {{ trx.cashier.name }}</p>
-          <div class="divider"></div>
-        </div>
-        <div class="print-items">
-          <div v-for="item in trx.details" :key="item.id" class="item-row">
-            <p class="item-name">{{ item.product.name }}</p>
-            <div class="item-calc">
-              <span>{{ item.qty }}x {{ fmt.format(item.snapshotPrice) }}</span>
-              <span>{{ fmt.format(item.subtotal) }}</span>
-            </div>
+    <!-- Thermal Print Area (Root level, only visible during print) -->
+    <div id="print-area" class="print-only" v-if="trx">
+      <div class="print-header">
+        <h2>{{ settingsStore.headerStruk || 'PANTAU BISNIS' }}</h2>
+        <p v-if="settingsStore.namaToko" class="font-bold">{{ settingsStore.namaToko }} - {{ trx.branch?.name }}</p>
+        <p v-else class="font-bold">{{ trx.branch?.business?.name }} - {{ trx.branch?.name }}</p>
+        <p v-if="settingsStore.alamat">{{ settingsStore.alamat }}</p>
+        <p v-if="settingsStore.telepon">Telp: {{ settingsStore.telepon }}</p>
+        <div class="divider"></div>
+        <p class="reprint-badge">*** CETAK ULANG (DUPLIKAT) ***</p>
+        <div class="divider"></div>
+      </div>
+      <div class="print-info">
+        <p>Tgl : {{ fmt.formatDateTime(trx.createdAt) }}</p>
+        <p>ID  : {{ trx.id }}</p>
+        <p>Ksr : {{ trx.cashier?.name }}</p>
+        <div class="divider"></div>
+      </div>
+      <div class="print-items">
+        <div v-for="item in trx.details" :key="item.id" class="item-row">
+          <p class="item-name">{{ item.product?.name }}</p>
+          <div class="item-calc">
+            <span>{{ item.qty }}x {{ fmt.format(item.snapshotPrice) }}</span>
+            <span>{{ fmt.format(item.subtotal) }}</span>
           </div>
-          <div class="divider"></div>
         </div>
-        <div class="print-total">
-          <div class="total-row">
-            <span>Total:</span>
-            <span>{{ fmt.format(trx.total) }}</span>
-          </div>
-          <div class="total-row">
-            <span>Metode:</span>
-            <span>{{ trx.paymentMethod }}</span>
-          </div>
-          <div class="divider"></div>
+        <div class="divider"></div>
+      </div>
+      <div class="print-total">
+        <div class="total-row">
+          <span>Total:</span>
+          <span>{{ fmt.format(trx.total) }}</span>
         </div>
-        <div class="print-footer">
-          <p>{{ settingsStore.footerStruk || 'Terima kasih atas kunjungan Anda!' }}</p>
-          <p class="print-timestamp">Cetak Ulang: {{ fmt.formatDateTime(new Date().toISOString()) }}</p>
+        <div class="total-row">
+          <span>Metode:</span>
+          <span>{{ trx.paymentMethod }}</span>
         </div>
+        <div class="divider"></div>
+      </div>
+      <div class="print-footer">
+        <p>{{ settingsStore.footerStruk || 'Terima kasih atas kunjungan Anda!' }}</p>
+        <p class="print-timestamp">Cetak Ulang: {{ fmt.formatDateTime(new Date().toISOString()) }}</p>
       </div>
     </div>
 
     <!-- Not Found (No Print) -->
-    <div v-else class="bg-white rounded-xl border border-gray-200 py-16 text-center no-print">
+    <div v-if="!isLoading && !trx" class="bg-white rounded-xl border border-gray-200 py-16 text-center no-print">
       <Search class="w-12 h-12 text-gray-300 mx-auto mb-3" />
       <p class="text-gray-500 font-medium">Transaksi tidak ditemukan</p>
       <NuxtLink to="/riwayat-transaksi" class="inline-block mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium">
@@ -206,95 +206,3 @@ async function doDelete() {
   }
 }
 </script>
-
-<style>
-@media screen {
-  .print-only {
-    display: none !important;
-  }
-}
-
-@media print {
-  body > * {
-    display: none !important;
-  }
-
-  .no-print, header, sidebar, aside, nav {
-    display: none !important;
-  }
-
-  .print-only, #print-area, #print-area * {
-    display: block !important;
-    visibility: visible !important;
-  }
-
-  #print-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 58mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    font-family: 'Courier New', Courier, monospace !important;
-    font-size: 12px !important;
-    line-height: 1.3 !important;
-    color: #000 !important;
-    background: #fff !important;
-  }
-
-  .print-header {
-    text-align: center !important;
-    margin-bottom: 8px !important;
-  }
-
-  .print-header h2 {
-    font-size: 16px !important;
-    font-weight: bold !important;
-    margin: 0 !important;
-  }
-
-  .reprint-badge {
-    text-align: center !important;
-    font-weight: bold !important;
-    font-size: 12px !important;
-    margin: 4px 0 !important;
-    display: block !important;
-    visibility: visible !important;
-  }
-
-  .divider {
-    border-top: 1px dashed #000 !important;
-    margin: 6px 0 !important;
-    display: block !important;
-  }
-
-  .print-info p {
-    margin: 2px 0 !important;
-  }
-
-  .item-row {
-    margin-bottom: 6px !important;
-  }
-
-  .item-name {
-    margin: 0 0 2px !important;
-    font-weight: bold !important;
-  }
-
-  .item-calc, .total-row {
-    display: flex !important;
-    justify-content: space-between !important;
-  }
-
-  .print-footer {
-    text-align: center !important;
-    margin-top: 10px !important;
-    font-size: 10px !important;
-  }
-
-  .print-timestamp {
-    font-size: 9px !important;
-    margin-top: 4px !important;
-  }
-}
-</style>
