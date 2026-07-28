@@ -337,13 +337,18 @@ const filteredSummary = computed(() => {
 const rataRata = computed(() => filteredSummary.value.transactionCount ? Math.round(filteredSummary.value.totalOmzet / filteredSummary.value.transactionCount) : 0)
 
 function getHexColor(colorStr?: string) {
-  if (!colorStr) return '#4F46E5'
-  if (colorStr.includes('orange')) return '#EA580C'
-  if (colorStr.includes('amber')) return '#D97706'
-  if (colorStr.includes('rose')) return '#E11D48'
-  if (colorStr.includes('emerald')) return '#059669'
-  if (colorStr.includes('blue')) return '#2563EB'
-  return '#4F46E5'
+  if (!colorStr) return '#3B82F6'
+  if (colorStr.startsWith('#')) return colorStr
+  if (colorStr.includes('orange')) return '#F97316'
+  if (colorStr.includes('amber')) return '#F59E0B'
+  if (colorStr.includes('rose')) return '#F43F5E'
+  if (colorStr.includes('emerald')) return '#10B981'
+  if (colorStr.includes('blue')) return '#3B82F6'
+  if (colorStr.includes('purple') || colorStr.includes('violet')) return '#8B5CF6'
+  if (colorStr.includes('pink')) return '#EC4899'
+  if (colorStr.includes('cyan')) return '#06B6D4'
+  if (colorStr.includes('indigo')) return '#6366F1'
+  return colorStr
 }
 
 const lineChartData = computed(() => {

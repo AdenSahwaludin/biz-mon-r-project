@@ -176,10 +176,10 @@ onMounted(async () => {
         form.stock = prod.stock
         form.unit = prod.unit
         form.isActive = prod.isActive
-        initialCategoryId.value = prod.categoryId
+        initialCategoryId.value = prod.categoryId || ''
         
         await fetchCategories(prod.businessId)
-        form.categoryId = prod.categoryId
+        form.categoryId = prod.categoryId || ''
       } else {
         toast.error('Produk tidak ditemukan')
         navigateTo('/produk')
