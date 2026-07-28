@@ -58,15 +58,104 @@
 }
 
 /* Print styles */
-@media print {
-  .no-print {
+@media screen {
+  .print-only {
     display: none !important;
   }
-  .print-only {
+}
+
+@media print {
+  /* Hide main app background layout visually */
+  #__nuxt {
+    visibility: hidden !important;
+  }
+
+  .no-print, header, aside, nav {
+    display: none !important;
+  }
+
+  /* Force print-area and its children to be visible */
+  .print-only, #print-area, #print-area * {
+    visibility: visible !important;
     display: block !important;
   }
-  body {
-    background: white !important;
+
+  #print-area {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 58mm !important;
+    margin: 0 !important;
+    padding: 4px !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+    z-index: 999999 !important;
+    border: none !important;
+  }
+
+  .print-header {
+    text-align: center !important;
+    margin-bottom: 6px !important;
+  }
+
+  .print-header h2 {
+    font-size: 14px !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+  }
+
+  .print-header p {
+    margin: 2px 0 0 !important;
+    font-size: 10px !important;
+  }
+
+  .print-type-badge, .reprint-badge {
+    text-align: center !important;
+    font-weight: bold !important;
+    font-size: 11px !important;
+    margin: 4px 0 !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  .divider {
+    border-top: 1px dashed #000 !important;
+    margin: 6px 0 !important;
+    display: block !important;
+  }
+
+  .print-info p {
+    margin: 2px 0 !important;
+    font-size: 11px !important;
+  }
+
+  .item-row {
+    margin-bottom: 4px !important;
+  }
+
+  .item-name {
+    margin: 0 0 2px !important;
+    font-weight: bold !important;
+  }
+
+  .item-calc, .total-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    font-size: 11px !important;
+  }
+
+  .print-footer {
+    text-align: center !important;
+    margin-top: 8px !important;
+    font-size: 10px !important;
+  }
+
+  .print-timestamp {
+    font-size: 9px !important;
+    margin-top: 4px !important;
   }
 }
 

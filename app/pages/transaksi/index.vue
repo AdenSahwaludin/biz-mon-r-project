@@ -379,8 +379,8 @@
       </Transition>
     </Teleport>
 
-    <!-- Thermal Print Area (Hidden on screen) -->
-    <div id="print-area" class="hidden" v-if="successData">
+    <!-- Thermal Print Area (Only visible during print) -->
+    <div id="print-area" class="print-only" v-if="successData">
       <div class="print-header">
         <h2>{{ settingsStore.headerStruk || 'PANTAU BISNIS' }}</h2>
         <p v-if="settingsStore.namaToko" class="font-bold">{{ settingsStore.namaToko }} - {{ biz.activeBranch?.name }}</p>
