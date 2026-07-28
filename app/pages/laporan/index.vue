@@ -19,12 +19,12 @@
         <!-- Filter Periode Waktu -->
         <div>
           <label class="block text-xs font-medium text-gray-500 mb-1">Periode Tanggal</label>
-          <select v-model="filterPeriod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-            <option value="all">Semua Data (Bulan Ini)</option>
+          <select v-model="filterPeriod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white font-medium">
+            <option value="month">Bulan Ini</option>
+            <option value="all">Semua Data</option>
             <option value="today">Hari Ini</option>
             <option value="7days">7 Hari Terakhir</option>
             <option value="30days">30 Hari Terakhir</option>
-            <option value="month">Bulan Ini</option>
             <option value="custom">Kustom Tanggal</option>
           </select>
         </div>
@@ -211,7 +211,7 @@ const { fetchWithCache } = useCachedFetch()
 
 // Default branch filter matches active branch selected in header
 const filterBranchId = ref(bizStore.activeBranchId || '')
-const filterPeriod = ref('all')
+const filterPeriod = ref('month')
 const startDate = ref('')
 const endDate = ref('')
 const filterPaymentMethod = ref('')

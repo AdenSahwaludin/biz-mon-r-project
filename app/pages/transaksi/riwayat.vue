@@ -50,7 +50,8 @@
         <div class="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600">
           <button
             v-for="p in [
-              { key: 'all', label: 'Semua Waktu' },
+              { key: 'month', label: 'Bulan Ini' },
+              { key: 'all', label: 'Semua Data' },
               { key: 'today', label: 'Hari Ini' },
               { key: '7days', label: '7 Hari Terakhir' },
               { key: '30days', label: '30 Hari' },
@@ -260,7 +261,7 @@ const { fetchWithCache, invalidateCache } = useCachedFetch()
 const search = ref('')
 const filterBranchId = ref(bizStore.activeBranchId || '')
 const filterMethod = ref('')
-const filterPeriod = ref('all')
+const filterPeriod = ref('month')
 const startDate = ref('')
 const endDate = ref('')
 const sortField = ref<'createdAt' | 'branch' | 'cashier' | 'total' | 'paymentMethod' | null>(null)
@@ -390,6 +391,13 @@ const filteredData = computed(() => {
         const end = new Date(endDate.value).getTime() + (24 * 60 * 60 * 1000 - 1)
         data = data.filter((t) => new Date(t.createdAt).getTime() <= end)
       }
+    } else if (filterPeriod.value === 'month') {
+      const nowMonth = now.getMonth()
+      const nowYear = now.getFullYear()
+      data = data.filter((t) => {
+        const d = new Date(t.createdAt)
+        return d.getMonth() === nowMonth && d.getFullYear() === nowYear
+      })
     } else if (filterPeriod.value === 'today') {
       data = data.filter((t) => new Date(t.createdAt).getTime() >= today)
     } else if (filterPeriod.value === '7days') {
