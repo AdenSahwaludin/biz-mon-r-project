@@ -306,8 +306,13 @@
               v-for="amount in quickAmounts"
               :key="amount"
               @click="cart.setNominalBayar(amount)"
-              class="flex-1 py-1.5 text-xs font-medium border border-gray-200 rounded-md hover:bg-gray-50 text-gray-600 transition-colors"
-            >{{ fmt.formatShort(amount) }}</button>
+              class="flex-1 py-1.5 text-xs font-medium border rounded-md transition-colors"
+              :class="amount === cart.subtotal && cart.subtotal > 0
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 shadow-2xs'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50'"
+            >
+              {{ amount === cart.subtotal && cart.subtotal > 0 ? 'Uang Pas' : fmt.formatShort(amount) }}
+            </button>
           </div>
           <div v-if="cart.nominalBayar > 0 && !cart.isEmpty" class="mt-2 flex items-center justify-between text-sm">
             <span class="text-gray-500">Kembalian</span>
@@ -377,17 +382,19 @@
     <!-- Thermal Print Area (Hidden on screen) -->
     <div id="print-area" class="hidden" v-if="successData">
       <div class="print-header">
-        <h2>{{ settingsStore.headerStruk }}</h2>
-        <p v-if="settingsStore.namaToko">{{ settingsStore.namaToko }} - {{ biz.activeBranch?.name }}</p>
-        <p v-else>{{ biz.activeBusiness?.name }} - {{ biz.activeBranch?.name }}</p>
+        <h2>{{ settingsStore.headerStruk || 'PANTAU BISNIS' }}</h2>
+        <p v-if="settingsStore.namaToko" class="font-bold">{{ settingsStore.namaToko }} - {{ biz.activeBranch?.name }}</p>
+        <p v-else class="font-bold">{{ biz.activeBusiness?.name }} - {{ biz.activeBranch?.name }}</p>
         <p v-if="settingsStore.alamat">{{ settingsStore.alamat }}</p>
         <p v-if="settingsStore.telepon">Telp: {{ settingsStore.telepon }}</p>
         <div class="divider"></div>
+        <p class="print-type-badge">STRUK PEMBAYARAN</p>
+        <div class="divider"></div>
       </div>
       <div class="print-info">
-        <p>Tgl: {{ fmt.formatDateTime(successData.createdAt) }}</p>
-        <p>ID: {{ successData.id.split('-')[0] }}</p>
-        <p>Ksr: {{ auth.user?.name }}</p>
+        <p>Tgl : {{ fmt.formatDateTime(successData.createdAt) }}</p>
+        <p>ID  : {{ successData.id }}</p>
+        <p>Ksr : {{ auth.user?.name || auth.user?.username }}</p>
         <div class="divider"></div>
       </div>
       <div class="print-items">
@@ -405,6 +412,14 @@
           <span>Total:</span>
           <span>{{ fmt.format(successData.total) }}</span>
         </div>
+        <div class="total-row" v-if="successData.metode === 'Tunai'">
+          <span>Bayar:</span>
+          <span>{{ fmt.format(successData.bayar) }}</span>
+        </div>
+        <div class="total-row" v-if="successData.metode === 'Tunai'">
+          <span>Kembali:</span>
+          <span>{{ fmt.format(successData.kembalian) }}</span>
+        </div>
         <div class="total-row">
           <span>Metode:</span>
           <span>{{ successData.metode }}</span>
@@ -412,7 +427,7 @@
         <div class="divider"></div>
       </div>
       <div class="print-footer">
-        <p>{{ settingsStore.footerStruk }}</p>
+        <p>{{ settingsStore.footerStruk || 'Terima kasih atas kunjungan Anda!' }}</p>
       </div>
     </div>
 

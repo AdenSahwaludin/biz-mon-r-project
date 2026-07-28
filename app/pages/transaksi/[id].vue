@@ -66,25 +66,28 @@
         <button v-if="auth.isAdmin" @click="showDeleteModal = true" class="flex-1 py-2.5 px-4 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1.5">
           <Trash2 class="w-4 h-4" /> Hapus Transaksi
         </button>
-        <button @click="printReceipt" class="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-          Cetak Struk
+        <button @click="printReceipt" class="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors flex items-center justify-center gap-2">
+          <Printer class="w-4 h-4" />
+          <span>Cetak Ulang Struk</span>
         </button>
       </div>
 
       <!-- Thermal Print Area (Hidden on screen) -->
       <div id="print-area" class="hidden">
         <div class="print-header">
-          <h2>{{ settingsStore.headerStruk }}</h2>
-          <p v-if="settingsStore.namaToko">{{ settingsStore.namaToko }} - {{ trx.branch.name }}</p>
-          <p v-else>{{ trx.branch.business.name }} - {{ trx.branch.name }}</p>
+          <h2>{{ settingsStore.headerStruk || 'PANTAU BISNIS' }}</h2>
+          <p v-if="settingsStore.namaToko" class="font-bold">{{ settingsStore.namaToko }} - {{ trx.branch.name }}</p>
+          <p v-else class="font-bold">{{ trx.branch.business.name }} - {{ trx.branch.name }}</p>
           <p v-if="settingsStore.alamat">{{ settingsStore.alamat }}</p>
           <p v-if="settingsStore.telepon">Telp: {{ settingsStore.telepon }}</p>
           <div class="divider"></div>
+          <p class="reprint-badge">*** CETAK ULANG (DUPLIKAT) ***</p>
+          <div class="divider"></div>
         </div>
         <div class="print-info">
-          <p>Tgl: {{ fmt.formatDateTime(trx.createdAt) }}</p>
-          <p>ID: {{ trx.id.split('-')[0] }}</p>
-          <p>Ksr: {{ trx.cashier.name }}</p>
+          <p>Tgl : {{ fmt.formatDateTime(trx.createdAt) }}</p>
+          <p>ID  : {{ trx.id }}</p>
+          <p>Ksr : {{ trx.cashier.name }}</p>
           <div class="divider"></div>
         </div>
         <div class="print-items">
@@ -109,7 +112,8 @@
           <div class="divider"></div>
         </div>
         <div class="print-footer">
-          <p>{{ settingsStore.footerStruk }}</p>
+          <p>{{ settingsStore.footerStruk || 'Terima kasih atas kunjungan Anda!' }}</p>
+          <p class="print-timestamp">Cetak Ulang: {{ fmt.formatDateTime(new Date().toISOString()) }}</p>
         </div>
       </div>
     </div>
@@ -147,7 +151,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Search, Trash2 } from 'lucide-vue-next'
+import { Search, Trash2, Printer } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
