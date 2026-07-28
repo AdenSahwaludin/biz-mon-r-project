@@ -413,20 +413,25 @@ function exportReport(type: string) {
   const dateLabel = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 
   if (type === 'csv') {
-    let csvContent = `Laporan Penjualan - ${activeBranchName}\n`
-    csvContent += `Tanggal Cetak: ${dateLabel}\n\n`
-    csvContent += 'Tanggal,Jumlah Transaksi,Total Omzet (Rp),Rata-rata (Rp)\n'
-
-    sortedReportData.value.forEach((row: any) => {
+    const headers = ['Tanggal', 'Jumlah Transaksi', 'Total Omzet (Rp)', 'Rata-rata per Transaksi (Rp)']
+    const rows = sortedReportData.value.map((row: any) => {
       const avg = row.transaksi > 0 ? Math.round(row.omzet / row.transaksi) : 0
-      csvContent += `"${fmt.formatDate(row.tanggal)}",${row.transaksi},${row.omzet},${avg}\n`
+      return [
+        `"${fmt.formatDate(row.tanggal)}"`,
+        row.transaksi,
+        row.omzet,
+        avg
+      ]
     })
 
+    // UTF-8 BOM \uFEFF and sep=; directive ensures Excel automatically splits into separate columns A, B, C, D
+    const csvContent = '\uFEFFsep=;\n' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
+    const dateStr = new Date().toISOString().split('T')[0]
     link.setAttribute('href', url)
-    link.setAttribute('download', `Laporan-Penjualan-${activeBranchName.replace(/[\s\/-]+/g, '_')}-${Date.now()}.csv`)
+    link.setAttribute('download', `Laporan_Penjualan_${activeBranchName.replace(/[\s\/-]+/g, '_')}_${dateStr}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -440,14 +445,15 @@ function exportReport(type: string) {
       return
     }
 
-    const tableRowsHtml = sortedReportData.value.map((row: any) => {
+    const tableRowsHtml = sortedReportData.value.map((row: any, idx: number) => {
       const avg = row.transaksi > 0 ? Math.round(row.omzet / row.transaksi) : 0
+      const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc'
       return `
-        <tr>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${fmt.formatDate(row.tanggal)}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: center;">${row.transaksi}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">${fmt.format(row.omzet)}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${fmt.format(avg)}</td>
+        <tr style="background-color: ${bg};">
+          <td style="padding: 9px 12px; border-bottom: 1px solid #f1f5f9; font-size: 11px; font-weight: 500;">${fmt.formatDate(row.tanggal)}</td>
+          <td style="padding: 9px 12px; border-bottom: 1px solid #f1f5f9; font-size: 11px; text-align: center;">${row.transaksi}</td>
+          <td style="padding: 9px 12px; border-bottom: 1px solid #f1f5f9; font-size: 11px; text-align: right; font-weight: 600; color: #0f172a;">${fmt.format(row.omzet)}</td>
+          <td style="padding: 9px 12px; border-bottom: 1px solid #f1f5f9; font-size: 11px; text-align: right; color: #475569;">${fmt.format(avg)}</td>
         </tr>
       `
     }).join('')
@@ -456,19 +462,23 @@ function exportReport(type: string) {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Laporan Penjualan - ${activeBranchName}</title>
+          <title>Laporan Penjualan — ${activeBranchName}</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #1f2937; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 25px; }
-            .title { font-size: 24px; font-weight: bold; color: #111827; }
-            .subtitle { font-size: 14px; color: #6b7280; margin-top: 4px; }
-            .meta { font-size: 13px; color: #4b5563; text-align: right; }
-            .stats { display: flex; gap: 15px; margin-bottom: 25px; }
-            .stat-card { flex: 1; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; }
-            .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; margin-bottom: 5px; }
-            .stat-val { font-size: 20px; font-weight: bold; color: #111827; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th { background: #f3f4f6; text-align: left; padding: 10px; font-size: 12px; text-transform: uppercase; color: #4b5563; border-bottom: 2px solid #e5e7eb; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 32px 40px; color: #1e293b; background: #ffffff; margin: 0; }
+            .brand-line { font-size: 11px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 24px; }
+            .title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
+            .subtitle { font-size: 13px; color: #64748b; margin: 0; }
+            .meta { font-size: 11px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; text-align: right; }
+            .stats { display: flex; gap: 16px; margin-bottom: 24px; }
+            .stat-card { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; }
+            .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; }
+            .stat-val { font-size: 18px; font-weight: 700; color: #0f172a; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            th { background: #f8fafc; text-align: left; padding: 10px 12px; font-size: 10px; font-weight: 600; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; border-bottom: 1.5px solid #cbd5e1; }
+            tfoot tr td { background: #f8fafc; font-weight: 700; border-top: 2px solid #cbd5e1; padding: 10px 12px; font-size: 11px; color: #0f172a; }
+            .footer-note { margin-top: 32px; padding-top: 16px; border-top: 1px solid #f1f5f9; text-align: center; font-size: 10px; color: #94a3b8; }
             @media print {
               body { padding: 0; }
               @page { size: A4; margin: 1.5cm; }
@@ -478,11 +488,13 @@ function exportReport(type: string) {
         <body>
           <div class="header">
             <div>
-              <div class="title">PantauBisnis</div>
-              <div class="subtitle">Laporan Penjualan Harian — ${activeBranchName}</div>
+              <div class="brand-line">PANTAU BISNIS</div>
+              <h1 class="title">Laporan Penjualan</h1>
+              <p class="subtitle">Cabang: <strong>${activeBranchName}</strong></p>
             </div>
             <div class="meta">
-              <p>Tanggal Cetak: <strong>${dateLabel}</strong></p>
+              <p style="margin:0 0 2px;">Tanggal Cetak: <strong>${dateLabel}</strong></p>
+              <p style="margin:0;">Status: <strong>Dokumen Resmi</strong></p>
             </div>
           </div>
 
@@ -496,7 +508,7 @@ function exportReport(type: string) {
               <div class="stat-val">${filteredSummary.value.transactionCount}</div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Rata-rata per Transaksi</div>
+              <div class="stat-label">Rata-rata / Transaksi</div>
               <div class="stat-val">${fmt.format(rataRata.value)}</div>
             </div>
           </div>
@@ -513,7 +525,19 @@ function exportReport(type: string) {
             <tbody>
               ${tableRowsHtml}
             </tbody>
+            <tfoot>
+              <tr>
+                <td>TOTAL PERIODE INI</td>
+                <td style="text-align: center;">${filteredSummary.value.transactionCount}</td>
+                <td style="text-align: right;">${fmt.format(filteredSummary.value.totalOmzet)}</td>
+                <td style="text-align: right;">${fmt.format(rataRata.value)}</td>
+              </tr>
+            </tfoot>
           </table>
+
+          <div class="footer-note">
+            PantauBisnis — System Generated Formal Report · Dicetak pada ${dateLabel}
+          </div>
         </body>
       </html>
     `)

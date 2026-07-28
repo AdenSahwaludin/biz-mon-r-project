@@ -623,28 +623,39 @@ function exportPdf() {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Laporan Penjualan Harian - ${selectedDate.value}</title>
+        <title>Laporan Penjualan Harian — ${selectedDate.value}</title>
         <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; color: #1f2937; }
-          .header { border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-          .title { font-size: 22px; font-weight: bold; }
-          .subtitle { font-size: 13px; color: #6b7280; }
-          .stats { display: flex; gap: 10px; margin-bottom: 20px; }
-          .stat { flex: 1; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; background: #f9fafb; }
-          .stat-title { font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: bold; }
-          .stat-val { font-size: 18px; font-weight: bold; margin-top: 4px; }
-          .grid { display: flex; gap: 20px; }
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 32px 40px; color: #1e293b; background: #ffffff; margin: 0; }
+          .brand-line { font-size: 11px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 24px; }
+          .title { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
+          .subtitle { font-size: 13px; color: #64748b; margin: 0; }
+          .meta { font-size: 11px; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; text-align: right; }
+          .stats { display: flex; gap: 12px; margin-bottom: 24px; }
+          .stat { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; }
+          .stat-title { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px; }
+          .stat-val { font-size: 16px; font-weight: 700; color: #0f172a; }
+          .grid { display: flex; gap: 24px; }
           .col { flex: 1; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-          th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #e5e7eb; }
-          @media print { body { padding: 0; } }
+          .section-title { font-size: 13px; font-weight: 700; color: #0f172a; margin: 0 0 10px; padding-bottom: 4px; border-bottom: 1.5px solid #cbd5e1; text-transform: uppercase; letter-spacing: 0.5px; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background: #f8fafc; text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; border-bottom: 1.5px solid #cbd5e1; }
+          td { font-size: 11px; color: #1e293b; }
+          .footer-note { margin-top: 32px; padding-top: 16px; border-top: 1px solid #f1f5f9; text-align: center; font-size: 10px; color: #94a3b8; }
+          @media print { body { padding: 0; } @page { size: A4; margin: 1.5cm; } }
         </style>
       </head>
       <body>
         <div class="header">
           <div>
-            <div class="title">PantauBisnis — Laporan Harian</div>
-            <div class="subtitle">Cabang: ${activeBranchName} | Tanggal: ${fmt.formatDate(selectedDate.value)}</div>
+            <div class="brand-line">PANTAU BISNIS</div>
+            <h1 class="title">Laporan Penjualan Harian</h1>
+            <p class="subtitle">Cabang: <strong>${activeBranchName}</strong> | Tanggal: <strong>${fmt.formatDate(selectedDate.value)}</strong></p>
+          </div>
+          <div class="meta">
+            <p style="margin:0 0 2px;">Tanggal Cetak: <strong>${fmt.formatDate(new Date().toISOString())}</strong></p>
+            <p style="margin:0;">Status: <strong>Dokumen Resmi</strong></p>
           </div>
         </div>
 
@@ -668,15 +679,15 @@ function exportPdf() {
         </div>
 
         <div class="grid">
-          <div class="col" style="flex: 2;">
-            <h4 style="margin: 0 0 5px 0;">Daftar Transaksi</h4>
+          <div class="col" style="flex: 1.6;">
+            <div class="section-title">Daftar Transaksi Harian</div>
             <table>
               <thead>
                 <tr>
                   <th>No. Invoice</th>
                   <th>Jam</th>
                   <th>Kasir</th>
-                  <th style="text-align: center;">Bayar</th>
+                  <th style="text-align: center;">Metode</th>
                   <th style="text-align: right;">Total</th>
                 </tr>
               </thead>
@@ -684,7 +695,7 @@ function exportPdf() {
             </table>
           </div>
           <div class="col" style="flex: 1;">
-            <h4 style="margin: 0 0 5px 0;">Ringkasan Produk</h4>
+            <div class="section-title">Ringkasan Penjualan Produk</div>
             <table>
               <thead>
                 <tr>
@@ -697,6 +708,10 @@ function exportPdf() {
             </table>
           </div>
         </div>
+
+        <div class="footer-note">
+          PantauBisnis — System Generated Daily Report · ${fmt.formatDate(selectedDate.value)}
+        </div>
       </body>
     </html>
   `)
@@ -708,23 +723,27 @@ function exportPdf() {
 }
 
 function exportCsv() {
-  let csvContent = `Laporan Penjualan Harian - Tanggal ${selectedDate.value}\n`
-  csvContent += `No Invoice,Jam,Kasir,Metode Pembayaran,Total Nominal (Rp)\n`
+  const headers = ['No Invoice', 'Jam', 'Kasir', 'Metode Pembayaran', 'Total Nominal (Rp)']
+  const rows = dailyTransactions.value.map((trx: any) => [
+    `"${(trx.id || '').replace(/"/g, '""')}"`,
+    `"${formatTimeOnly(trx.createdAt)}"`,
+    `"${(trx.cashier?.name || '').replace(/"/g, '""')}"`,
+    `"${(trx.paymentMethod || '').replace(/"/g, '""')}"`,
+    trx.total || 0
+  ])
 
-  dailyTransactions.value.forEach((trx: any) => {
-    csvContent += `"${trx.id}","${formatTimeOnly(trx.createdAt)}","${trx.cashier?.name || ''}","${trx.paymentMethod}",${trx.total}\n`
-  })
-
+  // UTF-8 BOM \uFEFF and sep=; directive ensures Excel automatically splits into separate columns A, B, C, D, E
+  const csvContent = '\uFEFFsep=;\n' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n')
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.setAttribute('href', url)
-  link.setAttribute('download', `Laporan-Harian-${selectedDate.value}.csv`)
+  link.setAttribute('download', `Laporan_Harian_${selectedDate.value}.csv`)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 
-  toast.success('Berhasil mengunduh CSV Laporan Harian')
+  toast.success('Berhasil mengunduh CSV Laporan Harian per-kolom')
 }
 </script>
