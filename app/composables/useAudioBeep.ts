@@ -12,21 +12,16 @@ function ensureAudioContext(): AudioContext | null {
   return sharedAudioCtx
 }
 
-export function useAudioBeep() {
-  /**
-   * MUST be called from a direct user-gesture handler (click, touchend)
-   * to unlock AudioContext on mobile browsers (iOS Safari, Chrome Android).
-   */
-  function unlockAudio() {
-    if (isUnlocked) return
-    const ctx = ensureAudioContext()
-    if (!ctx) return
+function unlockAudio() {
+  if (!process.client) return
+  const ctx = ensureAudioContext()
+  if (!ctx) return
 
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {})
-    }
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {})
+  }
 
-    // Play a silent buffer to fully unlock on iOS
+  if (!isUnlocked) {
     try {
       const buf = ctx.createBuffer(1, 1, 22050)
       const src = ctx.createBufferSource()
@@ -34,54 +29,83 @@ export function useAudioBeep() {
       src.connect(ctx.destination)
       src.start(0)
     } catch (_) {}
-
     isUnlocked = true
   }
+}
 
-  function playSuccessBeep() {
+// Auto unlock on any first user interaction on the page
+if (process.client) {
+  const handleUserInteraction = () => {
+    unlockAudio()
+  }
+  window.addEventListener('click', handleUserInteraction, { capture: true, passive: true })
+  window.addEventListener('pointerdown', handleUserInteraction, { capture: true, passive: true })
+  window.addEventListener('keydown', handleUserInteraction, { capture: true, passive: true })
+  window.addEventListener('touchstart', handleUserInteraction, { capture: true, passive: true })
+}
+
+async function getActiveContext(): Promise<AudioContext | null> {
+  const ctx = ensureAudioContext()
+  if (!ctx) return null
+  if (ctx.state === 'suspended') {
     try {
-      const ctx = ensureAudioContext()
-      if (!ctx) return
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+      await ctx.resume()
+    } catch (_) {}
+  }
+  return ctx
+}
+
+export function useAudioBeep() {
+  async function playSuccessBeep() {
+    try {
+      unlockAudio()
+      const ctx = await getActiveContext()
+      if (!ctx || ctx.state !== 'running') return
 
       const now = ctx.currentTime
 
-      // Bright high-pitch beep (C6)
+      // Bright high-pitch beep (C6 = 1046.5Hz)
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.type = 'sine'
       osc.frequency.setValueAtTime(1046.5, now)
+
       gain.gain.setValueAtTime(0, now)
-      gain.gain.linearRampToValueAtTime(0.5, now + 0.005)
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18)
+      gain.gain.linearRampToValueAtTime(0.6, now + 0.005)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
+
       osc.connect(gain)
       gain.connect(ctx.destination)
+
       osc.start(now)
-      osc.stop(now + 0.18)
+      osc.stop(now + 0.2)
     } catch (e) {
-      console.warn('Audio beep failed:', e)
+      console.warn('Audio success beep failed:', e)
     }
   }
 
-  function playErrorBeep() {
+  async function playErrorBeep() {
     try {
-      const ctx = ensureAudioContext()
-      if (!ctx) return
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+      unlockAudio()
+      const ctx = await getActiveContext()
+      if (!ctx || ctx.state !== 'running') return
 
       const now = ctx.currentTime
 
-      // Two descending buzzy tones
-      for (const [freq, offset, dur] of [[330, 0, 0.12], [220, 0.15, 0.18]] as const) {
+      // Loud double-beep error warning tone (330Hz then 220Hz)
+      for (const [freq, offset, dur] of [[350, 0, 0.14], [220, 0.16, 0.2]] as const) {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
-        osc.type = 'square'
+        osc.type = 'sawtooth'
         osc.frequency.setValueAtTime(freq, now + offset)
+
         gain.gain.setValueAtTime(0, now + offset)
-        gain.gain.linearRampToValueAtTime(0.45, now + offset + 0.005)
+        gain.gain.linearRampToValueAtTime(0.6, now + offset + 0.005)
         gain.gain.exponentialRampToValueAtTime(0.001, now + offset + dur)
+
         osc.connect(gain)
         gain.connect(ctx.destination)
+
         osc.start(now + offset)
         osc.stop(now + offset + dur)
       }
