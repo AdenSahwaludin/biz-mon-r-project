@@ -68,7 +68,7 @@
                     <X class="w-4 h-4" />
                   </button>
                   <button
-                    @click="isScannerOpen = true"
+                    @click="openCameraScanner"
                     type="button"
                     class="inline-flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 rounded-md text-xs font-semibold transition-colors"
                     title="Buka Scanner Kamera HP"
@@ -463,9 +463,14 @@ const toast = useToastStore()
 const settingsStore = useSettingsStore()
 const { fetchWithAuth } = useApi()
 const { fetchWithCache, invalidateCache } = useCachedFetch()
-const { playSuccessBeep, playErrorBeep } = useAudioBeep()
+const { playSuccessBeep, playErrorBeep, unlockAudio } = useAudioBeep()
 
 const isScannerOpen = ref(false)
+
+function openCameraScanner() {
+  unlockAudio()
+  isScannerOpen.value = true
+}
 const barcodeInput = ref<HTMLInputElement>()
 const barcodeValue = ref('')
 const searchQuery = ref('')

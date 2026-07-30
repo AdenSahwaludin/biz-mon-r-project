@@ -16,6 +16,7 @@ function getAudioContext() {
 
 export function useAudioBeep() {
   function unlockAudio() {
+    if (!process.client) return
     const ctx = getAudioContext()
     if (ctx && ctx.state === 'suspended') {
       ctx.resume().catch(() => {})
@@ -23,58 +24,68 @@ export function useAudioBeep() {
   }
 
   function playSuccessBeep() {
+    if (!process.client) return
     try {
       const ctx = getAudioContext()
-      if (!ctx) return
-      const now = ctx.currentTime
+      if (ctx) {
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {})
+        }
 
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(1046.5, now) // C6 pitch
-
-      gain.gain.setValueAtTime(0, now)
-      gain.gain.linearRampToValueAtTime(0.4, now + 0.01)
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
-
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-
-      osc.start(now)
-      osc.stop(now + 0.2)
-    } catch (e) {
-      console.warn('Audio beep failed:', e)
-    }
-  }
-
-  function playErrorBeep() {
-    try {
-      const ctx = getAudioContext()
-      if (!ctx) return
-
-      const now = ctx.currentTime
-
-      const playTone = (freq: number, start: number, duration: number) => {
+        const now = ctx.currentTime
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
 
-        osc.type = 'sawtooth'
-        osc.frequency.setValueAtTime(freq, start)
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(1046.5, now) // C6 pitch
 
-        gain.gain.setValueAtTime(0, start)
-        gain.gain.linearRampToValueAtTime(0.4, start + 0.01)
-        gain.gain.exponentialRampToValueAtTime(0.001, start + duration)
+        gain.gain.setValueAtTime(0, now)
+        gain.gain.linearRampToValueAtTime(0.6, now + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
 
         osc.connect(gain)
         gain.connect(ctx.destination)
 
-        osc.start(start)
-        osc.stop(start + duration)
+        osc.start(now)
+        osc.stop(now + 0.25)
       }
+    } catch (e) {
+      console.warn('Audio success beep failed:', e)
+    }
+  }
 
-      playTone(220, now, 0.15)
-      playTone(180, now + 0.18, 0.2)
+  function playErrorBeep() {
+    if (!process.client) return
+    try {
+      const ctx = getAudioContext()
+      if (ctx) {
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {})
+        }
+
+        const now = ctx.currentTime
+
+        const playPulse = (freq: number, start: number, dur: number) => {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+
+          osc.type = 'triangle'
+          osc.frequency.setValueAtTime(freq, start)
+
+          gain.gain.setValueAtTime(0, start)
+          gain.gain.linearRampToValueAtTime(0.7, start + 0.01)
+          gain.gain.exponentialRampToValueAtTime(0.001, start + dur)
+
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+
+          osc.start(start)
+          osc.stop(start + dur)
+        }
+
+        playPulse(260, now, 0.18)
+        playPulse(170, now + 0.2, 0.25)
+      }
     } catch (e) {
       console.warn('Audio error beep failed:', e)
     }

@@ -195,6 +195,8 @@ async function initCamera() {
   isTorchOn.value = false
   hasTorchSupport.value = false
   activeEngine.value = 'None'
+  lastScannedCode = null
+  lastScannedTime = 0
 
   stopCamera()
 
@@ -401,6 +403,8 @@ function stopCamera() {
 
   isLocked.value = false
   isTorchOn.value = false
+  lastScannedCode = null
+  lastScannedTime = 0
 }
 
 function closeScanner() {

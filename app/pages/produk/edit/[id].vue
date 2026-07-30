@@ -65,7 +65,7 @@
               class="w-full pl-3 pr-20 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none font-mono"
             />
             <button
-              @click="isScannerOpen = true"
+              @click="openCameraScanner"
               type="button"
               class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 rounded-md text-xs font-semibold transition-colors"
               title="Buka Scanner Kamera HP"
@@ -146,9 +146,14 @@ const bizStore = useBusinessStore()
 const businessList = computed(() => bizStore.businesses)
 const toast = useToastStore()
 const { fetchWithAuth } = useApi()
-const { playSuccessBeep } = useAudioBeep()
+const { playSuccessBeep, unlockAudio } = useAudioBeep()
 
 const isScannerOpen = ref(false)
+
+function openCameraScanner() {
+  unlockAudio()
+  isScannerOpen.value = true
+}
 
 function handleScanBarcode(scannedCode: string) {
   form.barcode = scannedCode
