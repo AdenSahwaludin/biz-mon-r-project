@@ -8,8 +8,8 @@
         <input
           v-model="search"
           type="text"
-          placeholder="Cari produk atau barcode di sini..."
-          class="w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+          placeholder="Cari produk / barcode..."
+          class="w-full pl-10 pr-32 sm:pr-36 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
         />
         <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
           <button

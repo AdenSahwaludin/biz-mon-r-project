@@ -61,8 +61,8 @@
             <input
               v-model="form.barcode"
               type="text"
-              placeholder="Scan atau masukkan kode barcode fisik (opsional)"
-              class="w-full pl-3 pr-20 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none font-mono"
+              placeholder="Masukkan kode barcode fisik..."
+              class="w-full pl-3 pr-32 sm:pr-36 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none font-mono"
             />
             <button
               @click="openScanner"

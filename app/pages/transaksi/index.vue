@@ -55,7 +55,7 @@
                   @keydown.enter="handleBarcode"
                   type="text"
                   placeholder="Scan barcode..."
-                  class="w-full pl-3 pr-16 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                  class="w-full pl-3 pr-32 sm:pr-36 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                   autofocus
                 />
                 <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
