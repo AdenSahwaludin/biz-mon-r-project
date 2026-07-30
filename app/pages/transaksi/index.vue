@@ -55,17 +55,28 @@
                   @keydown.enter="handleBarcode"
                   type="text"
                   placeholder="Scan barcode..."
-                  class="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                  class="w-full pl-3 pr-16 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                   autofocus
                 />
-                <button
-                  v-if="barcodeValue"
-                  @click="barcodeValue = ''"
-                  type="button"
-                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
-                >
-                  <X class="w-4 h-4" />
-                </button>
+                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <button
+                    v-if="barcodeValue"
+                    @click="barcodeValue = ''"
+                    type="button"
+                    class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                  >
+                    <X class="w-4 h-4" />
+                  </button>
+                  <button
+                    @click="isScannerOpen = true"
+                    type="button"
+                    class="inline-flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 rounded-md text-xs font-semibold transition-colors"
+                    title="Buka Scanner Kamera HP"
+                  >
+                    <Camera class="w-3.5 h-3.5" />
+                    <span class="hidden sm:inline">Scan</span>
+                  </button>
+                </div>
               </div>
               <!-- Search Input -->
               <div class="relative col-span-2 sm:col-span-1">
@@ -431,12 +442,18 @@
       </div>
     </div>
 
+    <!-- Barcode Scanner Modal Component -->
+    <BarcodeScannerModal
+      :is-open="isScannerOpen"
+      @close="isScannerOpen = false"
+      @scan="handleCameraScan"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Search, Package, ShoppingCart, X, Minus, Plus, Banknote, Smartphone, CheckCircle, Soup, CupSoda, Utensils, Store, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, TrendingUp, SlidersHorizontal, ChevronUp, ChevronDown, XCircle } from 'lucide-vue-next'
+import { Search, Package, ShoppingCart, X, Minus, Plus, Banknote, Smartphone, CheckCircle, Soup, CupSoda, Utensils, Store, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, TrendingUp, SlidersHorizontal, ChevronUp, ChevronDown, XCircle, Camera } from 'lucide-vue-next'
 
 const cart = useCartStore()
 const auth = useAuthStore()
@@ -446,7 +463,9 @@ const toast = useToastStore()
 const settingsStore = useSettingsStore()
 const { fetchWithAuth } = useApi()
 const { fetchWithCache, invalidateCache } = useCachedFetch()
+const { playSuccessBeep, playErrorBeep } = useAudioBeep()
 
+const isScannerOpen = ref(false)
 const barcodeInput = ref<HTMLInputElement>()
 const barcodeValue = ref('')
 const searchQuery = ref('')
@@ -642,12 +661,47 @@ function handleBarcode() {
   const prod = bizProducts.value.find((p) => (p.barcode && p.barcode.toLowerCase() === code) || (p.sku && p.sku.toLowerCase() === code))
   if (prod) {
     cart.addItem(prod)
-    toast.success(`${prod.name} ditambahkan`)
+    playSuccessBeep()
+    toast.success(`${prod.name} ditambahkan (+1)`)
   } else {
+    playErrorBeep()
     toast.error('Produk tidak ditemukan')
   }
   barcodeValue.value = ''
   barcodeInput.value?.focus()
+}
+
+async function handleCameraScan(scannedCode: string) {
+  const code = scannedCode.trim().toLowerCase()
+  if (!code) return
+
+  // 1. Search locally in business products for sub-millisecond response
+  const prod = bizProducts.value.find((p) => (p.barcode && p.barcode.toLowerCase() === code) || (p.sku && p.sku.toLowerCase() === code))
+  if (prod) {
+    cart.addItem(prod)
+    playSuccessBeep()
+    toast.success(`${prod.name} ditambahkan (+1)`)
+    return
+  }
+
+  // 2. Fallback API lookup if not found in local array
+  try {
+    const bizId = biz.activeBusinessId
+    const url = `/products/barcode/${encodeURIComponent(scannedCode)}${bizId ? `?businessId=${bizId}` : ''}`
+    const res = await fetchWithAuth(url) as any
+    if (res && res.success && res.data) {
+      cart.addItem(res.data)
+      playSuccessBeep()
+      toast.success(`${res.data.name} ditambahkan (+1)`)
+      return
+    }
+  } catch (err) {
+    // ignore api error, fallback to not found
+  }
+
+  // 3. Not found handling
+  playErrorBeep()
+  toast.error(`❌ Barcode ${scannedCode} tidak ditemukan`)
 }
 
 function handleCancel() {
