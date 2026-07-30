@@ -335,7 +335,7 @@ async function startScanEngine() {
       delayBetweenScanSuccess: 300,
     })
 
-    zxingControls = await zxingReader.decodeFromVideoElementContinuously(
+    zxingControls = await zxingReader.decodeFromVideoElement(
       videoRef.value,
       (result: any, err: any, controls: any) => {
         if (!props.isOpen || isLocked.value) return
