@@ -59,12 +59,23 @@
         <!-- Barcode Fisik (Opsional) -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Barcode Fisik <span class="text-xs text-gray-400 font-normal">(Opsional - Scan kemasan/pabrik)</span></label>
-          <input
-            v-model="form.barcode"
-            type="text"
-            placeholder="Scan atau masukkan kode barcode fisik (opsional)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none font-mono"
-          />
+          <div class="relative">
+            <input
+              v-model="form.barcode"
+              type="text"
+              placeholder="Scan atau masukkan kode barcode fisik (opsional)"
+              class="w-full pl-3 pr-20 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none font-mono"
+            />
+            <button
+              @click="isScannerOpen = true"
+              type="button"
+              class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 rounded-md text-xs font-semibold transition-colors"
+              title="Buka Scanner Kamera HP"
+            >
+              <Camera class="w-3.5 h-3.5" />
+              <span>Scan</span>
+            </button>
+          </div>
           <p v-if="errors.barcode" class="mt-1 text-xs text-red-500">{{ errors.barcode }}</p>
         </div>
 
@@ -117,18 +128,35 @@
         </div>
       </form>
     </div>
+
+    <!-- Camera Barcode Scanner Modal -->
+    <BarcodeScannerModal
+      :is-open="isScannerOpen"
+      :auto-close-on-scan="true"
+      @close="isScannerOpen = false"
+      @scan="handleScanBarcode"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import { Lock, Unlock } from 'lucide-vue-next'
+import { Lock, Unlock, Camera } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const bizStore = useBusinessStore()
 const businessList = computed(() => bizStore.businesses)
 const toast = useToastStore()
 const { fetchWithAuth } = useApi()
+const { playSuccessBeep } = useAudioBeep()
+
+const isScannerOpen = ref(false)
+
+function handleScanBarcode(scannedCode: string) {
+  form.barcode = scannedCode
+  playSuccessBeep()
+  toast.success(`Barcode ${scannedCode} berhasil di-scan!`)
+}
 
 const isLoading = ref(false)
 const isCategoriesLoading = ref(false)

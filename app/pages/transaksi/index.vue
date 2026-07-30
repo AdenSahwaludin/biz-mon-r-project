@@ -494,9 +494,11 @@ function handleGlobalKeydown(e: KeyboardEvent) {
       const prod = bizProducts.value.find((p) => (p.barcode && p.barcode.toLowerCase() === code) || (p.sku && p.sku.toLowerCase() === code))
       if (prod) {
         cart.addItem(prod)
-        toast.success(`${prod.name} ditambahkan`)
+        playSuccessBeep()
+        toast.success(`${prod.name} ditambahkan (+1)`)
       } else {
-        toast.error('Produk tidak ditemukan')
+        playErrorBeep()
+        toast.error(`❌ Barcode "${barcodeBuffer}" tidak ditemukan`)
       }
     }
     barcodeBuffer = ''

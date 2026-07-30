@@ -1,40 +1,48 @@
-export function useAudioBeep() {
-  let audioCtx: AudioContext | null = null
+let sharedAudioCtx: AudioContext | null = null
 
-  function getAudioContext() {
-    if (!process.client) return null
-    if (!audioCtx) {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-      if (AudioContextClass) {
-        audioCtx = new AudioContextClass()
-      }
+function getAudioContext() {
+  if (!process.client) return null
+  if (!sharedAudioCtx) {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    if (AudioContextClass) {
+      sharedAudioCtx = new AudioContextClass()
     }
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {})
+  }
+  if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume().catch(() => {})
+  }
+  return sharedAudioCtx
+}
+
+export function useAudioBeep() {
+  function unlockAudio() {
+    const ctx = getAudioContext()
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
     }
-    return audioCtx
   }
 
   function playSuccessBeep() {
     try {
       const ctx = getAudioContext()
       if (!ctx) return
+      const now = ctx.currentTime
 
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
 
       osc.type = 'sine'
-      osc.frequency.setValueAtTime(1046.5, ctx.currentTime) // High C (C6)
+      osc.frequency.setValueAtTime(1046.5, now) // C6 pitch
 
-      gain.gain.setValueAtTime(0, ctx.currentTime)
-      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(0.4, now + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
 
       osc.connect(gain)
       gain.connect(ctx.destination)
 
-      osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.15)
+      osc.start(now)
+      osc.stop(now + 0.2)
     } catch (e) {
       console.warn('Audio beep failed:', e)
     }
@@ -45,35 +53,35 @@ export function useAudioBeep() {
       const ctx = getAudioContext()
       if (!ctx) return
 
-      // Double low pitch beep
       const now = ctx.currentTime
-      
-      const playTone = (time: number) => {
+
+      const playTone = (freq: number, start: number, duration: number) => {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
 
         osc.type = 'sawtooth'
-        osc.frequency.setValueAtTime(280, time) // Low tone
+        osc.frequency.setValueAtTime(freq, start)
 
-        gain.gain.setValueAtTime(0, time)
-        gain.gain.linearRampToValueAtTime(0.2, time + 0.01)
-        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1)
+        gain.gain.setValueAtTime(0, start)
+        gain.gain.linearRampToValueAtTime(0.4, start + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.001, start + duration)
 
         osc.connect(gain)
         gain.connect(ctx.destination)
 
-        osc.start(time)
-        osc.stop(time + 0.1)
+        osc.start(start)
+        osc.stop(start + duration)
       }
 
-      playTone(now)
-      playTone(now + 0.12)
+      playTone(220, now, 0.15)
+      playTone(180, now + 0.18, 0.2)
     } catch (e) {
       console.warn('Audio error beep failed:', e)
     }
   }
 
   return {
+    unlockAudio,
     playSuccessBeep,
     playErrorBeep
   }

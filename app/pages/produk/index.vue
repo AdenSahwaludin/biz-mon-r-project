@@ -9,17 +9,28 @@
           v-model="search"
           type="text"
           placeholder="Cari produk atau barcode di sini..."
-          class="w-full pl-10 pr-9 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+          class="w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
         />
-        <button
-          v-if="search"
-          @click="search = ''"
-          type="button"
-          class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
-          title="Hapus"
-        >
-          <X class="w-4 h-4" />
-        </button>
+        <div class="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+          <button
+            v-if="search"
+            @click="search = ''"
+            type="button"
+            class="text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded-full hover:bg-gray-100"
+            title="Hapus"
+          >
+            <X class="w-4 h-4" />
+          </button>
+          <button
+            @click="isScannerOpen = true"
+            type="button"
+            class="inline-flex items-center gap-1 px-2.5 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 rounded-md text-xs font-semibold transition-colors"
+            title="Scan Barcode untuk Cari Produk"
+          >
+            <Camera class="w-3.5 h-3.5" />
+            <span>Scan</span>
+          </button>
+        </div>
       </div>
 
       <!-- Filters & Action Bar -->
@@ -393,6 +404,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Camera Barcode Scanner Modal -->
+    <BarcodeScannerModal
+      :is-open="isScannerOpen"
+      :auto-close-on-scan="true"
+      @close="isScannerOpen = false"
+      @scan="handleCameraScan"
+    />
   </div>
 </template>
 
@@ -409,7 +428,8 @@ import {
   ArrowUpDown,
   FileSpreadsheet,
   FileText,
-  Upload
+  Upload,
+  Camera
 } from 'lucide-vue-next'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -419,6 +439,15 @@ const { fetchWithAuth } = useApi()
 const bizStore = useBusinessStore()
 const fmt = useFormatCurrency()
 const toast = useToastStore()
+const { playSuccessBeep } = useAudioBeep()
+
+const isScannerOpen = ref(false)
+
+function handleCameraScan(scannedCode: string) {
+  search.value = scannedCode
+  playSuccessBeep()
+  toast.success(`Cari barcode: ${scannedCode}`)
+}
 
 const products = ref<any[]>([])
 const categories = ref<any[]>([])

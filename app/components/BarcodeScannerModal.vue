@@ -140,14 +140,22 @@
 import { ref, watch, onUnmounted } from 'vue'
 import { ScanLine, Zap, X, CameraOff } from 'lucide-vue-next'
 
-const props = defineProps<{
-  isOpen: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    isOpen: boolean
+    autoCloseOnScan?: boolean
+  }>(),
+  {
+    autoCloseOnScan: false
+  }
+)
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'scan', barcode: string): void
 }>()
+
+const { unlockAudio } = useAudioBeep()
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const isLoading = ref(true)
@@ -171,6 +179,7 @@ watch(
   () => props.isOpen,
   (val) => {
     if (val) {
+      unlockAudio()
       initCamera()
     } else {
       stopCamera()
@@ -334,6 +343,11 @@ function handleDetectedBarcode(code: string) {
 
   // Emit event to parent
   emit('scan', code)
+
+  if (props.autoCloseOnScan) {
+    closeScanner()
+    return
+  }
 
   // Unlock after 700 ms
   if (lockTimer) clearTimeout(lockTimer)
