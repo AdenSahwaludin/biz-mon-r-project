@@ -12,7 +12,10 @@
               <ScanLine class="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h3 class="text-base font-bold leading-tight">Scan Barcode Produk</h3>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold leading-tight">Scan Barcode Produk</h3>
+                <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full tracking-wider animate-pulse">BETA</span>
+              </div>
               <p class="text-xs text-gray-400">Gunakan kamera belakang HP</p>
             </div>
           </div>

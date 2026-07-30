@@ -71,10 +71,11 @@
                     @click="openScanner"
                     type="button"
                     class="inline-flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 rounded-md text-xs font-semibold transition-colors"
-                    title="Buka Scanner Kamera HP"
+                    title="Buka Scanner Kamera HP (Fitur Beta)"
                   >
                     <Camera class="w-3.5 h-3.5" />
                     <span class="hidden sm:inline">Scan</span>
+                    <span class="text-[9px] px-1 py-0.2 bg-amber-100 text-amber-700 border border-amber-300 rounded font-bold">BETA</span>
                   </button>
                 </div>
               </div>
