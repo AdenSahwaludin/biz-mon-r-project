@@ -70,7 +70,7 @@
           </div>
 
           <!-- Loading Camera State -->
-          <div v-else-if="isLoading" class="relative z-30 flex flex-col items-center gap-3">
+          <div v-else-if="isLoadingCamera" class="relative z-30 flex flex-col items-center gap-3">
             <div class="w-10 h-10 border-4 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
             <p class="text-sm font-medium text-gray-300">Menyiapkan kamera...</p>
           </div>
@@ -137,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, nextTick } from 'vue'
 import { ScanLine, Zap, X, CameraOff } from 'lucide-vue-next'
 
 const props = withDefaults(
@@ -155,10 +155,8 @@ const emit = defineEmits<{
   (e: 'scan', barcode: string): void
 }>()
 
-const { unlockAudio } = useAudioBeep()
-
 const videoRef = ref<HTMLVideoElement | null>(null)
-const isLoading = ref(true)
+const isLoadingCamera = ref(true)
 const cameraError = ref<string | null>(null)
 const isTorchOn = ref(false)
 const hasTorchSupport = ref(false)
@@ -170,38 +168,37 @@ let mediaStream: MediaStream | null = null
 let mediaTrack: MediaStreamTrack | null = null
 let animFrameId: number | null = null
 let zxingReader: any = null
+let zxingControls: any = null
 let lockTimer: any = null
-let lastScannedCode: string | null = null
-let lastScannedTime = 0
 
 // Watch isOpen to initialize or stop camera
 watch(
   () => props.isOpen,
-  (val) => {
+  async (val) => {
     if (val) {
-      unlockAudio()
+      // Wait for DOM to render the video element
+      await nextTick()
       initCamera()
     } else {
-      stopCamera()
+      stopEverything()
     }
-  },
-  { immediate: true }
+  }
 )
 
 async function initCamera() {
   if (!process.client) return
-  isLoading.value = true
+  isLoadingCamera.value = true
   cameraError.value = null
   isTorchOn.value = false
   hasTorchSupport.value = false
   activeEngine.value = 'None'
-  lastScannedCode = null
-  lastScannedTime = 0
+  isLocked.value = false
 
-  stopCamera()
+  // Clean up any previous session fully
+  stopEverything()
 
   try {
-    // 1. Request camera stream with preferred rear environment camera & 720p HD resolution
+    // Request camera stream with preferred rear camera & 720p
     let stream: MediaStream
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -212,8 +209,8 @@ async function initCamera() {
         },
         audio: false
       })
-    } catch (err) {
-      // Fallback without exact environment facingMode restriction
+    } catch (_) {
+      // Fallback without exact constraint (desktop/devices without rear cam)
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'environment',
@@ -227,10 +224,10 @@ async function initCamera() {
     mediaStream = stream
     mediaTrack = stream.getVideoTracks()[0] || null
 
-    // Check torch capabilities
+    // Check torch/flashlight capabilities
     if (mediaTrack && typeof mediaTrack.getCapabilities === 'function') {
       const caps = mediaTrack.getCapabilities() as any
-      if (caps && caps.torch) {
+      if (caps?.torch) {
         hasTorchSupport.value = true
       }
     }
@@ -240,12 +237,12 @@ async function initCamera() {
       await videoRef.value.play()
     }
 
-    isLoading.value = false
+    isLoadingCamera.value = false
 
-    // 2. Start Barcode Engine Detection
+    // Start barcode detection engine
     startScanEngine()
   } catch (err: any) {
-    isLoading.value = false
+    isLoadingCamera.value = false
     console.error('Camera access error:', err)
 
     if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -263,20 +260,28 @@ async function initCamera() {
 async function startScanEngine() {
   if (!process.client || !videoRef.value) return
 
-  // Option 1: Native BarcodeDetector API (Chrome 83+, Edge 83+, Android Webview)
+  // ── Strategy 1: Native BarcodeDetector API (fastest) ──
   if ('BarcodeDetector' in window) {
     try {
       activeEngine.value = 'BarcodeDetector'
-      const supportedFormats = await (window as any).BarcodeDetector.getSupportedFormats()
-      const formats = supportedFormats.length > 0 ? supportedFormats : [
-        'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39', 'code_93', 'code_128',
-        'itf', 'codabar', 'qr_code', 'data_matrix', 'pdf417', 'aztec'
-      ]
+      let formats: string[]
+      try {
+        formats = await (window as any).BarcodeDetector.getSupportedFormats()
+      } catch (_) {
+        formats = []
+      }
+      if (!formats || formats.length === 0) {
+        formats = [
+          'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39', 'code_93', 'code_128',
+          'itf', 'codabar', 'qr_code', 'data_matrix', 'pdf417', 'aztec'
+        ]
+      }
 
       const detector = new (window as any).BarcodeDetector({ formats })
+      let scanning = true
 
       const scanFrame = async () => {
-        if (!props.isOpen || !videoRef.value || activeEngine.value !== 'BarcodeDetector') return
+        if (!scanning || !props.isOpen || !videoRef.value) return
 
         if (!isLocked.value && videoRef.value.readyState >= 2) {
           try {
@@ -287,36 +292,61 @@ async function startScanEngine() {
                 handleDetectedBarcode(rawVal)
               }
             }
-          } catch (e) {
-            // Ignore frame detection error
+          } catch (_) {
+            // Frame detection error — ignore and continue
           }
         }
 
-        animFrameId = requestAnimationFrame(scanFrame)
+        // Schedule next frame immediately for max speed
+        if (scanning && props.isOpen) {
+          animFrameId = requestAnimationFrame(scanFrame)
+        }
       }
 
-      scanFrame()
+      // Store cleanup function
+      const origStop = stopEverything
+      animFrameId = requestAnimationFrame(scanFrame)
+
       return
     } catch (e) {
-      console.warn('BarcodeDetector initialization failed, falling back to ZXing:', e)
+      console.warn('BarcodeDetector failed, falling back to ZXing:', e)
     }
   }
 
-  // Option 2: Fallback to ZXing Browser MultiFormatReader
+  // ── Strategy 2: ZXing library fallback ──
   try {
     activeEngine.value = 'ZXing'
-    const { BrowserMultiFormatReader } = await import('@zxing/browser')
-    zxingReader = new BrowserMultiFormatReader()
+    const { BrowserMultiFormatReader, BrowserCodeReader } = await import('@zxing/browser')
+    const { DecodeHintType, BarcodeFormat } = await import('@zxing/library')
 
-    zxingReader.decodeFromVideoElement(videoRef.value, (result: any, err: any) => {
-      if (!props.isOpen || isLocked.value) return
-      if (result) {
-        const text = result.getText()?.trim()
-        if (text) {
-          handleDetectedBarcode(text)
+    const hints = new Map()
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
+      BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+      BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.CODE_128,
+      BarcodeFormat.ITF, BarcodeFormat.CODABAR,
+      BarcodeFormat.QR_CODE, BarcodeFormat.DATA_MATRIX,
+      BarcodeFormat.PDF_417, BarcodeFormat.AZTEC
+    ])
+    hints.set(DecodeHintType.TRY_HARDER, true)
+
+    zxingReader = new BrowserMultiFormatReader(hints, {
+      delayBetweenScanAttempts: 100,
+      delayBetweenScanSuccess: 300,
+    })
+
+    zxingControls = await zxingReader.decodeFromVideoElementContinuously(
+      videoRef.value,
+      (result: any, err: any, controls: any) => {
+        if (!props.isOpen || isLocked.value) return
+        if (result) {
+          const text = result.getText()?.trim()
+          if (text) {
+            handleDetectedBarcode(text)
+          }
         }
       }
-    })
+    )
   } catch (e) {
     console.error('ZXing fallback failed:', e)
     cameraError.value = 'Gagal memuat engine barcode scanner.'
@@ -324,34 +354,30 @@ async function startScanEngine() {
 }
 
 function handleDetectedBarcode(code: string) {
-  const now = Date.now()
-
-  // Prevent immediate duplicate reading within 1000ms if code is identical
-  if (lastScannedCode === code && now - lastScannedTime < 1000) {
-    return
-  }
-
   if (isLocked.value) return
 
-  // Lock for 700ms according to PRD anti-double scan requirement
+  // Lock immediately
   isLocked.value = true
-  lastScannedCode = code
-  lastScannedTime = now
 
+  // Visual flash
   showSuccessFlash.value = true
   setTimeout(() => {
     showSuccessFlash.value = false
   }, 300)
 
-  // Emit event to parent
+  // Emit to parent
   emit('scan', code)
 
+  // If autoClose, close the scanner immediately
   if (props.autoCloseOnScan) {
-    closeScanner()
+    // Small delay so the flash is visible
+    setTimeout(() => {
+      closeScanner()
+    }, 150)
     return
   }
 
-  // Unlock after 700 ms
+  // Otherwise unlock after 700ms (anti double-scan)
   if (lockTimer) clearTimeout(lockTimer)
   lockTimer = setTimeout(() => {
     isLocked.value = false
@@ -370,50 +396,55 @@ async function toggleTorch() {
   }
 }
 
-function stopCamera() {
+function stopEverything() {
+  // Cancel animation frame loop
   if (animFrameId) {
     cancelAnimationFrame(animFrameId)
     animFrameId = null
   }
 
+  // Stop ZXing
+  if (zxingControls) {
+    try {
+      if (typeof zxingControls.stop === 'function') zxingControls.stop()
+    } catch (_) {}
+    zxingControls = null
+  }
   if (zxingReader) {
     try {
-      // Clean up ZXing reader
-      if (typeof zxingReader.reset === 'function') {
-        zxingReader.reset()
-      }
-    } catch (e) {}
+      if (typeof zxingReader.reset === 'function') zxingReader.reset()
+    } catch (_) {}
     zxingReader = null
   }
 
+  // Stop camera tracks
   if (mediaStream) {
     mediaStream.getTracks().forEach((track) => track.stop())
     mediaStream = null
     mediaTrack = null
   }
 
+  // Clear video src
   if (videoRef.value) {
     videoRef.value.srcObject = null
   }
 
+  // Clear timers / state
   if (lockTimer) {
     clearTimeout(lockTimer)
     lockTimer = null
   }
-
   isLocked.value = false
   isTorchOn.value = false
-  lastScannedCode = null
-  lastScannedTime = 0
 }
 
 function closeScanner() {
-  stopCamera()
+  stopEverything()
   emit('close')
 }
 
 onUnmounted(() => {
-  stopCamera()
+  stopEverything()
 })
 </script>
 

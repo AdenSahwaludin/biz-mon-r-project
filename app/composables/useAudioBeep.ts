@@ -1,90 +1,89 @@
 let sharedAudioCtx: AudioContext | null = null
+let isUnlocked = false
 
-function getAudioContext() {
+function ensureAudioContext(): AudioContext | null {
   if (!process.client) return null
   if (!sharedAudioCtx) {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-    if (AudioContextClass) {
-      sharedAudioCtx = new AudioContextClass()
+    const Ctor = window.AudioContext || (window as any).webkitAudioContext
+    if (Ctor) {
+      sharedAudioCtx = new Ctor()
     }
-  }
-  if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
-    sharedAudioCtx.resume().catch(() => {})
   }
   return sharedAudioCtx
 }
 
 export function useAudioBeep() {
+  /**
+   * MUST be called from a direct user-gesture handler (click, touchend)
+   * to unlock AudioContext on mobile browsers (iOS Safari, Chrome Android).
+   */
   function unlockAudio() {
-    if (!process.client) return
-    const ctx = getAudioContext()
-    if (ctx && ctx.state === 'suspended') {
+    if (isUnlocked) return
+    const ctx = ensureAudioContext()
+    if (!ctx) return
+
+    if (ctx.state === 'suspended') {
       ctx.resume().catch(() => {})
     }
+
+    // Play a silent buffer to fully unlock on iOS
+    try {
+      const buf = ctx.createBuffer(1, 1, 22050)
+      const src = ctx.createBufferSource()
+      src.buffer = buf
+      src.connect(ctx.destination)
+      src.start(0)
+    } catch (_) {}
+
+    isUnlocked = true
   }
 
   function playSuccessBeep() {
-    if (!process.client) return
     try {
-      const ctx = getAudioContext()
-      if (ctx) {
-        if (ctx.state === 'suspended') {
-          ctx.resume().catch(() => {})
-        }
+      const ctx = ensureAudioContext()
+      if (!ctx) return
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {})
 
-        const now = ctx.currentTime
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
+      const now = ctx.currentTime
 
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(1046.5, now) // C6 pitch
-
-        gain.gain.setValueAtTime(0, now)
-        gain.gain.linearRampToValueAtTime(0.6, now + 0.01)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
-
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-
-        osc.start(now)
-        osc.stop(now + 0.25)
-      }
+      // Bright high-pitch beep (C6)
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(1046.5, now)
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(0.5, now + 0.005)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now)
+      osc.stop(now + 0.18)
     } catch (e) {
-      console.warn('Audio success beep failed:', e)
+      console.warn('Audio beep failed:', e)
     }
   }
 
   function playErrorBeep() {
-    if (!process.client) return
     try {
-      const ctx = getAudioContext()
-      if (ctx) {
-        if (ctx.state === 'suspended') {
-          ctx.resume().catch(() => {})
-        }
+      const ctx = ensureAudioContext()
+      if (!ctx) return
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {})
 
-        const now = ctx.currentTime
+      const now = ctx.currentTime
 
-        const playPulse = (freq: number, start: number, dur: number) => {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-
-          osc.type = 'triangle'
-          osc.frequency.setValueAtTime(freq, start)
-
-          gain.gain.setValueAtTime(0, start)
-          gain.gain.linearRampToValueAtTime(0.7, start + 0.01)
-          gain.gain.exponentialRampToValueAtTime(0.001, start + dur)
-
-          osc.connect(gain)
-          gain.connect(ctx.destination)
-
-          osc.start(start)
-          osc.stop(start + dur)
-        }
-
-        playPulse(260, now, 0.18)
-        playPulse(170, now + 0.2, 0.25)
+      // Two descending buzzy tones
+      for (const [freq, offset, dur] of [[330, 0, 0.12], [220, 0.15, 0.18]] as const) {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'square'
+        osc.frequency.setValueAtTime(freq, now + offset)
+        gain.gain.setValueAtTime(0, now + offset)
+        gain.gain.linearRampToValueAtTime(0.45, now + offset + 0.005)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + dur)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now + offset)
+        osc.stop(now + offset + dur)
       }
     } catch (e) {
       console.warn('Audio error beep failed:', e)

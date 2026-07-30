@@ -22,7 +22,7 @@
             <X class="w-4 h-4" />
           </button>
           <button
-            @click="openCameraScanner"
+            @click="openScanner"
             type="button"
             class="inline-flex items-center gap-1 px-2.5 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 rounded-md text-xs font-semibold transition-colors"
             title="Scan Barcode untuk Cari Produk"
@@ -443,7 +443,7 @@ const { playSuccessBeep, unlockAudio } = useAudioBeep()
 
 const isScannerOpen = ref(false)
 
-function openCameraScanner() {
+function openScanner() {
   unlockAudio()
   isScannerOpen.value = true
 }
