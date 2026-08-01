@@ -123,8 +123,79 @@
           </template>
         </div>
 
+        <!-- Scanned Item Toast Badge (Appears inside camera overlay) -->
+        <div v-if="lastScannedItem" class="absolute bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 z-30 transition-all transform duration-300">
+          <div class="inline-flex items-center gap-2 bg-emerald-600/95 text-white px-4 py-2 rounded-full shadow-xl border border-emerald-400/40 backdrop-blur-md text-xs sm:text-sm font-bold animate-bounce">
+            <CheckCircle class="w-4 h-4 text-emerald-200" />
+            <span>+1 {{ lastScannedItem }}</span>
+          </div>
+        </div>
+
+        <!-- Scanner Cart Panel Bar & Expandable Drawer -->
+        <div v-if="cartItems && cartItems.length > 0" class="relative z-30 bg-gray-900/95 border-t border-white/10 backdrop-blur-xl transition-all">
+          <!-- Expandable Cart Items Drawer Sheet -->
+          <div v-if="isCartDrawerOpen" class="max-h-60 sm:max-h-72 overflow-y-auto p-4 space-y-2 border-b border-white/10 bg-gray-950/80">
+            <div class="flex items-center justify-between text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+              <span>Item Di Keranjang ({{ totalItemsCount }})</span>
+              <span>Subtotal</span>
+            </div>
+
+            <div
+              v-for="item in cartItems"
+              :key="item.produk.id"
+              class="flex items-center justify-between p-2.5 bg-gray-900/80 border border-white/5 rounded-xl text-xs sm:text-sm"
+            >
+              <div class="min-w-0 flex-1 pr-3">
+                <p class="font-semibold text-white truncate">{{ item.produk.name }}</p>
+                <p class="text-xs text-gray-400">{{ item.qty }} × {{ fmt.format(item.produk.price) }}</p>
+              </div>
+              <div class="text-right font-bold text-emerald-400">
+                {{ fmt.format(item.subtotal) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Control & Summary Bar -->
+          <div class="px-4 py-3 flex items-center justify-between gap-3">
+            <!-- Left: Cart Summary & Toggle -->
+            <button
+              @click="isCartDrawerOpen = !isCartDrawerOpen"
+              type="button"
+              class="flex items-center gap-2.5 text-left hover:opacity-90 transition-opacity"
+            >
+              <div class="relative p-2 rounded-xl bg-primary-600/30 text-primary-400 border border-primary-500/30">
+                <ShoppingCart class="w-5 h-5" />
+                <span class="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 text-[10px] font-black bg-primary-500 text-white rounded-full min-w-4 text-center">
+                  {{ totalItemsCount }}
+                </span>
+              </div>
+              <div>
+                <div class="flex items-center gap-1">
+                  <span class="text-xs font-bold text-gray-300">Keranjang Kasir</span>
+                  <component :is="isCartDrawerOpen ? ChevronDown : ChevronUp" class="w-3.5 h-3.5 text-gray-400" />
+                </div>
+                <p class="text-sm sm:text-base font-extrabold text-emerald-400">
+                  {{ fmt.format(totalAmount || 0) }}
+                </p>
+              </div>
+            </button>
+
+            <!-- Right: Action Buttons -->
+            <div class="flex items-center gap-2">
+              <button
+                @click="handlePayFromScanner"
+                type="button"
+                class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-1.5"
+              >
+                <span>Bayar Sekarang</span>
+                <ArrowRight class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Bottom Scanner Status Bar -->
-        <div class="relative z-20 px-4 py-3 bg-gray-900/90 border-t border-white/10 text-center text-xs text-gray-400 flex items-center justify-between">
+        <div class="relative z-20 px-4 py-2.5 bg-gray-950/90 border-t border-white/10 text-center text-xs text-gray-400 flex items-center justify-between">
           <div class="flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full" :class="isLocked ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 animate-pulse'"></span>
             <span>{{ isLocked ? 'Memproses barcode...' : 'Kamera Aktif (Siap Scan)' }}</span>
@@ -140,23 +211,56 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted, nextTick } from 'vue'
-import { ScanLine, Zap, X, CameraOff } from 'lucide-vue-next'
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
+import { ScanLine, Zap, X, CameraOff, ShoppingCart, CheckCircle, ChevronUp, ChevronDown, ArrowRight } from 'lucide-vue-next'
+
+const fmt = useFormatCurrency()
+
+interface CartItemProp {
+  produk: {
+    id: string
+    name: string
+    price: number
+    sku?: string
+    barcode?: string
+    unit?: string
+  }
+  qty: number
+  subtotal: number
+}
 
 const props = withDefaults(
   defineProps<{
     isOpen: boolean
     autoCloseOnScan?: boolean
+    cartItems?: CartItemProp[]
+    totalAmount?: number
+    lastScannedItem?: string
   }>(),
   {
-    autoCloseOnScan: false
+    autoCloseOnScan: false,
+    cartItems: () => [],
+    totalAmount: 0,
+    lastScannedItem: ''
   }
 )
 
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'scan', barcode: string): void
+  (e: 'pay'): void
 }>()
+
+const isCartDrawerOpen = ref(false)
+
+const totalItemsCount = computed(() => {
+  return (props.cartItems || []).reduce((sum, item) => sum + (item.qty || 1), 0)
+})
+
+function handlePayFromScanner() {
+  emit('pay')
+  closeScanner()
+}
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const isLoadingCamera = ref(true)

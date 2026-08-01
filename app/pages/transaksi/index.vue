@@ -446,8 +446,12 @@
     <!-- Barcode Scanner Modal Component -->
     <BarcodeScannerModal
       :is-open="isScannerOpen"
+      :cart-items="cart.items"
+      :total-amount="cart.subtotal"
+      :last-scanned-item="lastScannedName"
       @close="isScannerOpen = false"
       @scan="handleCameraScan"
+      @pay="openPaymentModal"
     />
   </div>
 </template>
@@ -680,6 +684,8 @@ function handleBarcode() {
   barcodeInput.value?.focus()
 }
 
+const lastScannedName = ref('')
+
 async function handleCameraScan(scannedCode: string) {
   const code = scannedCode.trim().toLowerCase()
   if (!code) return
@@ -689,6 +695,7 @@ async function handleCameraScan(scannedCode: string) {
   if (prod) {
     cart.addItem(prod)
     playSuccessBeep()
+    lastScannedName.value = prod.name
     toast.success(`${prod.name} ditambahkan (+1)`)
     return
   }
@@ -701,6 +708,7 @@ async function handleCameraScan(scannedCode: string) {
     if (res && res.success && res.data) {
       cart.addItem(res.data)
       playSuccessBeep()
+      lastScannedName.value = res.data.name
       toast.success(`${res.data.name} ditambahkan (+1)`)
       return
     }

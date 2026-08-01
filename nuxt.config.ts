@@ -25,7 +25,7 @@ export default defineNuxtConfig({
       title: 'PantauBisnis — Monitoring & Penjualan Multi Bisnis',
       meta: [
         { name: 'description', content: 'Sistem monitoring dan penjualan multi bisnis — Wonton, Es Teh, Dimsum, Warung Sembako' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' },
       ],
       link: [
         { rel: 'icon', type: 'image/png', href: '/logo.png' },
