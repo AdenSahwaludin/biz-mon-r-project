@@ -78,7 +78,7 @@ model Product {
   barcode    String?
   name       String
   price      Int
-  stock      Int      @default(0)
+  stock      Int      @default(9999999)
   unit       String   @default("pcs")
   isActive   Boolean  @default(true)
   

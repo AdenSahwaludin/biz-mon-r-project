@@ -505,7 +505,7 @@ function handleGlobalKeydown(e: KeyboardEvent) {
         toast.success(`${prod.name} ditambahkan (+1)`)
       } else {
         playErrorBeep()
-        toast.error(`❌ Barcode "${barcodeBuffer}" tidak ditemukan`)
+        toast.error(`Barcode "${barcodeBuffer}" tidak ditemukan`)
       }
     }
     barcodeBuffer = ''
@@ -710,7 +710,7 @@ async function handleCameraScan(scannedCode: string) {
 
   // 3. Not found handling
   playErrorBeep()
-  toast.error(`❌ Barcode ${scannedCode} tidak ditemukan`)
+  toast.error(`Barcode ${scannedCode} tidak ditemukan`)
 }
 
 function handleCancel() {

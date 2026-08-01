@@ -301,7 +301,7 @@ async function seedSembako() {
         barcode: null,
         name: prod.name,
         price: prod.price,
-        stock: 100,
+        stock: 9999999,
         unit: prod.unit,
         businessId: sembakoBiz.id,
         categoryId: category.id,

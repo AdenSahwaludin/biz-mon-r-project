@@ -64,7 +64,7 @@ const schemaDDL = [
     "barcode" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "price" INTEGER NOT NULL,
-    "stock" INTEGER NOT NULL DEFAULT 0,
+    "stock" INTEGER NOT NULL DEFAULT 9999999,
     "unit" TEXT NOT NULL DEFAULT 'pcs',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "categoryId" TEXT,

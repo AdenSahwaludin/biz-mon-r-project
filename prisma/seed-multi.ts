@@ -353,7 +353,7 @@ async function main() {
               name: pItem.name,
               price: pItem.price,
               unit: pItem.unit,
-              stock: 250,
+              stock: 9999999,
               businessId: tb.biz.id,
               categoryId: cat.id
             }

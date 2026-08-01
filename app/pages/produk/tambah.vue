@@ -24,7 +24,7 @@
         <!-- SKU (Stock Keeping Unit) with Lock Toggle -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-sm font-medium text-gray-700">SKU <span class="text-xs text-gray-400 font-normal">(Kode Unik Stok)</span></label>
+            <label class="block text-sm font-medium text-gray-700">SKU <span class="text-xs text-gray-400 font-normal">(Kode Unik Produk)</span></label>
             <button
               type="button"
               @click="toggleEditSku"
@@ -32,7 +32,7 @@
             >
               <Lock v-if="!isEditingSku" class="w-3.5 h-3.5" />
               <Unlock v-else class="w-3.5 h-3.5" />
-              <span>{{ isEditingSku ? 'Kunci (Preview Otomatis)' : 'Ubah SKU Manual' }}</span>
+              <span>{{ isEditingSku ? 'Kunci SKU' : 'Ubah SKU Manual' }}</span>
             </button>
           </div>
           
@@ -50,8 +50,9 @@
             </span>
           </div>
 
-          <p v-if="!isEditingSku" class="mt-1 text-[11px] text-gray-500">
-            🔒 SKU dikunci. Dibuatkan kode unik otomatis saat disimpan. Klik <span class="font-semibold text-primary-600">"Ubah SKU Manual"</span> jika ingin mengetik SKU sendiri.
+          <p v-if="!isEditingSku" class="mt-1 text-[11px] text-gray-500 flex items-center gap-1">
+            <Lock class="w-3 h-3 text-gray-400" />
+            <span>Terisi otomatis dari nama produk.</span>
           </p>
           <p v-else-if="errors.sku" class="mt-1 text-xs text-red-500">{{ errors.sku }}</p>
         </div>
@@ -177,7 +178,7 @@ const form = reactive({
   barcode: '',
   categoryId: '',
   price: 0,
-  stock: 0,
+  stock: 9999999,
   unit: '',
   isActive: true,
 })
@@ -193,38 +194,28 @@ const errors = reactive({
   unit: '',
 })
 
-async function updateAutoSku(businessId: string) {
-  if (!businessId) {
+function updateAutoSku() {
+  if (!form.businessId) {
     autoSkuValue.value = ''
     if (!isEditingSku.value) form.sku = ''
     return
   }
 
-  const biz = businessList.value.find(b => b.id === businessId)
-  const rawPrefix = biz?.name ? biz.name.split(' ').map(w => w[0]).join('').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) : 'PRD'
-  const prefix = rawPrefix.length > 0 ? rawPrefix : 'PRD'
+  const biz = businessList.value.find(b => b.id === form.businessId)
+  const cat = availableCategories.value.find(c => c.id === form.categoryId)
 
-  try {
-    const res = await fetchWithAuth<any>(`/products?businessId=${businessId}`)
-    if (res.success && Array.isArray(res.data)) {
-      const count = res.data.length
-      autoSkuValue.value = `${prefix}-${String(count + 1).padStart(3, '0')}`
-    } else {
-      autoSkuValue.value = `${prefix}-001`
-    }
-  } catch (e) {
-    autoSkuValue.value = `${prefix}-001`
-  }
+  const generated = generateReadableSku(form.name, biz?.slug || biz?.name, cat?.name)
+  autoSkuValue.value = generated
 
   if (!isEditingSku.value) {
-    form.sku = autoSkuValue.value
+    form.sku = generated
   }
 }
 
 function toggleEditSku() {
   isEditingSku.value = !isEditingSku.value
   if (!isEditingSku.value) {
-    form.sku = autoSkuValue.value
+    updateAutoSku()
   }
 }
 
@@ -236,15 +227,19 @@ onMounted(async () => {
     form.businessId = bizStore.activeBusiness?.id || authStore.userBusiness?.id || ''
   }
   if (form.businessId) {
-    await updateAutoSku(form.businessId)
+    updateAutoSku()
   }
+})
+
+watch([() => form.name, () => form.categoryId], () => {
+  updateAutoSku()
 })
 
 watch(() => form.businessId, async (newId) => {
   form.categoryId = ''
   availableCategories.value = []
   if (newId) {
-    await updateAutoSku(newId)
+    updateAutoSku()
     isCategoriesLoading.value = true
     try {
       const res = await fetchWithAuth<any>(`/categories?businessId=${newId}`)

@@ -140,8 +140,9 @@
             <span v-if="deleteTarget?.type === 'branch'"> pada bisnis <strong>{{ deleteTarget?.parentName }}</strong></span>?
           </p>
 
-          <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-xs mb-4 text-left font-medium">
-            ⚠️ {{ errorMessage }}
+          <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-xs mb-4 text-left font-medium flex items-start gap-2">
+            <AlertCircle class="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+            <span>{{ errorMessage }}</span>
           </div>
 
           <div class="flex gap-3">
@@ -169,7 +170,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { Building, Trash2 } from 'lucide-vue-next'
+import { Building, Trash2, AlertCircle } from 'lucide-vue-next'
 
 const toast = useToastStore()
 const bizStore = useBusinessStore()

@@ -369,11 +369,13 @@
         <div v-if="importResult" class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
           <h4 class="text-xs font-bold text-gray-900 uppercase tracking-wider">Hasil Import:</h4>
           <div class="grid grid-cols-2 gap-2 text-xs">
-            <div class="bg-emerald-100/70 text-emerald-800 p-2.5 rounded-lg font-semibold">
-              ✅ {{ importResult.createdCount }} Produk Baru Ditambahkan
+            <div class="bg-emerald-100/70 text-emerald-800 p-2.5 rounded-lg font-semibold flex items-center gap-1.5">
+              <CheckCircle class="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{{ importResult.createdCount }} Produk Baru Ditambahkan</span>
             </div>
-            <div class="bg-amber-100/70 text-amber-800 p-2.5 rounded-lg font-semibold">
-              ⚠️ {{ importResult.skippedCount }} Produk Dilewati (Duplikat)
+            <div class="bg-amber-100/70 text-amber-800 p-2.5 rounded-lg font-semibold flex items-center gap-1.5">
+              <AlertTriangle class="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{{ importResult.skippedCount }} Produk Dilewati (Duplikat)</span>
             </div>
           </div>
           <div v-if="importResult.skippedDetails?.length" class="max-h-28 overflow-y-auto text-[11px] text-gray-500 space-y-1 pt-1 border-t border-gray-200">
@@ -430,7 +432,9 @@ import {
   FileSpreadsheet,
   FileText,
   Upload,
-  Camera
+  Camera,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-vue-next'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'

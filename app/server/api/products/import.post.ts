@@ -1,6 +1,7 @@
 import { requireAuth } from '../../utils/authGuard'
 import { prisma } from '../../utils/prisma'
 import { successResponse, errorResponse } from '../../utils/response'
+import { generateReadableSku } from '../../utils/skuGenerator'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -118,20 +119,26 @@ export default defineEventHandler(async (event) => {
       // Generate SKU if empty
       let finalSku = skuStr
       if (!finalSku) {
-        const count = await prisma.product.count({ where: { businessId: bizId } })
-        const rawPrefix = targetBiz.name ? targetBiz.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) : 'PRD'
-        const prefix = rawPrefix.length > 0 ? rawPrefix : 'PRD'
-        let candidate = `${prefix}-${String(count + 1).padStart(3, '0')}`
-        let counter = count + 1
+        let catName = ''
+        if (categoryId) {
+          const foundCat = targetBiz.categories?.find((c: any) => c.id === categoryId)
+          if (foundCat) catName = foundCat.name
+        }
+        let baseSku = generateReadableSku(rawName, targetBiz.slug || targetBiz.name, catName)
+        let candidate = baseSku
+        let counter = 1
         while (await prisma.product.findFirst({ where: { sku: candidate, businessId: bizId } })) {
           counter++
-          candidate = `${prefix}-${String(counter).padStart(3, '0')}`
+          candidate = `${baseSku}-${String(counter).padStart(2, '0')}`
         }
         finalSku = candidate
       }
 
       const finalPrice = Math.max(0, parseInt(String(item.price || item.harga || item.Harga || 0).replace(/[^0-9]/g, '')) || 0)
-      const finalStock = Math.max(0, parseInt(String(item.stock || item.stok || item.Stok || 0).replace(/[^0-9]/g, '')) || 0)
+      const rawStockVal = item.stock ?? item.stok ?? item.Stok
+      const finalStock = rawStockVal !== undefined && rawStockVal !== null && String(rawStockVal).trim() !== ''
+        ? Math.max(0, parseInt(String(rawStockVal).replace(/[^0-9]/g, '')) || 0)
+        : 9999999
       const finalUnit = String(item.unit || item.satuan || 'pcs').trim() || 'pcs'
       const finalIsActive = item.isActive !== undefined ? Boolean(item.isActive) : true
 

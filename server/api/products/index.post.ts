@@ -2,13 +2,14 @@ import { z } from 'zod'
 import { requireAuth } from '../../utils/authGuard'
 import { prisma } from '../../utils/prisma'
 import { successResponse, errorResponse } from '../../utils/response'
+import { generateReadableSku } from '../../utils/skuGenerator'
 
 const createSchema = z.object({
   sku: z.string().optional().nullable(),
   barcode: z.string().optional().nullable(),
   name: z.string().min(1, 'Nama produk wajib diisi'),
   price: z.number().min(0, 'Harga tidak boleh negatif').max(2000000000, 'Harga terlalu besar'),
-  stock: z.number().min(0, 'Stok tidak boleh negatif').max(2000000000, 'Stok terlalu besar').default(0),
+  stock: z.number().min(0, 'Stok tidak boleh negatif').max(2000000000, 'Stok terlalu besar').default(9999999),
   unit: z.string().min(1).default('pcs'),
   businessId: z.string().min(1),
   categoryId: z.string().optional().nullable(),
@@ -36,24 +37,27 @@ export default defineEventHandler(async (event) => {
         return errorResponse(event, 400, 'SKU sudah digunakan di bisnis ini')
       }
     } else {
-      // Auto-generate SKU (e.g. WS-001 or ET-001)
-      const count = await prisma.product.count({
-        where: { businessId: data.businessId }
-      })
+      // Auto-generate human-readable SKU (e.g. MY-BML-2L or WNT-CHILI-OIL)
       const biz = await prisma.business.findUnique({
         where: { id: data.businessId },
-        select: { name: true }
+        select: { name: true, slug: true }
       })
+      let categoryName = ''
+      if (data.categoryId) {
+        const cat = await prisma.category.findUnique({
+          where: { id: data.categoryId },
+          select: { name: true }
+        })
+        if (cat) categoryName = cat.name
+      }
 
-      const rawPrefix = biz?.name ? biz.name.split(' ').map(w => w[0]).join('').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) : 'PRD'
-      const prefix = rawPrefix.length > 0 ? rawPrefix : 'PRD'
-      
-      let candidate = `${prefix}-${String(count + 1).padStart(3, '0')}`
-      let counter = count + 1
+      let baseSku = generateReadableSku(data.name, biz?.slug || biz?.name, categoryName)
+      let candidate = baseSku
+      let counter = 1
 
       while (await prisma.product.findFirst({ where: { sku: candidate, businessId: data.businessId } })) {
         counter++
-        candidate = `${prefix}-${String(counter).padStart(3, '0')}`
+        candidate = `${baseSku}-${String(counter).padStart(2, '0')}`
       }
       finalSku = candidate
     }

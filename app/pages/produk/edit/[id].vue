@@ -28,7 +28,7 @@
         <!-- SKU (Stock Keeping Unit) with Lock Toggle -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="block text-sm font-medium text-gray-700">SKU <span class="text-xs text-gray-400 font-normal">(Kode Unik Stok)</span></label>
+            <label class="block text-sm font-medium text-gray-700">SKU <span class="text-xs text-gray-400 font-normal">(Kode Unik Produk)</span></label>
             <button
               type="button"
               @click="isEditingSku = !isEditingSku"
@@ -48,8 +48,9 @@
             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-colors font-mono font-bold"
             :class="!isEditingSku ? 'bg-gray-100/90 text-gray-800 cursor-not-allowed' : 'bg-white text-gray-900'"
           />
-          <p v-if="!isEditingSku" class="mt-1 text-[11px] text-gray-500">
-            🔒 SKU dikunci secara default. Klik <span class="font-semibold text-primary-600">"Ubah SKU Manual"</span> untuk mengedit kode ini.
+          <p v-if="!isEditingSku" class="mt-1 text-[11px] text-gray-500 flex items-center gap-1">
+            <Lock class="w-3 h-3 text-gray-400" />
+            <span>Terisi otomatis dari nama produk.</span>
           </p>
           <p v-else-if="errors.sku" class="mt-1 text-xs text-red-500">{{ errors.sku }}</p>
         </div>
