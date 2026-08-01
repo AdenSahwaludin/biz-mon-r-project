@@ -143,13 +143,48 @@
             <div
               v-for="item in cartItems"
               :key="item.produk.id"
-              class="flex items-center justify-between p-2.5 bg-gray-900/80 border border-white/5 rounded-xl text-xs sm:text-sm"
+              class="flex items-center justify-between p-2.5 bg-gray-900/90 border border-white/10 rounded-xl text-xs sm:text-sm gap-2"
             >
-              <div class="min-w-0 flex-1 pr-3">
+              <div class="min-w-0 flex-1 pr-1">
                 <p class="font-semibold text-white truncate">{{ item.produk.name }}</p>
-                <p class="text-xs text-gray-400">{{ item.qty }} × {{ fmt.format(item.produk.price) }}</p>
+                <p class="text-[11px] text-gray-400 font-mono">{{ fmt.format(item.produk.price) }} / {{ item.produk.unit || 'pcs' }}</p>
               </div>
-              <div class="text-right font-bold text-emerald-400">
+
+              <!-- Quantity Controls (- / + / delete) -->
+              <div class="flex items-center gap-1 shrink-0">
+                <button
+                  @click.stop="emit('decrement-qty', item.produk.id)"
+                  type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white border border-white/15 active:scale-95 transition-all"
+                  title="Kurangi 1"
+                >
+                  <Minus class="w-3.5 h-3.5" />
+                </button>
+
+                <span class="w-7 text-center font-extrabold text-white text-xs sm:text-sm font-mono">
+                  {{ item.qty }}
+                </span>
+
+                <button
+                  @click.stop="emit('increment-qty', item.produk.id)"
+                  type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white border border-white/15 active:scale-95 transition-all"
+                  title="Tambah 1"
+                >
+                  <Plus class="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  @click.stop="emit('remove-item', item.produk.id)"
+                  type="button"
+                  class="w-7 h-7 flex items-center justify-center rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/30 active:scale-95 transition-all ml-1"
+                  title="Hapus dari keranjang"
+                >
+                  <Trash2 class="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div class="text-right font-extrabold text-emerald-400 min-w-16">
                 {{ fmt.format(item.subtotal) }}
               </div>
             </div>
@@ -212,7 +247,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
-import { ScanLine, Zap, X, CameraOff, ShoppingCart, CheckCircle, ChevronUp, ChevronDown, ArrowRight } from 'lucide-vue-next'
+import { ScanLine, Zap, X, CameraOff, ShoppingCart, CheckCircle, ChevronUp, ChevronDown, ArrowRight, Minus, Plus, Trash2 } from 'lucide-vue-next'
 
 const fmt = useFormatCurrency()
 
@@ -249,6 +284,10 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'scan', barcode: string): void
   (e: 'pay'): void
+  (e: 'increment-qty', productId: string): void
+  (e: 'decrement-qty', productId: string): void
+  (e: 'update-qty', productId: string, qty: number): void
+  (e: 'remove-item', productId: string): void
 }>()
 
 const isCartDrawerOpen = ref(false)
@@ -387,6 +426,34 @@ async function startScanEngine() {
       const detector = new (window as any).BarcodeDetector({ formats })
       let scanning = true
 
+function isBarcodeInsideTargetBox(item: any): boolean {
+  if (!item || !videoRef.value) return true
+
+  const vW = videoRef.value.videoWidth || 1
+  const vH = videoRef.value.videoHeight || 1
+
+  let centerX = 0.5
+  let centerY = 0.5
+
+  if (item.boundingBox) {
+    const box = item.boundingBox
+    centerX = (box.x + box.width / 2) / vW
+    centerY = (box.y + box.height / 2) / vH
+  } else if (item.resultPoints && item.resultPoints.length > 0) {
+    const pts = item.resultPoints
+    centerX = (pts.reduce((sum: number, p: any) => sum + (p.x || 0), 0) / pts.length) / vW
+    centerY = (pts.reduce((sum: number, p: any) => sum + (p.y || 0), 0) / pts.length) / vH
+  } else {
+    return true
+  }
+
+  // Target scanning window is centered in middle 70% X (0.15 to 0.85) and middle 60% Y (0.20 to 0.80)
+  const isInsideX = centerX >= 0.15 && centerX <= 0.85
+  const isInsideY = centerY >= 0.20 && centerY <= 0.80
+
+  return isInsideX && isInsideY
+}
+
       const scanFrame = async () => {
         if (!scanning || !props.isOpen || !videoRef.value) return
 
@@ -394,9 +461,14 @@ async function startScanEngine() {
           try {
             const barcodes = await detector.detect(videoRef.value)
             if (barcodes && barcodes.length > 0) {
-              const rawVal = barcodes[0].rawValue?.trim()
-              if (rawVal) {
-                handleDetectedBarcode(rawVal)
+              for (const b of barcodes) {
+                if (isBarcodeInsideTargetBox(b)) {
+                  const rawVal = b.rawValue?.trim()
+                  if (rawVal) {
+                    handleDetectedBarcode(rawVal)
+                    break
+                  }
+                }
               }
             }
           } catch (_) {
@@ -446,7 +518,7 @@ async function startScanEngine() {
       videoRef.value,
       (result: any, err: any, controls: any) => {
         if (!props.isOpen || isLocked.value) return
-        if (result) {
+        if (result && isBarcodeInsideTargetBox(result)) {
           const text = result.getText()?.trim()
           if (text) {
             handleDetectedBarcode(text)

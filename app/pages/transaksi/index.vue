@@ -452,6 +452,10 @@
       @close="isScannerOpen = false"
       @scan="handleCameraScan"
       @pay="openPaymentModal"
+      @increment-qty="cart.incrementQty"
+      @decrement-qty="cart.decrementQty"
+      @update-qty="cart.updateQty"
+      @remove-item="cart.removeItem"
     />
   </div>
 </template>
