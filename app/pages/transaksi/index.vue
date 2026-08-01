@@ -694,33 +694,27 @@ async function handleCameraScan(scannedCode: string) {
   const code = scannedCode.trim().toLowerCase()
   if (!code) return
 
-  // 1. Search locally in business products for sub-millisecond response
+  // 1. Instant local search in active business products (0ms response)
   const prod = bizProducts.value.find((p) => (p.barcode && p.barcode.toLowerCase() === code) || (p.sku && p.sku.toLowerCase() === code))
   if (prod) {
-    cart.addItem(prod)
     playSuccessBeep()
+    cart.addItem(prod)
     lastScannedName.value = prod.name
     toast.success(`${prod.name} ditambahkan (+1)`)
     return
   }
 
-  // 2. Fallback API lookup if not found in local array
-  try {
-    const bizId = biz.activeBusinessId
-    const url = `/products/barcode/${encodeURIComponent(scannedCode)}${bizId ? `?businessId=${bizId}` : ''}`
-    const res = await fetchWithAuth(url) as any
-    if (res && res.success && res.data) {
-      cart.addItem(res.data)
-      playSuccessBeep()
-      lastScannedName.value = res.data.name
-      toast.success(`${res.data.name} ditambahkan (+1)`)
-      return
-    }
-  } catch (err) {
-    // ignore api error, fallback to not found
+  // 2. Global search in all loaded products
+  const globalProd = products.value.find((p) => (p.barcode && p.barcode.toLowerCase() === code) || (p.sku && p.sku.toLowerCase() === code))
+  if (globalProd) {
+    playSuccessBeep()
+    cart.addItem(globalProd)
+    lastScannedName.value = globalProd.name
+    toast.success(`${globalProd.name} ditambahkan (+1)`)
+    return
   }
 
-  // 3. Not found handling
+  // 3. Not found: Play error beep IMMEDIATELY (0ms delay)
   playErrorBeep()
   toast.error(`Barcode ${scannedCode} tidak ditemukan`)
 }

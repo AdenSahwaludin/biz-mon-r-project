@@ -2,6 +2,8 @@ const SUCCESS_WAV = 'data:audio/wav;base64,UklGRtQEAABXQVZFZm10IBAAAAABAAEAQB8AA
 const ERROR_WAV = 'data:audio/wav;base64,UklGRhQLAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YfAKAAAcJC02P0hQWWJqc3yEjZaep6+4wMnR2h8oMDlCSlNbZGx1fYaOlp+nr7jAyNHZIys0PERNVV1mbnZ+h4+Xn6evuMDI0NgmLjc/R09XX2dvd4CIkJefp6+3v8fP1yoyOkJKUVlhaXF5gYiQmKCnr7e/xs7VLTU9RExUW2NrcnqCiZGYoKevtr7FzdQwOD9HT1ZdZWx0e4OKkZmgp6+2vcTMLDQ7QkpRWF9nbnV8hIuSmaCnrrW8w8owNz5FTFNaYWhwd36Ei5KZoKeutbzCyTM6QUhPVlxjanF4f4WMk5mgp660u8HINj1ESlFYXmVscnmAho2TmqCnrbO6wMc5QEdNVFpgZ210eoCHjZOaoKass7m/xT1DSVBWXGJpb3V7gYeNlJqgpqyyuL7EQEZMUlheZGpwdnyCiI6Ump+lq7G3vD1DSU9UWmBmbHJ3fYOIjpSan6WqsLa7QEZLUVdcYmhtc3h+g4mOlJmfpKqvtLpDSU5UWV9kaW90eX+EiY+UmZ6kqa6zuEZMUVZbYWZrcHV6gIWKj5SZnqOorbK3SU5TWF1jaGxxdnuAhYqPlJidoqersLVMUVZbYGRpbnN3fIGGio+TmJ2hpqqvs09UWF1iZmtvdHh9gYaKj5OYnKClqa1OUlZbX2RobHF1eX6ChoqPk5ebn6OorFBVWV1hZmpucnZ6foKGio6SlmqCjptc2OT1CSlNbZGx0e4OKkZmfpKqwtru+xMzRLDQ8QUpTWF9nbnV8hIuSmaCnrrW8w8nN0S0zPD9HT1ZaYmdvd3+EipGZn6Sqr7S6wMfN0SwzPD9HT1ZaYmdvcHWBiJGYoKeutbvBxcrO0i0zPD9HT1ZaYmdvcHWBiJGYoKeutbvBxcrP0iwzPD9HT1ZaYmdvcHWBiJGYoKeutbvBxcrP0iw0PD9HT1ZaYmdvcHWBiJGYoKeutbvBxcrP0iw0PD9HT1ZaYmdvcHWBiJGXoKeutbvBxcrP0iw0PD9HT1ZaYmdvcHWBiJGXoKeutbvBxcrP0yw0PT9HT1ZaYmdvcHWBiJGXoKeutbvBxcrP0yw0PT9HT1ZaYmdvcHWBiJGXoKeutbvBxcrP0y00PT9HT1ZaYmdvcHWBiJGXoKeutbvBxsnP0y00PT9HT1ZaYmdvcHWBiJGXoKeutbvBxsnP0y00PT9HT1ZaYmdvcHWBiJGXoKeutbvBxsnP0y00PT9HTFNaYWhwdnyCiJGYoKeutbvBxsnP0y00PT9HTFNaYWhwdnyCiJGXoKeutbvBxsnQ0y00PT9HTFNaYWhwdnyCiJGXoKeutbvBxsnQ0y00PT9HTFNaYWhwdnyCiJGXoKeutbvBxsnQ0y00PT9HTFNaYWhwdnyCiJGXoKeutbvBxsnQ0y00PT9GS1BXW2Jpb3V7gYeNkpqgpaqvs7i/w8jOMTQ6QUhPVlxjanF4f4WMk5mgp660u8HINj1ESlFYXmVscnmAho2TmqCnrbO6wMc5QEdNVFpgZ210eoCHjZOaoKass7m/xD1DSVBWXGJpb3V7gYeNlJqgpqyyuL7EQEZMUlheZGpwdnyCiI6Ump+lq7G3vEBGTFFWW2Blam90eX6DiI2Sl5yhpquwtbq/xMnN0tcoLTI3PEFGS1BVWl9kaW5zeHyBhouQlZqeo6itsra7wMXJztMoLDI3PUJHTVJXXWJnbXJ3fYKHjJKXnKGnrLG2vMHGy9DW2yInLTI3PEJHTFFXXGFma3B2e4CFio+Vmp+kqa6zuL3Cx8zR1tsiJSsyNz1CSU1TVlhbX2Nnaw=='
 
 let sharedAudioCtx: AudioContext | null = null
+let successAudioEl: HTMLAudioElement | null = null
+let errorAudioEl: HTMLAudioElement | null = null
 
 function ensureAudioContext(): AudioContext | null {
   if (!process.client) return null
@@ -14,13 +16,31 @@ function ensureAudioContext(): AudioContext | null {
   return sharedAudioCtx
 }
 
+function ensureAudioElements() {
+  if (!process.client) return
+  if (!successAudioEl) {
+    try {
+      successAudioEl = new Audio(SUCCESS_WAV)
+      successAudioEl.preload = 'auto'
+      successAudioEl.volume = 1.0
+    } catch (_) {}
+  }
+  if (!errorAudioEl) {
+    try {
+      errorAudioEl = new Audio(ERROR_WAV)
+      errorAudioEl.preload = 'auto'
+      errorAudioEl.volume = 1.0
+    } catch (_) {}
+  }
+}
+
 function unlockAudio() {
   if (!process.client) return
   const ctx = ensureAudioContext()
-  if (!ctx) return
-  if (ctx.state === 'suspended') {
+  if (ctx && ctx.state === 'suspended') {
     ctx.resume().catch(() => {})
   }
+  ensureAudioElements()
 }
 
 if (process.client) {
@@ -36,20 +56,24 @@ if (process.client) {
 function playFallbackAudio(type: 'success' | 'error') {
   if (!process.client) return
   try {
-    const src = type === 'success' ? SUCCESS_WAV : ERROR_WAV
-    const audio = new Audio(src)
-    audio.volume = 1.0
-    audio.play().catch(() => {})
+    ensureAudioElements()
+    const audio = type === 'success' ? successAudioEl : errorAudioEl
+    if (audio) {
+      audio.currentTime = 0
+      const p = audio.play()
+      if (p && typeof p.then === 'function') {
+        p.catch(() => {})
+      }
+    }
   } catch (_) {}
 }
 
 export function useAudioBeep() {
   function playSuccessBeep() {
     if (!process.client) return
-    let playedWebAudio = false
+    unlockAudio()
 
     try {
-      unlockAudio()
       const ctx = ensureAudioContext()
       if (ctx) {
         if (ctx.state === 'suspended') {
@@ -59,44 +83,43 @@ export function useAudioBeep() {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.type = 'sine'
-        osc.frequency.setValueAtTime(1046.5, now)
+        osc.frequency.setValueAtTime(1046.5, now) // High C (instant tit)
 
         gain.gain.setValueAtTime(0, now)
-        gain.gain.linearRampToValueAtTime(0.6, now + 0.005)
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2)
+        gain.gain.linearRampToValueAtTime(0.8, now + 0.003)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15)
 
         osc.connect(gain)
         gain.connect(ctx.destination)
 
         osc.start(now)
-        osc.stop(now + 0.2)
-        playedWebAudio = true
+        osc.stop(now + 0.15)
       }
     } catch (_) {}
 
-    // Always trigger fallback audio to guarantee 100% sound playback
+    // Fallback HTML5 Audio playback for maximum compatibility
     playFallbackAudio('success')
   }
 
   function playErrorBeep() {
     if (!process.client) return
-    
+    unlockAudio()
+
     try {
-      unlockAudio()
       const ctx = ensureAudioContext()
       if (ctx) {
         if (ctx.state === 'suspended') {
           ctx.resume().catch(() => {})
         }
         const now = ctx.currentTime
-        for (const [freq, offset, dur] of [[350, 0, 0.14], [220, 0.16, 0.2]] as const) {
+        for (const [freq, offset, dur] of [[320, 0, 0.15], [200, 0.16, 0.22]] as const) {
           const osc = ctx.createOscillator()
           const gain = ctx.createGain()
           osc.type = 'sawtooth'
           osc.frequency.setValueAtTime(freq, now + offset)
 
           gain.gain.setValueAtTime(0, now + offset)
-          gain.gain.linearRampToValueAtTime(0.6, now + offset + 0.005)
+          gain.gain.linearRampToValueAtTime(0.8, now + offset + 0.003)
           gain.gain.exponentialRampToValueAtTime(0.001, now + offset + dur)
 
           osc.connect(gain)
@@ -108,7 +131,7 @@ export function useAudioBeep() {
       }
     } catch (_) {}
 
-    // Always trigger fallback audio element for error beep guarantee
+    // Fallback HTML5 Audio element
     playFallbackAudio('error')
   }
 

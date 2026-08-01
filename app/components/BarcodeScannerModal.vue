@@ -317,11 +317,14 @@ let zxingReader: any = null
 let zxingControls: any = null
 let lockTimer: any = null
 
+const { unlockAudio } = useAudioBeep()
+
 // Watch isOpen to initialize or stop camera
 watch(
   () => props.isOpen,
   async (val) => {
     if (val) {
+      unlockAudio()
       // Wait for DOM to render the video element
       await nextTick()
       initCamera()
