@@ -149,6 +149,8 @@
 import { ref, onMounted } from 'vue'
 import { Search, Trash2 } from 'lucide-vue-next'
 
+definePageMeta({ name: 'transaksi-catchall' })
+
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()

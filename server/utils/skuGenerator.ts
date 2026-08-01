@@ -21,14 +21,13 @@ export function generateReadableSku(
   // 1. Determine Business / Category Prefix
   let prefix = ''
 
-  if (bizStr.includes('wonton')) {
+  if (bizStr.includes('wonton') && !bizStr.includes('dimsum')) {
     prefix = 'WNT'
+  } else if (bizStr.includes('dimsum')) {
+    prefix = catStr.includes('wonton') || nameLower.includes('wonton') ? 'WNT' : 'DMS'
   } else if (bizStr.includes('es teh') || bizStr.includes('esteh')) {
     prefix = 'ETH'
-  } else if (bizStr.includes('dimsum')) {
-    prefix = 'DMS'
   } else if (bizStr.includes('sembako') || bizStr.includes('warung')) {
-    // Determine category / keyword prefix for sembako
     if (catStr.includes('rokok') || isRokokKeyword(nameLower)) {
       prefix = 'RK'
     } else if (catStr.includes('minyak') || nameLower.includes('minyak') || nameLower.includes('margarin') || nameLower.includes('palmia')) {
@@ -79,11 +78,15 @@ export function generateReadableSku(
   let sizeSuffix = ''
   let cleanedName = rawName
 
-  const sizeRegex = /\b(\d+(?:\.\d+)?\s*(?:l|liter|kg|gr|g|ml|pcs|pck|pack|dus|box|rtg|kaleng|galon))\b|\b(16|12|24|20)\b$/i
+  const sizeRegex = /(?:\(?(?:isi\s*)?)?(\d+(?:\.\d+)?\s*(?:l|liter|kg|gr|g|ml|pcs|pck|pack|dus|box|rtg|kaleng|galon))\)?|\b(16|12|24|20)\b$/i
   const sizeMatch = cleanedName.match(sizeRegex)
   if (sizeMatch) {
-    sizeSuffix = sizeMatch[0].replace(/\s+/g, '').toUpperCase()
-    cleanedName = cleanedName.replace(sizeMatch[0], '').trim()
+    const rawMatch = sizeMatch[0]
+    const extractedNumUnit = (sizeMatch[1] || sizeMatch[2] || '').replace(/\s+/g, '').toUpperCase()
+    if (extractedNumUnit) {
+      sizeSuffix = extractedNumUnit
+      cleanedName = cleanedName.replace(rawMatch, '').trim()
+    }
   }
 
   // Common Abbreviation Dictionary
