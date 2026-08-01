@@ -426,34 +426,6 @@ async function startScanEngine() {
       const detector = new (window as any).BarcodeDetector({ formats })
       let scanning = true
 
-function isBarcodeInsideTargetBox(item: any): boolean {
-  if (!item || !videoRef.value) return true
-
-  const vW = videoRef.value.videoWidth || 1
-  const vH = videoRef.value.videoHeight || 1
-
-  let centerX = 0.5
-  let centerY = 0.5
-
-  if (item.boundingBox) {
-    const box = item.boundingBox
-    centerX = (box.x + box.width / 2) / vW
-    centerY = (box.y + box.height / 2) / vH
-  } else if (item.resultPoints && item.resultPoints.length > 0) {
-    const pts = item.resultPoints
-    centerX = (pts.reduce((sum: number, p: any) => sum + (p.x || 0), 0) / pts.length) / vW
-    centerY = (pts.reduce((sum: number, p: any) => sum + (p.y || 0), 0) / pts.length) / vH
-  } else {
-    return true
-  }
-
-  // Target scanning window is centered in middle 70% X (0.15 to 0.85) and middle 60% Y (0.20 to 0.80)
-  const isInsideX = centerX >= 0.15 && centerX <= 0.85
-  const isInsideY = centerY >= 0.20 && centerY <= 0.80
-
-  return isInsideX && isInsideY
-}
-
       const scanFrame = async () => {
         if (!scanning || !props.isOpen || !videoRef.value) return
 
@@ -461,14 +433,9 @@ function isBarcodeInsideTargetBox(item: any): boolean {
           try {
             const barcodes = await detector.detect(videoRef.value)
             if (barcodes && barcodes.length > 0) {
-              for (const b of barcodes) {
-                if (isBarcodeInsideTargetBox(b)) {
-                  const rawVal = b.rawValue?.trim()
-                  if (rawVal) {
-                    handleDetectedBarcode(rawVal)
-                    break
-                  }
-                }
+              const rawVal = barcodes[0].rawValue?.trim()
+              if (rawVal) {
+                handleDetectedBarcode(rawVal)
               }
             }
           } catch (_) {
@@ -518,7 +485,7 @@ function isBarcodeInsideTargetBox(item: any): boolean {
       videoRef.value,
       (result: any, err: any, controls: any) => {
         if (!props.isOpen || isLocked.value) return
-        if (result && isBarcodeInsideTargetBox(result)) {
+        if (result) {
           const text = result.getText()?.trim()
           if (text) {
             handleDetectedBarcode(text)
