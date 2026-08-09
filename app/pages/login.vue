@@ -197,11 +197,14 @@ async function handleLogin() {
 
   isLoading.value = true
   const result = await auth.login(form.username, form.password)
-  isLoading.value = false
 
   if (result.success) {
+    const bizStore = useBusinessStore()
+    await bizStore.fetchAll(true)
+    isLoading.value = false
     navigateTo(auth.isAdmin ? '/pilih-bisnis' : '/transaksi')
   } else {
+    isLoading.value = false
     errors.username = result.message
   }
 }

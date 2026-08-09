@@ -5,8 +5,14 @@
       <p class="text-gray-500 mt-1">Pilih cabang bisnis yang ingin Anda kelola</p>
     </div>
 
-    <div v-if="bizStore.isLoading" class="text-center py-12">
-      <p class="text-gray-500">Memuat data...</p>
+    <div v-if="bizStore.isLoading && (!bizStore.groupedBusinesses || bizStore.groupedBusinesses.length === 0)" class="grid grid-cols-1 gap-6">
+      <div v-for="i in 2" :key="i" class="bg-white rounded-xl border border-gray-200 p-6 space-y-4 animate-pulse">
+        <div class="h-6 bg-gray-200 rounded w-48"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="h-20 bg-gray-100 rounded-xl"></div>
+          <div class="h-20 bg-gray-100 rounded-xl"></div>
+        </div>
+      </div>
     </div>
     
     <div v-else class="space-y-8">
