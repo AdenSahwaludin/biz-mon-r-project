@@ -1,14 +1,14 @@
 <template>
   <div class="min-h-screen w-full flex flex-col lg:flex-row bg-slate-900 text-gray-800 font-sans overflow-hidden">
     <!-- Left Hero Banner (Desktop / Tablet Large) -->
-    <div class="hidden lg:flex lg:w-7/12 xl:w-2/3 relative bg-cover bg-center flex-col justify-between p-12 text-white overflow-hidden" style="background-image: url('/bg.png');">
+    <div class="hidden lg:flex lg:w-7/12 xl:w-2/3 relative bg-cover bg-center flex-col justify-between p-12 text-white overflow-hidden" style="background-image: url('/bg.webp');">
       <!-- Dark overlay gradient -->
       <div class="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-900/60 to-transparent z-0"></div>
       
       <!-- Brand Header -->
       <div class="relative z-10 flex items-center gap-3">
         <div class="w-10 h-10 bg-white/95 rounded-xl shadow-md border border-white/20 flex items-center justify-center overflow-hidden p-0.5 backdrop-blur-sm">
-          <img src="/logo.png" alt="PantauBisnis Logo" class="w-12 h-12 object-contain" />
+          <img src="/logo-sm.webp" width="48" height="48" alt="PantauBisnis Logo" class="w-12 h-12 object-contain" fetchpriority="high" loading="eager" />
         </div>
         <div>
           <span class="text-2xl font-bold tracking-tight text-white">Pantau<span class="text-cyan-400">Bisnis</span></span>
@@ -71,7 +71,7 @@
     <!-- Right Login Form Section -->
     <div class="w-full lg:w-5/12 xl:w-1/3 min-h-screen flex flex-col justify-center items-center p-6 sm:p-10 bg-slate-900 lg:bg-white relative">
       <!-- Mobile Background image with dark overlay -->
-      <div class="lg:hidden absolute inset-0 bg-cover bg-center" style="background-image: url('/bg.png');">
+      <div class="lg:hidden absolute inset-0 bg-cover bg-center" style="background-image: url('/bg.webp');">
         <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
       </div>
 
@@ -79,7 +79,7 @@
         <!-- Brand Header for Mobile / Tablet -->
         <div class="text-center mb-6">
           <div class="w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-200/80 flex items-center justify-center mx-auto mb-3 overflow-hidden p-0.5">
-            <img src="/logo.png" alt="PantauBisnis Logo" class="w-20 h-20 object-contain" />
+            <img src="/logo-sm.webp" width="80" height="80" alt="PantauBisnis Logo" class="w-20 h-20 object-contain" fetchpriority="high" loading="eager" />
           </div>
           <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Masuk ke PantauBisnis</h2>
           <p class="text-xs text-slate-500 mt-1">Masukkan kredensial akun Anda untuk mengakses sistem</p>

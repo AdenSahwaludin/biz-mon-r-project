@@ -89,7 +89,7 @@
               <div class="flex h-56 sm:h-64">
                 <div class="bg-black/55 flex-1"></div>
                 <!-- Target Box (Scan Window) -->
-                <div class="relative w-72 sm:w-80 h-full">
+                <div ref="targetBoxRef" class="relative w-72 sm:w-80 h-full">
                   <!-- Corner Borders -->
                   <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary-400 rounded-tl-lg"></div>
                   <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary-400 rounded-tr-lg"></div>
@@ -302,6 +302,7 @@ function handlePayFromScanner() {
 }
 
 const videoRef = ref<HTMLVideoElement | null>(null)
+const targetBoxRef = ref<HTMLElement | null>(null)
 const isLoadingCamera = ref(true)
 const cameraError = ref<string | null>(null)
 const isTorchOn = ref(false)
@@ -313,11 +314,66 @@ const activeEngine = ref<'BarcodeDetector' | 'ZXing' | 'None'>('None')
 let mediaStream: MediaStream | null = null
 let mediaTrack: MediaStreamTrack | null = null
 let animFrameId: number | null = null
+let barcodeDetector: any = null
 let zxingReader: any = null
-let zxingControls: any = null
 let lockTimer: any = null
+let cropCanvas: HTMLCanvasElement | null = null
+let cropCtx: CanvasRenderingContext2D | null = null
+let lastScanTime = 0
 
 const { unlockAudio } = useAudioBeep()
+
+// Crop video frame precisely to target scan box ROI
+function updateCropCanvas(): HTMLCanvasElement | null {
+  if (!videoRef.value || !targetBoxRef.value) return null
+  const video = videoRef.value
+  const vRect = video.getBoundingClientRect()
+  const tRect = targetBoxRef.value.getBoundingClientRect()
+
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  if (!vw || !vh || !vRect.width || !vRect.height || !tRect.width || !tRect.height) {
+    return null
+  }
+
+  // Calculate object-cover scale & top-left video offset in screen space
+  const scale = Math.max(vRect.width / vw, vRect.height / vh)
+  const offsetX = (vRect.width - vw * scale) / 2
+  const offsetY = (vRect.height - vh * scale) / 2
+
+  // Map scan box (tRect) to native video pixel coordinates
+  let roiX = (tRect.left - vRect.left - offsetX) / scale
+  let roiY = (tRect.top - vRect.top - offsetY) / scale
+  let roiW = tRect.width / scale
+  let roiH = tRect.height / scale
+
+  // Clamp ROI within video resolution
+  roiX = Math.max(0, roiX)
+  roiY = Math.max(0, roiY)
+  if (roiX + roiW > vw) roiW = vw - roiX
+  if (roiY + roiH > vh) roiH = vh - roiY
+
+  if (roiW <= 0 || roiH <= 0) return null
+
+  if (!cropCanvas) {
+    cropCanvas = document.createElement('canvas')
+    cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true })
+  }
+
+  const targetW = Math.round(roiW)
+  const targetH = Math.round(roiH)
+
+  if (cropCanvas.width !== targetW || cropCanvas.height !== targetH) {
+    cropCanvas.width = targetW
+    cropCanvas.height = targetH
+  }
+
+  if (cropCtx) {
+    cropCtx.drawImage(video, roiX, roiY, roiW, roiH, 0, 0, targetW, targetH)
+  }
+
+  return cropCanvas
+}
 
 // Watch isOpen to initialize or stop camera
 watch(
@@ -426,36 +482,8 @@ async function startScanEngine() {
         ]
       }
 
-      const detector = new (window as any).BarcodeDetector({ formats })
-      let scanning = true
-
-      const scanFrame = async () => {
-        if (!scanning || !props.isOpen || !videoRef.value) return
-
-        if (!isLocked.value && videoRef.value.readyState >= 2) {
-          try {
-            const barcodes = await detector.detect(videoRef.value)
-            if (barcodes && barcodes.length > 0) {
-              const rawVal = barcodes[0].rawValue?.trim()
-              if (rawVal) {
-                handleDetectedBarcode(rawVal)
-              }
-            }
-          } catch (_) {
-            // Frame detection error — ignore and continue
-          }
-        }
-
-        // Schedule next frame immediately for max speed
-        if (scanning && props.isOpen) {
-          animFrameId = requestAnimationFrame(scanFrame)
-        }
-      }
-
-      // Store cleanup function
-      const origStop = stopEverything
-      animFrameId = requestAnimationFrame(scanFrame)
-
+      barcodeDetector = new (window as any).BarcodeDetector({ formats })
+      startScanLoop()
       return
     } catch (e) {
       console.warn('BarcodeDetector failed, falling back to ZXing:', e)
@@ -465,7 +493,7 @@ async function startScanEngine() {
   // ── Strategy 2: ZXing library fallback ──
   try {
     activeEngine.value = 'ZXing'
-    const { BrowserMultiFormatReader, BrowserCodeReader } = await import('@zxing/browser')
+    const { BrowserMultiFormatReader } = await import('@zxing/browser')
     const { DecodeHintType, BarcodeFormat } = await import('@zxing/library')
 
     const hints = new Map()
@@ -479,27 +507,59 @@ async function startScanEngine() {
     ])
     hints.set(DecodeHintType.TRY_HARDER, true)
 
-    zxingReader = new BrowserMultiFormatReader(hints, {
-      delayBetweenScanAttempts: 100,
-      delayBetweenScanSuccess: 300,
-    })
-
-    zxingControls = await zxingReader.decodeFromVideoElement(
-      videoRef.value,
-      (result: any, err: any, controls: any) => {
-        if (!props.isOpen || isLocked.value) return
-        if (result) {
-          const text = result.getText()?.trim()
-          if (text) {
-            handleDetectedBarcode(text)
-          }
-        }
-      }
-    )
+    zxingReader = new BrowserMultiFormatReader(hints)
+    startScanLoop()
   } catch (e) {
     console.error('ZXing fallback failed:', e)
     cameraError.value = 'Gagal memuat engine barcode scanner.'
   }
+}
+
+function startScanLoop() {
+  if (animFrameId) {
+    cancelAnimationFrame(animFrameId)
+    animFrameId = null
+  }
+
+  const scanFrame = async () => {
+    if (!props.isOpen || !videoRef.value) return
+
+    const now = performance.now()
+    if (!isLocked.value && videoRef.value.readyState >= 2 && now - lastScanTime >= 70) {
+      lastScanTime = now
+      const croppedCanvas = updateCropCanvas()
+      if (croppedCanvas) {
+        if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
+          try {
+            const barcodes = await barcodeDetector.detect(croppedCanvas)
+            if (barcodes && barcodes.length > 0) {
+              const rawVal = barcodes[0].rawValue?.trim()
+              if (rawVal) {
+                handleDetectedBarcode(rawVal)
+              }
+            }
+          } catch (_) {}
+        } else if (activeEngine.value === 'ZXing' && zxingReader) {
+          try {
+            const res = zxingReader.decodeFromCanvas(croppedCanvas)
+            const result = res && typeof res.then === 'function' ? await res : res
+            if (result) {
+              const text = typeof result.getText === 'function' ? result.getText()?.trim() : result.text?.trim()
+              if (text) {
+                handleDetectedBarcode(text)
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (props.isOpen) {
+      animFrameId = requestAnimationFrame(scanFrame)
+    }
+  }
+
+  animFrameId = requestAnimationFrame(scanFrame)
 }
 
 function handleDetectedBarcode(code: string) {
@@ -552,19 +612,14 @@ function stopEverything() {
     animFrameId = null
   }
 
-  // Stop ZXing
-  if (zxingControls) {
-    try {
-      if (typeof zxingControls.stop === 'function') zxingControls.stop()
-    } catch (_) {}
-    zxingControls = null
-  }
+  // Stop ZXing & BarcodeDetector
   if (zxingReader) {
     try {
       if (typeof zxingReader.reset === 'function') zxingReader.reset()
     } catch (_) {}
     zxingReader = null
   }
+  barcodeDetector = null
 
   // Stop camera tracks
   if (mediaStream) {
@@ -585,6 +640,8 @@ function stopEverything() {
   }
   isLocked.value = false
   isTorchOn.value = false
+  cropCanvas = null
+  cropCtx = null
 }
 
 function closeScanner() {

@@ -19,7 +19,7 @@
       <!-- Logo -->
       <div class="h-16 flex items-center gap-2.5 px-5 border-b border-gray-200 shrink-0">
         <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
-          <img src="/logo.png" alt="PantauBisnis" class="w-10 h-10 object-contain" />
+          <img src="/logo-sm.webp" width="40" height="40" alt="PantauBisnis" class="w-10 h-10 object-contain" loading="lazy" />
         </div>
         <div class="flex flex-col justify-center min-w-0">
           <span class="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">PantauBisnis</span>

@@ -4,7 +4,7 @@
     <nav class="sticky top-0 z-30 h-16 bg-white border-b border-gray-200 shadow-sm flex items-center px-6">
       <NuxtLink to="/pilih-bisnis" class="flex items-center gap-2">
         <div class="w-7 h-7 bg-white rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
-          <img src="/logo.png" alt="PantauBisnis" class="w-12 h-12 object-contain" />
+          <img src="/logo-sm.webp" width="48" height="48" alt="PantauBisnis" class="w-12 h-12 object-contain" loading="lazy" />
         </div>
         <span class="text-lg font-bold text-gray-900">PantauBisnis</span>
       </NuxtLink>
