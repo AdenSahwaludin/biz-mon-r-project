@@ -3,11 +3,7 @@
     <div class="bg-white rounded-xl border border-gray-200 p-6">
       <h2 class="text-lg font-bold text-gray-900 mb-6">Edit Produk</h2>
 
-      <div v-if="isInitialLoading" class="text-center py-12">
-        <p class="text-gray-500">Memuat data produk...</p>
-      </div>
-
-      <form v-else @submit.prevent="handleSubmit" class="space-y-5">
+      <form @submit.prevent="handleSubmit" class="space-y-5">
         <!-- Bisnis -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Bisnis <span class="text-red-500">*</span></label>
@@ -163,8 +159,9 @@ function handleScanBarcode(scannedCode: string) {
   toast.success(`Barcode ${scannedCode} berhasil di-scan!`)
 }
 
+const editingProductState = useState<any>('editingProduct', () => null)
+
 const isLoading = ref(false)
-const isInitialLoading = ref(true)
 const isCategoriesLoading = ref(false)
 const isEditingSku = ref(false)
 const availableCategories = ref<any[]>([])
@@ -193,38 +190,59 @@ const errors = reactive({
   unit: '',
 })
 
+// Populate form fields IMMEDIATELY if product data was cached from list page navigation
+if (editingProductState.value && editingProductState.value.id === route.params.id) {
+  const prod = editingProductState.value
+  form.businessId = prod.businessId || ''
+  form.name = prod.name || ''
+  form.sku = prod.sku || ''
+  form.barcode = prod.barcode || ''
+  form.price = prod.price || 0
+  form.stock = prod.stock || 0
+  form.unit = prod.unit || ''
+  form.isActive = prod.isActive ?? true
+  form.categoryId = prod.categoryId || ''
+  initialCategoryId.value = prod.categoryId || ''
+}
+
 onMounted(async () => {
   if (businessList.value.length === 0) {
-    await bizStore.fetchAll()
+    bizStore.fetchAll()
+  }
+
+  // Pre-fetch categories if businessId is already populated
+  if (form.businessId) {
+    fetchCategories(form.businessId)
   }
 
   try {
-    const res = await fetchWithAuth<any>(`/products`)
-    if (res.success) {
-      const prod = res.data.find((p: any) => p.id === route.params.id)
-      if (prod) {
-        form.businessId = prod.businessId
-        form.name = prod.name
-        form.sku = prod.sku || ''
-        form.barcode = prod.barcode || ''
-        form.price = prod.price
-        form.stock = prod.stock
-        form.unit = prod.unit
-        form.isActive = prod.isActive
-        initialCategoryId.value = prod.categoryId || ''
-        
+    const res = await fetchWithAuth<any>(`/products/${route.params.id}`)
+    if (res.success && res.data) {
+      const prod = res.data
+      form.businessId = prod.businessId || ''
+      form.name = prod.name || ''
+      form.sku = prod.sku || ''
+      form.barcode = prod.barcode || ''
+      form.price = prod.price || 0
+      form.stock = prod.stock || 0
+      form.unit = prod.unit || ''
+      form.isActive = prod.isActive ?? true
+      form.categoryId = prod.categoryId || ''
+      initialCategoryId.value = prod.categoryId || ''
+      
+      if (prod.businessId) {
         await fetchCategories(prod.businessId)
         form.categoryId = prod.categoryId || ''
-      } else {
-        toast.error('Produk tidak ditemukan')
-        navigateTo('/produk')
       }
+    } else {
+      toast.error('Produk tidak ditemukan')
+      navigateTo('/produk')
     }
   } catch (e) {
-    toast.error('Gagal memuat produk')
-    navigateTo('/produk')
-  } finally {
-    isInitialLoading.value = false
+    if (!form.name) {
+      toast.error('Gagal memuat produk')
+      navigateTo('/produk')
+    }
   }
 })
 

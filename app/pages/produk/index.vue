@@ -199,6 +199,7 @@
               <div class="flex items-center justify-end gap-2">
                 <NuxtLink
                   :to="`/produk/edit/${prod.id}`"
+                  @click="editProduct(prod)"
                   class="p-1 text-gray-400 hover:text-primary-600 transition-colors"
                   title="Edit"
                 >
@@ -254,7 +255,7 @@
         <div class="flex items-center justify-between pt-2 border-t border-gray-100">
           <span class="text-sm font-bold text-gray-900">{{ fmt.format(prod.price) }}</span>
           <div class="flex items-center gap-2">
-            <NuxtLink :to="`/produk/edit/${prod.id}`" class="p-1.5 text-gray-500 hover:text-primary-600">
+            <NuxtLink :to="`/produk/edit/${prod.id}`" @click="editProduct(prod)" class="p-1.5 text-gray-500 hover:text-primary-600">
               <Pencil class="w-4 h-4" />
             </NuxtLink>
             <button @click="confirmDelete(prod)" class="p-1.5 text-gray-500 hover:text-red-600">
@@ -457,6 +458,12 @@ function handleCameraScan(scannedCode: string) {
   search.value = scannedCode
   playSuccessBeep()
   toast.success(`Cari barcode: ${scannedCode}`)
+}
+
+const editingProductState = useState<any>('editingProduct', () => null)
+
+function editProduct(prod: any) {
+  editingProductState.value = prod
 }
 
 const products = ref<any[]>([])
