@@ -70,7 +70,7 @@ export default defineNuxtConfig({
       ]
     },
     workbox: {
-      navigateFallback: '/',
+      navigateFallback: null,
       globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,woff2}'],
       runtimeCaching: [
         {
@@ -121,7 +121,7 @@ export default defineNuxtConfig({
       installPrompt: true
     },
     devOptions: {
-      enabled: true,
+      enabled: false,
       type: 'classic'
     }
   },
@@ -148,7 +148,6 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'preload', as: 'style', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap', media: 'print', onload: "this.media='all'" },
-        { rel: 'preload', as: 'image', href: '/bg.webp', type: 'image/webp' },
         { rel: 'preload', as: 'image', href: '/logo-sm.webp', type: 'image/webp' },
       ],
     },

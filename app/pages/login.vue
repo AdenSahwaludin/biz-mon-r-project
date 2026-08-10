@@ -169,6 +169,12 @@ definePageMeta({
 
 const auth = useAuthStore()
 
+useHead({
+  link: [
+    { rel: 'preload', as: 'image', href: '/bg.webp', type: 'image/webp' }
+  ]
+})
+
 const form = reactive({
   username: '',
   password: '',

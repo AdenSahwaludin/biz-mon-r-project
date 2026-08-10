@@ -23,7 +23,7 @@
         </div>
         <div class="flex flex-col justify-center min-w-0">
           <span class="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">PantauBisnis</span>
-          <span class="text-[10px] font-medium text-gray-400 leading-tight">v.1.0.7</span>
+          <span class="text-[10px] font-medium text-gray-400 leading-tight">v.1.0.8</span>
         </div>
         <button @click="sidebarOpen = false" class="ml-auto lg:hidden text-gray-400 hover:text-gray-600 p-1">
           <X class="w-5 h-5" />
@@ -86,7 +86,7 @@
             :to="item.to"
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
             :class="isActive(item.to) ? 'bg-primary-50 text-primary-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
-            @click="item.to === '/transaksi' ? (sidebarOpen = false) : null">
+            @click="sidebarOpen = false">
             <component :is="item.icon" class="w-5 h-5 shrink-0" />
             <span>{{ item.label }}</span>
           </NuxtLink>

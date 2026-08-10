@@ -5,13 +5,15 @@ let sharedAudioCtx: AudioContext | null = null
 let successAudioEl: HTMLAudioElement | null = null
 let errorAudioEl: HTMLAudioElement | null = null
 
-function ensureAudioContext(): AudioContext | null {
+function ensureAudioContext(userInitiated = false): AudioContext | null {
   if (!process.client) return null
-  if (!sharedAudioCtx) {
-    const Ctor = window.AudioContext || (window as any).webkitAudioContext
-    if (Ctor) {
-      sharedAudioCtx = new Ctor()
-    }
+  if (!sharedAudioCtx && userInitiated) {
+    try {
+      const Ctor = window.AudioContext || (window as any).webkitAudioContext
+      if (Ctor) {
+        sharedAudioCtx = new Ctor()
+      }
+    } catch (_) {}
   }
   return sharedAudioCtx
 }
@@ -36,7 +38,7 @@ function ensureAudioElements() {
 
 function unlockAudio() {
   if (!process.client) return
-  const ctx = ensureAudioContext()
+  const ctx = ensureAudioContext(true)
   if (ctx && ctx.state === 'suspended') {
     ctx.resume().catch(() => {})
   }
@@ -74,7 +76,7 @@ export function useAudioBeep() {
     unlockAudio()
 
     try {
-      const ctx = ensureAudioContext()
+      const ctx = ensureAudioContext(true)
       if (ctx) {
         if (ctx.state === 'suspended') {
           ctx.resume().catch(() => {})
@@ -106,7 +108,7 @@ export function useAudioBeep() {
     unlockAudio()
 
     try {
-      const ctx = ensureAudioContext()
+      const ctx = ensureAudioContext(true)
       if (ctx) {
         if (ctx.state === 'suspended') {
           ctx.resume().catch(() => {})
