@@ -302,8 +302,18 @@ onMounted(async () => {
   await fetchTransactions()
 })
 
-watch(filterBranchId, async () => {
+watch([filterBranchId, filterMethod, filterPeriod, startDate, endDate], async () => {
+  page.value = 1
   await fetchTransactions()
+})
+
+let searchDebounceTimer: any = null
+watch(search, () => {
+  clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(async () => {
+    page.value = 1
+    await fetchTransactions()
+  }, 300)
 })
 
 watch(() => bizStore.activeBranchId, async (newBranch) => {
@@ -318,18 +328,48 @@ async function fetchTransactions(forceRefresh = false) {
     isLoading.value = true
   }
   try {
-    let url = '/transactions'
-    if (filterBranchId.value) {
-      url += `?branchId=${filterBranchId.value}`
+    const queryParams = new URLSearchParams()
+    if (filterBranchId.value) queryParams.append('branchId', filterBranchId.value)
+    if (filterMethod.value) queryParams.append('paymentMethod', filterMethod.value)
+    if (search.value) queryParams.append('search', search.value)
+
+    if (filterPeriod.value === 'custom') {
+      if (startDate.value) queryParams.append('startDate', startDate.value)
+      if (endDate.value) queryParams.append('endDate', endDate.value)
+    } else if (filterPeriod.value !== 'all') {
+      const now = new Date()
+      const todayStr = now.toISOString().split('T')[0]
+      if (filterPeriod.value === 'today') {
+        queryParams.append('startDate', todayStr)
+        queryParams.append('endDate', todayStr)
+      } else if (filterPeriod.value === '7days') {
+        const past7 = new Date(now)
+        past7.setDate(past7.getDate() - 6)
+        queryParams.append('startDate', past7.toISOString().split('T')[0])
+        queryParams.append('endDate', todayStr)
+      } else if (filterPeriod.value === '30days') {
+        const past30 = new Date(now)
+        past30.setDate(past30.getDate() - 29)
+        queryParams.append('startDate', past30.toISOString().split('T')[0])
+        queryParams.append('endDate', todayStr)
+      } else if (filterPeriod.value === 'month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+        queryParams.append('startDate', firstDay.toISOString().split('T')[0])
+        queryParams.append('endDate', todayStr)
+      }
     }
+
+    const qs = queryParams.toString()
+    const url = `/transactions${qs ? '?' + qs : ''}`
+
     const res = await fetchWithCache<any>(url, {
       forceRefresh,
       onRevalidated: (fresh) => {
-        if (fresh.success) transactions.value = fresh.data
+        if (fresh.success) transactions.value = fresh.data || []
       }
     })
     if (res.data?.success) {
-      transactions.value = res.data.data
+      transactions.value = res.data.data || []
     }
   } catch (error) {
     toast.error('Gagal memuat riwayat transaksi')

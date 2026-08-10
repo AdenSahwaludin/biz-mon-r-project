@@ -26,7 +26,7 @@ async function main() {
   const tursoPrisma = new PrismaClient({ adapter } as any)
 
   // Client 2: Local SQLite DB
-  const localDbUrl = process.env.DATABASE_URL || 'file:./dev.db'
+  const localDbUrl = process.env.LOCAL_DATABASE_URL || 'file:./dev.db'
   console.log(`🏠 Connecting to Local SQLite DB (${localDbUrl})...`)
   const localPrisma = new PrismaClient({
     datasources: {
@@ -43,7 +43,9 @@ async function main() {
     const branches = await tursoPrisma.branch.findMany()
     const categories = await tursoPrisma.category.findMany()
     const products = await tursoPrisma.product.findMany()
-    const users = await tursoPrisma.user.findMany()
+    const users = await tursoPrisma.user.findMany({
+      include: { branches: { select: { id: true } } }
+    })
     const transactions = await tursoPrisma.transaction.findMany()
     const transactionDetails = await tursoPrisma.transactionDetail.findMany()
 
@@ -84,7 +86,25 @@ async function main() {
     }
 
     if (users.length > 0) {
-      await localPrisma.user.createMany({ data: users })
+      const userDataToInsert = users.map((u: any) => {
+        const { branches: userBranches, ...userData } = u
+        return userData
+      })
+      await localPrisma.user.createMany({ data: userDataToInsert })
+      
+      // Connect assigned user branches
+      for (const u of users) {
+        if (u.branches && u.branches.length > 0) {
+          await localPrisma.user.update({
+            where: { id: u.id },
+            data: {
+              branches: {
+                connect: u.branches.map((b: any) => ({ id: b.id }))
+              }
+            }
+          })
+        }
+      }
       console.log(`   ✅ User: ${users.length} records inserted`)
     }
 

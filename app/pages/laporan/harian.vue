@@ -430,7 +430,7 @@ watch(() => bizStore.activeBranchId, (newBranch) => {
 async function fetchDailyReport() {
   isLoading.value = true
   try {
-    let url = `/transactions?startDate=${selectedDate.value}&endDate=${selectedDate.value}`
+    let url = `/transactions?startDate=${selectedDate.value}&endDate=${selectedDate.value}&includeDetails=true`
     if (filterBranchId.value) {
       url += `&branchId=${filterBranchId.value}`
     }

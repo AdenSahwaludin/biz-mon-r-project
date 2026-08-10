@@ -9,6 +9,8 @@ export default defineEventHandler(async (event) => {
   const businessId = query.businessId as string | undefined
   const branchId = query.branchId as string | undefined
   const paymentMethod = query.paymentMethod as string | undefined
+  const startDateStr = (query.startDate || query.date) as string | undefined
+  const endDateStr = (query.endDate || query.date) as string | undefined
 
   const where: any = {}
   if (branchId) {
@@ -20,9 +22,30 @@ export default defineEventHandler(async (event) => {
     where.paymentMethod = paymentMethod
   }
 
+  if (startDateStr || endDateStr) {
+    where.createdAt = {}
+    if (startDateStr) {
+      where.createdAt.gte = new Date(`${startDateStr}T00:00:00.000Z`)
+    }
+    if (endDateStr) {
+      where.createdAt.lte = new Date(`${endDateStr}T23:59:59.999Z`)
+    }
+  }
+
   const transactions = await prisma.transaction.findMany({
     where,
-    select: { total: true, createdAt: true, paymentMethod: true, branch: { select: { id: true, name: true, business: { select: { id: true, name: true } } } } }
+    select: {
+      total: true,
+      createdAt: true,
+      paymentMethod: true,
+      branch: {
+        select: {
+          id: true,
+          name: true,
+          business: { select: { id: true, name: true } }
+        }
+      }
+    }
   })
 
   let totalOmzet = 0
@@ -38,6 +61,10 @@ export default defineEventHandler(async (event) => {
   const timeseries: Record<string, { tanggal: string, transaksi: number, omzet: number, cash: number, qris: number }> = {}
 
   const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfTodayMs = startOfToday.getTime()
+  const past7DaysMs = startOfTodayMs - (6 * 24 * 60 * 60 * 1000)
+  const past30DaysMs = startOfTodayMs - (29 * 24 * 60 * 60 * 1000)
 
   transactions.forEach(t => {
     totalOmzet += t.total
@@ -56,16 +83,15 @@ export default defineEventHandler(async (event) => {
 
     // Time ranges
     const tDate = new Date(t.createdAt)
-    const diffTime = Math.abs(now.getTime() - tDate.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const tTime = tDate.getTime()
 
-    if (diffDays <= 1) {
+    if (tTime >= startOfTodayMs) {
       daily += t.total
       if (isTunai) dailyCash += t.total
       if (isQris) dailyQris += t.total
     }
-    if (diffDays <= 7) weekly += t.total
-    if (diffDays <= 30) monthly += t.total
+    if (tTime >= past7DaysMs) weekly += t.total
+    if (tTime >= past30DaysMs) monthly += t.total
 
     // Timeseries
     const dateStr = tDate.toISOString().split('T')[0]

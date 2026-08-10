@@ -8,39 +8,66 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const businessId = query.businessId as string | undefined
   const branchId = query.branchId as string | undefined
+  const limit = query.limit ? parseInt(query.limit as string, 10) : 10
+  const startDateStr = (query.startDate || query.date) as string | undefined
+  const endDateStr = (query.endDate || query.date) as string | undefined
 
-  const where: any = {}
+  const transactionWhere: any = {}
   if (branchId) {
-    where.branchId = branchId
+    transactionWhere.branchId = branchId
   } else if (businessId) {
-    where.branch = { businessId }
+    transactionWhere.branch = { businessId }
   }
 
-  const transactionDetails = await prisma.transactionDetail.findMany({
+  if (startDateStr || endDateStr) {
+    transactionWhere.createdAt = {}
+    if (startDateStr) transactionWhere.createdAt.gte = new Date(`${startDateStr}T00:00:00.000Z`)
+    if (endDateStr) transactionWhere.createdAt.lte = new Date(`${endDateStr}T23:59:59.999Z`)
+  }
+
+  const salesAgg = await prisma.transactionDetail.groupBy({
+    by: ['productId'],
     where: {
-      transaction: where
+      transaction: transactionWhere
     },
-    include: {
-      product: { select: { id: true, name: true, business: { select: { name: true } } } }
-    }
-  })
-
-  const productSales: Record<string, { name: string, business: string, qty: number, subtotal: number }> = {}
-
-  transactionDetails.forEach(detail => {
-    if (!productSales[detail.productId]) {
-      productSales[detail.productId] = {
-        name: detail.product.name,
-        business: detail.product.business.name,
-        qty: 0,
-        subtotal: 0
+    _sum: {
+      qty: true,
+      subtotal: true
+    },
+    orderBy: {
+      _sum: {
+        qty: 'desc'
       }
-    }
-    productSales[detail.productId].qty += detail.qty
-    productSales[detail.productId].subtotal += detail.subtotal
+    },
+    take: limit
   })
 
-  const sorted = Object.values(productSales).sort((a, b) => b.qty - a.qty).slice(0, 10) // Top 10
+  if (salesAgg.length === 0) {
+    return successResponse([])
+  }
 
-  return successResponse(sorted)
+  const productIds = salesAgg.map((s) => s.productId)
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    select: {
+      id: true,
+      name: true,
+      business: { select: { name: true } }
+    }
+  })
+
+  const productMap = new Map(products.map((p) => [p.id, p]))
+
+  const result = salesAgg.map((item) => {
+    const prod = productMap.get(item.productId)
+    return {
+      id: item.productId,
+      name: prod?.name || 'Produk Dihapus',
+      business: prod?.business?.name || '-',
+      qty: item._sum.qty || 0,
+      subtotal: item._sum.subtotal || 0
+    }
+  })
+
+  return successResponse(result)
 })

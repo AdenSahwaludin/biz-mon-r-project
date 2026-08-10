@@ -7,6 +7,8 @@ export default defineEventHandler(async (event) => {
   
   const query = getQuery(event)
   let businessId = query.businessId as string | undefined
+  const categoryId = query.categoryId as string | undefined
+  const isActiveStr = query.isActive as string | undefined
 
   const where: any = {}
 
@@ -34,6 +36,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  if (categoryId) {
+    where.categoryId = categoryId
+  }
+
+  if (isActiveStr !== undefined && isActiveStr !== '') {
+    where.isActive = isActiveStr === 'true'
+  }
+
   const products = await prisma.product.findMany({
     where,
     include: {
@@ -44,7 +54,11 @@ export default defineEventHandler(async (event) => {
     orderBy: { createdAt: 'desc' }
   })
 
-  // Calculate total qty sold per product
+  if (products.length === 0) {
+    return successResponse([])
+  }
+
+  // Calculate total qty sold per product using indexed productId lookup
   const productIds = products.map((p: any) => p.id)
   const soldAgg = await prisma.transactionDetail.groupBy({
     by: ['productId'],

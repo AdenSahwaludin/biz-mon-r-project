@@ -58,6 +58,8 @@ model Branch {
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([businessId])
 }
 
 model Category {
@@ -70,6 +72,8 @@ model Category {
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([businessId])
 }
 
 model Product {
@@ -95,6 +99,9 @@ model Product {
 
   @@unique([sku, businessId])
   @@unique([barcode, businessId])
+  @@index([businessId])
+  @@index([categoryId])
+  @@index([isActive])
 }
 
 model Transaction {
@@ -112,6 +119,10 @@ model Transaction {
   details    TransactionDetail[]
 
   createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([branchId])
+  @@index([cashierId])
 }
 
 model TransactionDetail {
@@ -125,4 +136,7 @@ model TransactionDetail {
   snapshotPrice Int
   qty           Int
   subtotal      Int
+
+  @@index([transactionId])
+  @@index([productId])
 }

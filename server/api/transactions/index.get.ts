@@ -8,6 +8,9 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   let branchId = query.branchId as string | undefined
   const limit = query.limit ? parseInt(query.limit as string, 10) : undefined
+  const includeDetails = query.includeDetails === 'true' || query.includeDetails === '1'
+  const paymentMethod = query.paymentMethod as string | undefined
+  const search = query.search as string | undefined
 
   const where: any = {}
 
@@ -32,6 +35,19 @@ export default defineEventHandler(async (event) => {
     where.cashierId = user.id
   }
 
+  if (paymentMethod) {
+    where.paymentMethod = paymentMethod === 'CASH' ? 'Tunai' : paymentMethod
+  }
+
+  if (search && search.trim()) {
+    const q = search.trim()
+    where.OR = [
+      { id: { contains: q } },
+      { cashier: { name: { contains: q } } },
+      { cashier: { username: { contains: q } } }
+    ]
+  }
+
   const startDateStr = (query.startDate || query.date) as string | undefined
   const endDateStr = (query.endDate || query.date) as string | undefined
 
@@ -45,15 +61,20 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const includeObj: any = {
+    cashier: { select: { id: true, name: true, username: true } },
+    branch: { select: { id: true, name: true, business: { select: { name: true } } } }
+  }
+
+  if (includeDetails) {
+    includeObj.details = {
+      include: { product: { select: { name: true, barcode: true } } }
+    }
+  }
+
   const transactions = await prisma.transaction.findMany({
     where,
-    include: {
-      cashier: { select: { id: true, name: true, username: true } },
-      branch: { select: { id: true, name: true, business: { select: { name: true } } } },
-      details: {
-        include: { product: { select: { name: true, barcode: true } } }
-      }
-    },
+    include: includeObj,
     orderBy: { createdAt: 'desc' },
     ...(limit ? { take: limit } : {})
   })
