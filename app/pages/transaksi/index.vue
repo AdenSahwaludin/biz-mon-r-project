@@ -146,68 +146,82 @@
         <div v-if="isLoading" class="flex flex-col items-center justify-center py-16 text-center">
           <p class="text-gray-500">Memuat produk...</p>
         </div>
-        <div v-else-if="filteredProducts.length" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-          <button
-            v-for="prod in filteredProducts"
-            :key="prod.id"
-            @click="cart.addItem(prod)"
-            class="rounded-xl p-3.5 text-left transition-all group flex flex-col justify-between relative overflow-hidden select-none"
-            :class="prod.stock <= 0
-              ? 'bg-gray-100/90 border border-gray-200 opacity-60 cursor-not-allowed shadow-none'
-              : 'bg-white border border-gray-200 hover:shadow-md hover:border-primary-300'"
-            :title="prod.stock <= 0 ? `${prod.name} (Stok Habis)` : prod.name"
-          >
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <div
-                  class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
-                  :class="prod.stock <= 0 ? 'bg-gray-200/80 text-gray-400' : 'bg-primary-50 text-primary-600 group-hover:bg-primary-100'"
-                >
-                  <component :is="getBusinessIcon(bizIcon)" class="w-4 h-4" />
-                </div>
-                
-                <!-- Stock Badge or Unit Badge -->
-                <span
-                  v-if="prod.stock <= 0"
-                  class="text-[10px] font-extrabold text-gray-600 bg-gray-200/90 border border-gray-300/60 px-2 py-0.5 rounded-md uppercase tracking-wider shadow-2xs"
-                >
-                  Stok Habis
-                </span>
-                <span
-                  v-else-if="prod.unit && prod.unit !== 'pcs'"
-                  class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[50%]"
-                >
-                  {{ prod.unit }}
-                </span>
-              </div>
-
-              <p
-                class="text-xs sm:text-sm font-semibold line-clamp-2 leading-tight min-h-[2.25rem] transition-colors"
-                :class="prod.stock <= 0 ? 'text-gray-400' : 'text-gray-900 group-hover:text-primary-600'"
-                :title="prod.name"
-              >
-                {{ prod.name }}
-              </p>
-              <p class="text-[11px] text-gray-400 mt-1 truncate">{{ prod.category?.name || 'Umum' }}</p>
-            </div>
-
-            <div class="mt-2 pt-2 border-t flex items-baseline justify-between gap-1" :class="prod.stock <= 0 ? 'border-gray-200/60' : 'border-gray-100'">
+        <div v-else-if="filteredProducts.length" class="space-y-3">
+          <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+            <button
+              v-for="prod in displayedProducts"
+              :key="prod.id"
+              @click="cart.addItem(prod)"
+              class="rounded-xl p-3.5 text-left transition-all group flex flex-col justify-between relative overflow-hidden select-none"
+              :class="prod.stock <= 0
+                ? 'bg-gray-100/90 border border-gray-200 opacity-60 cursor-not-allowed shadow-none'
+                : 'bg-white border border-gray-200 hover:shadow-md hover:border-primary-300'"
+              :title="prod.stock <= 0 ? `${prod.name} (Stok Habis)` : prod.name"
+            >
               <div>
+                <div class="flex items-center justify-between mb-2">
+                  <div
+                    class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0"
+                    :class="prod.stock <= 0 ? 'bg-gray-200/80 text-gray-400' : 'bg-primary-50 text-primary-600 group-hover:bg-primary-100'"
+                  >
+                    <component :is="getBusinessIcon(bizIcon)" class="w-4 h-4" />
+                  </div>
+                  
+                  <!-- Stock Badge or Unit Badge -->
+                  <span
+                    v-if="prod.stock <= 0"
+                    class="text-[10px] font-extrabold text-gray-600 bg-gray-200/90 border border-gray-300/60 px-2 py-0.5 rounded-md uppercase tracking-wider shadow-2xs"
+                  >
+                    Stok Habis
+                  </span>
+                  <span
+                    v-else-if="prod.unit && prod.unit !== 'pcs'"
+                    class="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[50%]"
+                  >
+                    {{ prod.unit }}
+                  </span>
+                </div>
+
                 <p
-                  class="text-xs sm:text-sm font-bold"
-                  :class="prod.stock <= 0 ? 'text-gray-400 line-through' : 'text-primary-600'"
+                  class="text-xs sm:text-sm font-semibold line-clamp-2 leading-tight min-h-[2.25rem] transition-colors"
+                  :class="prod.stock <= 0 ? 'text-gray-400' : 'text-gray-900 group-hover:text-primary-600'"
+                  :title="prod.name"
                 >
-                  {{ fmt.format(prod.price) }}
+                  {{ prod.name }}
                 </p>
-                <p v-if="prod.stock <= 0" class="text-[10px] font-bold text-red-500">Stok: 0 (Habis)</p>
-                <p v-else-if="prod.stock <= 5" class="text-[10px] font-bold text-amber-600">Stok: {{ prod.stock }} (Sisa sedikit)</p>
-                <p v-else class="text-[10px] text-gray-400">Stok: {{ prod.stock }}</p>
+                <p class="text-[11px] text-gray-400 mt-1 truncate">{{ prod.category?.name || 'Umum' }}</p>
               </div>
-              <p v-if="sortBy === 'terlaris'" class="text-[10px] text-orange-500 font-medium flex items-center gap-0.5 shrink-0">
-                <TrendingUp class="w-3 h-3" /> {{ prod.totalSold || 0 }}
-              </p>
-            </div>
-          </button>
+
+              <div class="mt-2 pt-2 border-t flex items-baseline justify-between gap-1" :class="prod.stock <= 0 ? 'border-gray-200/60' : 'border-gray-100'">
+                <div>
+                  <p
+                    class="text-xs sm:text-sm font-bold"
+                    :class="prod.stock <= 0 ? 'text-gray-400 line-through' : 'text-primary-600'"
+                  >
+                    {{ fmt.format(prod.price) }}
+                  </p>
+                  <p v-if="prod.stock <= 0" class="text-[10px] font-bold text-red-500">Stok: 0 (Habis)</p>
+                  <p v-else-if="prod.stock <= 5" class="text-[10px] font-bold text-amber-600">Stok: {{ prod.stock }} (Sisa sedikit)</p>
+                  <p v-else class="text-[10px] text-gray-400">Stok: {{ prod.stock }}</p>
+                </div>
+                <p v-if="sortBy === 'terlaris'" class="text-[10px] text-orange-500 font-medium flex items-center gap-0.5 shrink-0">
+                  <TrendingUp class="w-3 h-3" /> {{ prod.totalSold || 0 }}
+                </p>
+              </div>
+            </button>
+          </div>
+
+          <!-- Load More Button -->
+          <div v-if="filteredProducts.length > displayLimit" class="text-center py-2">
+            <button
+              @click="displayLimit += 24"
+              type="button"
+              class="px-5 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition-colors shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Tampilkan Lebih Banyak Produk (+24)</span>
+              <span class="text-[11px] text-gray-400 font-normal">({{ displayedProducts.length }} dari {{ filteredProducts.length }})</span>
+            </button>
+          </div>
         </div>
         <div v-else class="flex flex-col items-center justify-center py-16 text-center">
           <Package class="w-10 h-10 text-gray-300 mb-3" />
@@ -648,6 +662,16 @@ const filteredProducts = computed(() => {
   }
 })
 
+const displayLimit = ref(24)
+
+const displayedProducts = computed(() => {
+  return filteredProducts.value.slice(0, displayLimit.value)
+})
+
+watch([searchQuery, selectedCategory, sortBy, () => biz.activeBranchId], () => {
+  displayLimit.value = 24
+})
+
 const quickAmounts = computed(() => {
   const sub = cart.subtotal
   if (sub <= 0) return [10000, 20000, 50000, 100000]
@@ -726,6 +750,8 @@ function handleCancel() {
   }
 }
 
+const { enqueueTransaction } = useOfflineQueue()
+
 async function handlePay() {
   const targetBranchId = biz.activeBranchId || (auth.isKaryawan ? auth.userBranch?.id : null)
 
@@ -736,19 +762,39 @@ async function handlePay() {
 
   isSaving.value = true
   
-  try {
-    const payload = {
-      branchId: targetBranchId,
-      paymentMethod: cart.metodePembayaran,
+  const payload = {
+    branchId: targetBranchId,
+    paymentMethod: cart.metodePembayaran,
+    total: cart.subtotal,
+    details: cart.items.map(item => ({
+      productId: item.produk.id,
+      qty: item.qty,
+      price: item.produk.price,
+      subtotal: item.subtotal
+    }))
+  }
+
+  // Check if offline before network request
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const queuedItem = enqueueTransaction(payload)
+    const bayar = cart.metodePembayaran === 'QRIS' ? cart.subtotal : cart.nominalBayar
+    const kembalian = bayar - cart.subtotal
+
+    successData.value = {
+      id: queuedItem.id,
+      createdAt: queuedItem.createdAt,
       total: cart.subtotal,
-      details: cart.items.map(item => ({
-        productId: item.produk.id,
-        qty: item.qty,
-        price: item.produk.price,
-        subtotal: item.subtotal
-      }))
+      bayar,
+      kembalian,
+      metode: `${cart.metodePembayaran} (OFFLINE)`,
     }
-    
+    showSuccess.value = true
+    toast.info('Transaksi disimpan secara OFFLINE. Akan otomatis tersinkronisasi saat internet terhubung.')
+    isSaving.value = false
+    return
+  }
+
+  try {
     const res = await fetchWithAuth<any>('/transactions', {
       method: 'POST',
       body: payload
@@ -777,7 +823,24 @@ async function handlePay() {
       toast.error(res.message || 'Gagal menyimpan transaksi')
     }
   } catch (error: any) {
-    toast.error(error.data?.message || 'Terjadi kesalahan')
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const queuedItem = enqueueTransaction(payload)
+      const bayar = cart.metodePembayaran === 'QRIS' ? cart.subtotal : cart.nominalBayar
+      const kembalian = bayar - cart.subtotal
+
+      successData.value = {
+        id: queuedItem.id,
+        createdAt: queuedItem.createdAt,
+        total: cart.subtotal,
+        bayar,
+        kembalian,
+        metode: `${cart.metodePembayaran} (OFFLINE)`,
+      }
+      showSuccess.value = true
+      toast.info('Koneksi terputus. Transaksi disimpan secara OFFLINE.')
+    } else {
+      toast.error(error.data?.message || 'Terjadi kesalahan')
+    }
   } finally {
     isSaving.value = false
   }

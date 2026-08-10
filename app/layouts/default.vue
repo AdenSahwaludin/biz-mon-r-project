@@ -112,6 +112,22 @@
 
     <!-- Main Content -->
     <div class="lg:ml-64 min-h-screen flex flex-col">
+      <!-- Offline Banner -->
+      <div
+        v-if="!isOnline"
+        class="bg-amber-500 text-white text-xs font-semibold px-4 py-2 text-center flex items-center justify-center gap-2 shadow-inner shrink-0 z-40"
+      >
+        <WifiOff class="w-4 h-4 shrink-0" />
+        <span>Mode Offline: Anda tidak terhubung ke internet. Transaksi POS akan disimpan secara lokal.</span>
+      </div>
+      <div
+        v-else-if="offlineQueue.length > 0"
+        class="bg-blue-600 text-white text-xs font-semibold px-4 py-1.5 text-center flex items-center justify-center gap-2 shadow-inner shrink-0 z-40"
+      >
+        <RefreshCw class="w-3.5 h-3.5 animate-spin shrink-0" />
+        <span>Ada {{ offlineQueue.length }} transaksi tersimpan offline. Menunggu koneksi untuk sinkronisasi...</span>
+      </div>
+
       <!-- Navbar -->
       <header class="sticky top-0 z-30 h-16 bg-white border-b border-gray-200 shadow-sm flex items-center px-4 lg:px-6 shrink-0">
         <!-- Hamburger -->
@@ -125,7 +141,18 @@
         </div>
 
         <!-- Right section -->
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3 sm:gap-4">
+          <!-- Install PWA Button -->
+          <button
+            v-if="canInstall"
+            @click="installPwa"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-all animate-pulse cursor-pointer shrink-0"
+            title="Install PantauBisnis PWA di Perangkat Ini"
+          >
+            <Download class="w-3.5 h-3.5" />
+            <span class="hidden sm:inline">Install App</span>
+          </button>
           <!-- Business Selector Dropdown for Admin & Karyawan -->
           <div class="relative" ref="bizDropdownRef" v-if="biz.activeBusiness">
             <button
@@ -224,11 +251,16 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { BarChart2, CreditCard, Package, Tag, ClipboardList, TrendingUp, Users, User, Settings, LogOut, Menu, ChevronDown, ChevronLeft, ChevronRight, X, Soup, CupSoda, Utensils, Store, Coffee, ShoppingBag, Shirt, Scissors, Wrench, Sparkles, Building, Heart, Star, Pizza, Sandwich, Cake, CalendarDays } from 'lucide-vue-next'
+import { useNetwork } from '@vueuse/core'
+import { BarChart2, CreditCard, Package, Tag, ClipboardList, TrendingUp, Users, User, Settings, LogOut, Menu, ChevronDown, ChevronLeft, ChevronRight, X, Soup, CupSoda, Utensils, Store, Coffee, ShoppingBag, Shirt, Scissors, Wrench, Sparkles, Building, Heart, Star, Pizza, Sandwich, Cake, CalendarDays, Download, WifiOff, RefreshCw } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const biz = useBusinessStore()
 const route = useRoute()
+
+const { isOnline } = useNetwork()
+const { canInstall, installPwa } = usePwaInstall()
+const { offlineQueue } = useOfflineQueue()
 
 const sidebarOpen = ref(false)
 const showBizDropdown = ref(false)

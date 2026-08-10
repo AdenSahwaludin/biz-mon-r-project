@@ -437,8 +437,6 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-vue-next'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 
 const { fetchWithCache, invalidateCache } = useCachedFetch()
 const { fetchWithAuth } = useApi()
@@ -689,12 +687,15 @@ function exportCSV() {
 }
 
 // Export to PDF Function
-function exportPDF() {
+async function exportPDF() {
   const dataToExport = filteredData.value
   if (dataToExport.length === 0) {
     toast.error('Tidak ada data produk untuk diekspor')
     return
   }
+
+  const { default: jsPDF } = await import('jspdf')
+  const { default: autoTable } = await import('jspdf-autotable')
 
   const doc = new jsPDF()
   const dateStr = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
