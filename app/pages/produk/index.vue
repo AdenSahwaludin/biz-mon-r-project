@@ -553,7 +553,7 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between gap-2 mb-1">
                 <h4 class="text-sm font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">
-                  Pilih Semua Produk
+                  Pilih Semua Produk ({{ activeBusinessName }})
                 </h4>
                 <span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 rounded-md">
                   Otomatis ({{ unbarcodedCount }})
@@ -630,6 +630,12 @@ const selectedProducts = computed(() => {
 
 const unbarcodedCount = computed(() => {
   return filteredData.value.filter((p) => !p.barcode).length
+})
+
+const activeBusinessName = computed(() => {
+  if (!filterBisnis.value) return 'Semua Bisnis'
+  const found = businessList.value.find((b: any) => b.id === filterBisnis.value)
+  return found?.name || 'Semua Bisnis'
 })
 
 const isAllPageSelected = computed(() => {
@@ -761,8 +767,21 @@ onMounted(async () => {
   if (bizStore.businesses.length === 0) {
     await bizStore.fetchAll()
   }
+  if (bizStore.activeBusiness?.id) {
+    filterBisnis.value = bizStore.activeBusiness.id
+  }
   await Promise.all([fetchProducts(), fetchCategories()])
 })
+
+watch(
+  () => bizStore.activeBusiness?.id,
+  (newBizId) => {
+    if (newBizId) {
+      filterBisnis.value = newBizId
+    }
+  },
+  { immediate: true }
+)
 
 async function fetchProducts(forceRefresh = false) {
   if (!products.value.length && !forceRefresh) isLoading.value = true
@@ -892,7 +911,12 @@ const visiblePages = computed(() => {
   return pages
 })
 
-watch([search, filterBisnis, filterKategori, filterStatus], () => { page.value = 1 })
+watch([search, filterKategori, filterStatus], () => { page.value = 1 })
+watch(filterBisnis, () => {
+  filterKategori.value = ''
+  selectedProductIds.value = []
+  page.value = 1
+})
 
 function confirmDelete(prod: any) {
   deleteTarget.value = prod
