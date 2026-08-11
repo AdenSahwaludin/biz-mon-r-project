@@ -496,6 +496,89 @@
       @scan="handleCameraScan"
     />
 
+    <!-- Scan Barcode Masal Mode Choice Modal -->
+    <div v-if="showScanModeChoiceModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-xs animate-fadeIn">
+      <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-gray-100">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 bg-primary-50 rounded-xl text-primary-600">
+              <Layers class="w-5 h-5" />
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-gray-900">Scan Barcode Masal</h3>
+              <p class="text-xs text-gray-500">Pilih metode pengisian barcode yang Anda inginkan</p>
+            </div>
+          </div>
+          <button @click="showScanModeChoiceModal = false" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+
+        <!-- Options Container -->
+        <div class="space-y-3">
+          <!-- Option 1: Pilih Produk Terlebih Dahulu -->
+          <button
+            @click="handleChoiceManualSelect"
+            type="button"
+            class="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50/40 transition-all group relative flex items-start gap-3.5"
+          >
+            <div class="p-2.5 rounded-xl bg-gray-100 group-hover:bg-primary-500 group-hover:text-white text-gray-600 transition-colors shrink-0">
+              <CheckSquare class="w-5 h-5" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <h4 class="text-sm font-bold text-gray-900 group-hover:text-primary-700 transition-colors">
+                  Pilih Produk Terlebih Dahulu
+                </h4>
+                <span class="px-2 py-0.5 text-[10px] font-bold bg-gray-100 text-gray-600 group-hover:bg-primary-100 group-hover:text-primary-700 rounded-md">
+                  Pilih Manual
+                </span>
+              </div>
+              <p class="text-xs text-gray-500 leading-relaxed">
+                Pilih sendiri produk mana saja yang belum memiliki barcode pada daftar tabel sebelum memulai pemindaian kamera.
+              </p>
+            </div>
+          </button>
+
+          <!-- Option 2: Pilih Semua Produk -->
+          <button
+            @click="handleChoiceSelectAll"
+            type="button"
+            class="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/40 transition-all group relative flex items-start gap-3.5"
+          >
+            <div class="p-2.5 rounded-xl bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white text-emerald-600 transition-colors shrink-0">
+              <Sparkles class="w-5 h-5" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <h4 class="text-sm font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">
+                  Pilih Semua Produk
+                </h4>
+                <span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 rounded-md">
+                  Otomatis ({{ unbarcodedCount }})
+                </span>
+              </div>
+              <p class="text-xs text-gray-500 leading-relaxed">
+                Sistem otomatis memilih seluruh <strong class="text-gray-700">{{ unbarcodedCount }} produk tanpa barcode</strong> untuk langsung dipindai secara berurutan.
+              </p>
+            </div>
+          </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-end pt-2 border-t border-gray-100">
+          <button
+            @click="showScanModeChoiceModal = false"
+            type="button"
+            class="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Bulk Camera Barcode Scanner Modal -->
     <BulkBarcodeScannerModal
       :is-open="isBulkScannerOpen"
@@ -524,7 +607,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Layers,
-  Barcode
+  Barcode,
+  CheckSquare,
+  Sparkles
 } from 'lucide-vue-next'
 
 const { fetchWithCache, invalidateCache } = useCachedFetch()
@@ -536,6 +621,7 @@ const { playSuccessBeep, unlockAudio } = useAudioBeep()
 
 const isScannerOpen = ref(false)
 const isBulkScannerOpen = ref(false)
+const showScanModeChoiceModal = ref(false)
 const selectedProductIds = ref<string[]>([])
 
 const selectedProducts = computed(() => {
@@ -570,14 +656,27 @@ function toggleSelectAllPage() {
 }
 
 function handleScanMasalClick() {
+  showScanModeChoiceModal.value = true
+}
+
+function handleChoiceManualSelect() {
+  showScanModeChoiceModal.value = false
   if (selectedProductIds.value.length === 0) {
-    const unbarcodedIds = filteredData.value.filter((p) => !p.barcode).map((p) => p.id)
-    if (unbarcodedIds.length === 0) {
-      toast.error('Semua produk pada filter saat ini sudah memiliki barcode')
-      return
-    }
-    selectedProductIds.value = unbarcodedIds
+    toast.info('Silakan centang produk yang ingin diisi barcode pada tabel di bawah, lalu klik "Mulai Scan Masal"')
+  } else {
+    openBulkScanner()
   }
+}
+
+function handleChoiceSelectAll() {
+  showScanModeChoiceModal.value = false
+  const unbarcodedIds = filteredData.value.filter((p) => !p.barcode).map((p) => p.id)
+  if (unbarcodedIds.length === 0) {
+    toast.error('Semua produk pada filter saat ini sudah memiliki barcode')
+    return
+  }
+  selectedProductIds.value = unbarcodedIds
+  toast.success(`${unbarcodedIds.length} produk tanpa barcode berhasil dipilih`)
   openBulkScanner()
 }
 
