@@ -536,7 +536,7 @@
                 </span>
               </div>
               <p class="text-xs text-gray-500 leading-relaxed">
-                Pilih sendiri produk mana saja yang belum memiliki barcode pada daftar tabel sebelum memulai pemindaian kamera.
+                Pilih produk yang ingin diberi barcode.
               </p>
             </div>
           </button>
@@ -560,7 +560,7 @@
                 </span>
               </div>
               <p class="text-xs text-gray-500 leading-relaxed">
-                Sistem otomatis memilih seluruh <strong class="text-gray-700">{{ unbarcodedCount }} produk tanpa barcode</strong> untuk langsung dipindai secara berurutan.
+                Otomatis pilih semua produk tanpa barcode.
               </p>
             </div>
           </button>
