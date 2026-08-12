@@ -3,22 +3,28 @@
     <Transition name="fade">
       <div
         v-if="isOpen"
-        class="fixed inset-0 z-50 flex flex-col bg-black/95 text-white select-none backdrop-blur-md overflow-hidden font-sans"
+        class="fixed inset-0 z-50 flex flex-col bg-slate-950 text-white select-none backdrop-blur-md overflow-hidden font-sans"
       >
         <!-- Top Bar Header -->
-        <div class="relative z-20 flex items-center justify-between px-4 py-3 bg-gray-900/90 backdrop-blur-md border-b border-white/10 shadow-lg">
+        <div class="relative z-20 flex items-center justify-between px-4 py-3 bg-slate-900/95 backdrop-blur-md border-b border-primary-500/20 shadow-lg">
           <div class="flex items-center gap-3">
             <div class="p-2.5 rounded-xl bg-primary-500/20 text-primary-400 border border-primary-500/30">
-              <Layers class="w-5 h-5 animate-pulse" />
+              <ScanLine class="w-5 h-5 animate-pulse" />
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-base font-bold leading-tight text-white">Scan Barcode Masal</h3>
-                <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full tracking-wider">
-                  {{ completedCount }} / {{ items.length }} Selesai
+                <h3 class="text-base font-extrabold leading-tight text-white">Scanner Barcode Interaktif</h3>
+                <span class="px-2.5 py-0.5 text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full tracking-wider">
+                  {{ sessionHistory.length }} Barcode Disimpan
                 </span>
               </div>
-              <p class="text-xs text-gray-400">Pindai barcode secara berturut-turut untuk daftar produk terpilih</p>
+              <p class="text-xs text-slate-300 flex items-center gap-1.5 flex-wrap mt-0.5">
+                <span>Pindai barcode/QR</span>
+                <ArrowRight class="w-3.5 h-3.5 text-primary-400 shrink-0" />
+                <span>Tentukan produk tujuan</span>
+                <ArrowRight class="w-3.5 h-3.5 text-primary-400 shrink-0" />
+                <span>Simpan</span>
+              </p>
             </div>
           </div>
 
@@ -28,8 +34,8 @@
               v-if="hasTorchSupport"
               @click="toggleTorch"
               type="button"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border"
-              :class="isTorchOn ? 'bg-amber-500 text-gray-950 border-amber-400 font-bold shadow-lg shadow-amber-500/30' : 'bg-gray-800/80 text-gray-300 border-gray-700 hover:bg-gray-700'"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer"
+              :class="isTorchOn ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-lg shadow-amber-500/30' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'"
             >
               <Zap class="w-4 h-4" :class="{ 'fill-current': isTorchOn }" />
               <span class="hidden sm:inline">Flash {{ isTorchOn ? 'ON' : 'OFF' }}</span>
@@ -39,7 +45,7 @@
             <button
               @click="closeScanner"
               type="button"
-              class="p-2 rounded-xl bg-gray-800/80 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors border border-white/10"
+              class="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border border-slate-700 cursor-pointer"
               title="Tutup (Esc)"
             >
               <X class="w-5 h-5" />
@@ -47,18 +53,18 @@
           </div>
         </div>
 
-        <!-- Progress Bar Line -->
-        <div class="w-full bg-gray-800 h-1.5 relative overflow-hidden z-20">
+        <!-- Progress Line if items queue exists -->
+        <div v-if="items.length > 0" class="w-full bg-slate-900 h-1.5 relative overflow-hidden z-20 border-b border-primary-500/10">
           <div
             class="bg-gradient-to-r from-primary-500 via-emerald-400 to-emerald-500 h-full transition-all duration-300"
             :style="{ width: `${progressPercentage}%` }"
           ></div>
         </div>
 
-        <!-- Main Body: Camera Feed & Side/Bottom Product List -->
+        <!-- Main Body: Camera Feed & Side/Bottom Drawer -->
         <div class="relative flex-1 flex flex-col md:flex-row overflow-hidden">
           
-          <!-- Camera Container -->
+          <!-- Camera Viewport Container -->
           <div class="relative flex-1 bg-black flex items-center justify-center overflow-hidden min-h-[300px]">
             <!-- HTML5 Video Element -->
             <video
@@ -70,16 +76,16 @@
             ></video>
 
             <!-- Camera Error State -->
-            <div v-if="cameraError" class="relative z-30 max-w-sm mx-4 p-6 bg-gray-900/90 rounded-2xl border border-red-500/40 text-center shadow-2xl backdrop-blur-md">
+            <div v-if="cameraError" class="relative z-30 max-w-sm mx-4 p-6 bg-slate-900/95 rounded-2xl border border-red-500/40 text-center shadow-2xl backdrop-blur-md">
               <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center">
                 <CameraOff class="w-6 h-6" />
               </div>
               <h4 class="text-lg font-bold text-white mb-1">Kamera Tidak Aktif</h4>
-              <p class="text-sm text-gray-300 mb-4">{{ cameraError }}</p>
+              <p class="text-sm text-slate-300 mb-4">{{ cameraError }}</p>
               <button
                 @click="initCamera"
                 type="button"
-                class="w-full py-2.5 px-4 bg-primary-600 hover:bg-primary-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-primary-600/30"
+                class="w-full py-2.5 px-4 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary-600/30 cursor-pointer"
               >
                 Coba Lagi
               </button>
@@ -88,30 +94,12 @@
             <!-- Loading Camera State -->
             <div v-else-if="isLoadingCamera" class="relative z-30 flex flex-col items-center gap-3">
               <div class="w-10 h-10 border-4 border-primary-500/30 border-t-primary-500 rounded-full animate-spin"></div>
-              <p class="text-sm font-medium text-gray-300">Menyiapkan kamera scanner masal...</p>
+              <p class="text-sm font-medium text-slate-300">Menyiapkan kamera scanner interaktif...</p>
             </div>
 
-            <!-- Completed All State Overlay -->
-            <div v-else-if="isAllCompleted" class="relative z-30 max-w-md mx-4 p-8 bg-gray-900/95 rounded-3xl border border-emerald-500/40 text-center shadow-2xl backdrop-blur-xl">
-              <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center animate-bounce">
-                <CheckCircle2 class="w-10 h-10" />
-              </div>
-              <h4 class="text-xl font-extrabold text-white mb-2">Semua Barcode Selesai!</h4>
-              <p class="text-sm text-gray-300 mb-6">
-                Berhasil memindai dan menyimpan barcode untuk {{ completedCount }} dari {{ items.length }} produk.
-              </p>
-              <button
-                @click="closeScanner"
-                type="button"
-                class="w-full py-3 px-6 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition-all"
-              >
-                Selesai & Kembali ke Produk
-              </button>
-            </div>
-
-            <!-- Target Scan Viewport -->
+            <!-- Target Scan Viewport Overlay -->
             <template v-else>
-              <!-- Dim Backdrop Overlay around scan frame -->
+              <!-- Dim Backdrop Mask around scan frame -->
               <div class="absolute inset-0 z-10 pointer-events-none flex flex-col">
                 <!-- Top Mask -->
                 <div class="bg-black/60 flex-1"></div>
@@ -131,7 +119,7 @@
                     <!-- Animated Scan Laser Beam -->
                     <div
                       class="absolute left-1 right-1 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_12px_#ef4444] animate-scan-beam"
-                      :class="{ 'opacity-30': isLocked }"
+                      :class="{ 'opacity-20': isLocked }"
                     ></div>
 
                     <!-- Success Pulse Flash -->
@@ -144,75 +132,108 @@
                   <div class="bg-black/60 flex-1"></div>
                 </div>
 
-                <!-- Bottom Mask & Target Product Toast Card -->
+                <!-- Bottom Mask & Instructions -->
                 <div class="bg-black/60 flex-1 flex flex-col items-center justify-start pt-4 px-4 gap-2">
-                  <!-- Active Target Product Indicator Card -->
-                  <div v-if="activeItem" class="max-w-md w-full bg-gray-900/90 border border-primary-500/40 rounded-2xl p-3.5 shadow-xl backdrop-blur-md flex items-center justify-between gap-3">
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-center gap-2 mb-0.5">
-                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase bg-primary-500/20 text-primary-300 border border-primary-500/30 rounded-full">
-                          Sedang Diproses #{{ currentIndex + 1 }}
-                        </span>
-                        <span v-if="activeItem.barcode" class="text-[10px] text-amber-300 font-mono">
-                          (Barcode lama: {{ activeItem.barcode }})
-                        </span>
-                      </div>
-                      <h4 class="text-sm font-bold text-white truncate">{{ activeItem.name }}</h4>
-                      <p v-if="activeItem.sku" class="text-xs text-gray-400 font-mono">SKU: {{ activeItem.sku }}</p>
-                    </div>
-
-                    <!-- Action: Skip Button -->
-                    <button
-                      @click="skipCurrentItem"
-                      type="button"
-                      class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-white/10 rounded-xl text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5"
-                      title="Lewati produk ini"
-                    >
-                      <SkipForward class="w-4 h-4 text-amber-400" />
-                      <span>Lewati</span>
-                    </button>
+                  <div class="bg-slate-900/90 border border-primary-500/30 px-4 py-2 rounded-2xl shadow-xl backdrop-blur-md flex items-center gap-2 pointer-events-auto">
+                    <QrCode class="w-4 h-4 text-primary-400 animate-pulse" />
+                    <span class="text-xs font-semibold text-slate-100">
+                      {{ isLocked ? 'Memproses barcode yang terbaca...' : 'Posisikan Barcode / QR Code di dalam kotak scan' }}
+                    </span>
                   </div>
-
-                  <p class="text-xs text-gray-300 font-medium bg-gray-900/60 px-3 py-1 rounded-full border border-white/5">
-                    Arahkan kamera tepat ke barcode produk di atas
+                  <p class="text-[11px] text-slate-400 italic">
+                    Kamera tetap aktif & otomatis memindai barcode berikutnya setelah Anda memilih produk.
                   </p>
                 </div>
               </div>
             </template>
           </div>
 
-          <!-- Side / Bottom Product Queue List Drawer -->
-          <div class="w-full md:w-80 lg:w-96 bg-gray-900 border-t md:border-t-0 md:border-l border-white/10 flex flex-col max-h-[45vh] md:max-h-full shrink-0 z-20">
-            <!-- Queue Header -->
-            <div class="p-3.5 bg-gray-950/80 border-b border-white/10 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <ListOrdered class="w-4 h-4 text-primary-400" />
-                <h4 class="text-xs font-bold text-gray-200 uppercase tracking-wider">Antrean Scan ({{ items.length }})</h4>
+          <!-- Side / Bottom Drawer: Tabs for Riwayat Scan & Antrean Produk -->
+          <div class="w-full md:w-80 lg:w-96 bg-slate-950 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col max-h-[45vh] md:max-h-full shrink-0 z-20">
+            <!-- Drawer Header & Tabs -->
+            <div class="p-2.5 bg-slate-900 border-b border-slate-800 flex items-center gap-2">
+              <button
+                @click="activeDrawerTab = 'history'"
+                type="button"
+                class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                :class="activeDrawerTab === 'history' ? 'bg-gradient-to-r from-primary-600 to-emerald-600 text-white font-extrabold shadow-md shadow-primary-600/30 border border-primary-400/40' : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700/50'"
+              >
+                <History class="w-4 h-4" />
+                <span>Riwayat Scan</span>
+                <span class="px-1.5 py-0.2 bg-black/30 text-white rounded-md text-[10px]">
+                  {{ sessionHistory.length }}
+                </span>
+              </button>
+
+              <button
+                @click="activeDrawerTab = 'queue'"
+                type="button"
+                class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                :class="activeDrawerTab === 'queue' ? 'bg-gradient-to-r from-primary-600 to-emerald-600 text-white font-extrabold shadow-md shadow-primary-600/30 border border-primary-400/40' : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700/50'"
+              >
+                <ListOrdered class="w-4 h-4" />
+                <span>Antrean Target</span>
+                <span class="px-1.5 py-0.2 bg-black/30 text-white rounded-md text-[10px]">
+                  {{ items.length }}
+                </span>
+              </button>
+            </div>
+
+            <!-- Tab Content 1: Riwayat Scan Sesi Ini -->
+            <div v-if="activeDrawerTab === 'history'" class="flex-1 overflow-y-auto p-3 space-y-2">
+              <div v-if="sessionHistory.length === 0" class="text-center py-10 px-4 text-slate-500">
+                <Barcode class="w-10 h-10 mx-auto mb-2 opacity-40 text-slate-400" />
+                <p class="text-xs font-semibold">Belum Ada Barcode Dipindai</p>
+                <p class="text-[11px] mt-1 text-slate-400">Arahkan kamera ke barcode untuk mulai memindai dan memasukkan ke produk.</p>
               </div>
-              <div class="text-xs text-emerald-400 font-bold font-mono">
-                {{ completedCount }}/{{ items.length }} Selesai
+
+              <div
+                v-for="log in sessionHistory"
+                :key="log.id"
+                class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-start justify-between gap-3 text-left hover:border-primary-500/40 transition-all"
+              >
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-mono text-xs font-extrabold text-emerald-400 flex items-center gap-1 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                      <QrCode class="w-3.5 h-3.5" /> {{ log.barcode }}
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-mono">
+                      {{ formatTime(log.timestamp) }}
+                    </span>
+                  </div>
+                  <p class="text-xs font-bold text-white truncate">{{ log.productName }}</p>
+                </div>
+                <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-[10px] font-bold shrink-0">
+                  Sukses
+                </span>
               </div>
             </div>
 
-            <!-- Items List -->
-            <div class="flex-1 overflow-y-auto p-3 space-y-2">
+            <!-- Tab Content 2: Antrean Target Produk -->
+            <div v-else-if="activeDrawerTab === 'queue'" class="flex-1 overflow-y-auto p-3 space-y-2">
+              <div v-if="items.length === 0" class="text-center py-10 px-4 text-slate-500">
+                <Package class="w-10 h-10 mx-auto mb-2 opacity-40 text-slate-400" />
+                <p class="text-xs font-semibold">Tidak Ada Produk Antrean Khusus</p>
+                <p class="text-[11px] mt-1 text-slate-400">Anda dapat memindai barcode secara bebas dan memilih produk manapun dari katalog toko saat barcode terbaca.</p>
+              </div>
+
               <div
                 v-for="(item, idx) in items"
                 :key="item.id"
                 @click="selectActiveIndex(idx)"
                 class="p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-left"
                 :class="{
-                  'bg-primary-950/60 border-primary-500 shadow-md ring-1 ring-primary-500/50': idx === currentIndex && item.status !== 'completed',
+                  'bg-primary-950/80 border-primary-500 shadow-lg ring-1 ring-primary-500/50': idx === currentIndex && item.status !== 'completed',
                   'bg-emerald-950/40 border-emerald-500/40 opacity-90': item.status === 'completed',
-                  'bg-gray-800/40 border-white/5 hover:border-white/20': idx !== currentIndex && item.status !== 'completed' && item.status !== 'skipped',
-                  'bg-gray-900/60 border-gray-700/50 opacity-60': item.status === 'skipped'
+                  'bg-slate-900 border-slate-800 hover:border-primary-500/40 hover:bg-slate-850': idx !== currentIndex && item.status !== 'completed' && item.status !== 'skipped',
+                  'bg-slate-900/60 border-slate-800/50 opacity-60': item.status === 'skipped'
                 }"
               >
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2">
                     <span
                       class="w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0"
-                      :class="idx === currentIndex ? 'bg-primary-500 text-white' : 'bg-gray-800 text-gray-400'"
+                      :class="idx === currentIndex ? 'bg-primary-500 text-white' : 'bg-slate-800 text-slate-400'"
                     >
                       {{ idx + 1 }}
                     </span>
@@ -221,13 +242,13 @@
                   
                   <div class="flex items-center gap-2 mt-1 pl-7 text-[11px]">
                     <span v-if="item.scannedBarcode" class="font-mono text-emerald-400 font-bold flex items-center gap-1">
-                      <Barcode class="w-3 h-3" /> {{ item.scannedBarcode }}
+                      <QrCode class="w-3 h-3" /> {{ item.scannedBarcode }}
                     </span>
-                    <span v-else-if="item.barcode" class="font-mono text-gray-400">
+                    <span v-else-if="item.barcode" class="font-mono text-slate-400">
                       Semula: {{ item.barcode }}
                     </span>
-                    <span v-else class="text-gray-500 italic">
-                      Belum ada barcode
+                    <span v-else class="text-slate-400 italic">
+                      Belum ada Barcode
                     </span>
                   </div>
                 </div>
@@ -242,19 +263,19 @@
                   </span>
                   <span
                     v-else-if="idx === currentIndex"
-                    class="px-2 py-1 bg-primary-500/20 text-primary-300 border border-primary-500/40 rounded-lg text-[10px] font-bold animate-pulse flex items-center gap-1"
+                    class="px-2.5 py-1 bg-primary-500 text-white font-extrabold rounded-lg text-[10px] shadow-sm shadow-primary-500/40 flex items-center gap-1"
                   >
-                    <ScanLine class="w-3 h-3" /> Diproses
+                    <ScanLine class="w-3 h-3" /> Target
                   </span>
                   <span
                     v-else-if="item.status === 'skipped'"
-                    class="px-2 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg text-[10px] font-medium"
+                    class="px-2 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-medium"
                   >
                     Dilewati
                   </span>
                   <span
                     v-else
-                    class="px-2 py-1 bg-gray-800 text-gray-400 rounded-lg text-[10px] font-medium"
+                    class="px-2 py-1 bg-slate-800 text-slate-400 border border-slate-700 rounded-lg text-[10px] font-medium"
                   >
                     Belum
                   </span>
@@ -263,44 +284,245 @@
             </div>
 
             <!-- Footer Controls -->
-            <div class="p-3 bg-gray-950/90 border-t border-white/10 flex items-center justify-between text-xs">
+            <div class="p-3 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-xs">
               <button
                 @click="closeScanner"
                 type="button"
-                class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl border border-white/10 transition-all text-center"
+                class="w-full py-2.5 px-4 bg-gradient-to-r from-primary-600 to-emerald-600 hover:from-primary-500 hover:to-emerald-500 text-white font-extrabold rounded-xl border border-primary-400/30 shadow-lg shadow-primary-600/30 transition-all text-center cursor-pointer flex items-center justify-center gap-2"
               >
-                Selesai / Keluar Scan Masal
+                <Check class="w-4 h-4 text-white" />
+                <span>Selesai & Keluar Scanner</span>
               </button>
             </div>
           </div>
         </div>
 
+        <!-- Interactive Product Selection Modal (Appears when barcode is scanned) -->
+        <div v-if="showProductSelectionModal" class="fixed inset-0 z-50 bg-slate-950/85 flex items-center justify-center p-4 backdrop-blur-md">
+          <div class="bg-slate-900 border-2 border-primary-500/40 rounded-3xl max-w-lg w-full p-6 text-white space-y-4 shadow-2xl shadow-primary-950/80 max-h-[90vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
+              <div class="flex items-center gap-3">
+                <div class="p-2 rounded-xl bg-primary-500/20 text-primary-400 border border-primary-500/30">
+                  <Barcode class="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h3 class="text-base font-extrabold text-white">Barcode / QR Code Terbaca!</h3>
+                  <p class="text-xs text-slate-400">Pilih produk tujuan untuk memasukkan barcode ini</p>
+                </div>
+              </div>
+              <button
+                @click="closeProductSelectionModal"
+                type="button"
+                class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                title="Abaikan & Scan Barcode Lain"
+              >
+                <X class="w-5 h-5" />
+              </button>
+            </div>
+
+            <!-- Scanned Barcode Display Box -->
+            <div class="p-3.5 bg-slate-950 rounded-2xl border-2 border-primary-500/40 flex items-center justify-between gap-3 shrink-0 shadow-inner">
+              <div class="flex items-center gap-3 min-w-0">
+                <QrCode class="w-6 h-6 text-primary-400 shrink-0" />
+                <div class="min-w-0">
+                  <span class="text-xs text-slate-400 block font-medium">Hasil Pemindaian Barcode:</span>
+                  <span class="text-lg font-mono font-black text-primary-300 tracking-wider break-all select-all">
+                    {{ scannedBarcodeResult }}
+                  </span>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full shrink-0">
+                Aktif
+              </span>
+            </div>
+
+            <!-- Duplicate Barcode Warning Alert Banner -->
+            <div v-if="duplicateWarning" class="p-3.5 bg-red-950/90 border border-red-500/60 rounded-2xl text-red-200 text-xs flex items-start gap-3 shrink-0 shadow-lg">
+              <AlertTriangle class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <div class="flex-1">
+                <h5 class="font-bold text-red-100 text-sm">Peringatan Duplikasi Barcode!</h5>
+                <p class="mt-0.5 text-red-300 leading-relaxed">{{ duplicateWarning }}</p>
+                <p class="mt-1 text-[11px] text-red-400 italic">Barcode yang sudah digunakan produk lain tidak boleh terduplikasi.</p>
+              </div>
+            </div>
+
+            <!-- Scrollable Body: Target Product Selection Options -->
+            <div class="flex-1 overflow-y-auto space-y-4 pr-1">
+              
+              <!-- Section A: Pilihan Cepat Produk Target Antrean (if queue provided) -->
+              <div v-if="items.length > 0" class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <Sparkles class="w-4 h-4 text-primary-400" />
+                    <span>Pilihan Cepat Produk Antrean:</span>
+                  </label>
+                  <span class="text-[10px] text-slate-400 font-mono">{{ items.length }} Produk</span>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
+                  <button
+                    v-for="item in items"
+                    :key="item.id"
+                    @click="selectedTargetProduct = item"
+                    type="button"
+                    class="p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer"
+                    :class="selectedTargetProduct?.id === item.id
+                      ? 'bg-primary-950/80 border-primary-500 ring-2 ring-primary-500/60 shadow-lg'
+                      : 'bg-slate-800/60 border-slate-700/60 hover:border-primary-500/40 hover:bg-slate-800'"
+                  >
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2">
+                        <CheckCircle2
+                          v-if="selectedTargetProduct?.id === item.id"
+                          class="w-4 h-4 text-primary-400 shrink-0"
+                        />
+                        <div v-else class="w-4 h-4 rounded-full border border-slate-500 shrink-0"></div>
+                        <p class="text-xs font-bold text-white truncate">{{ item.name }}</p>
+                      </div>
+                      <div class="pl-6 text-[10px] font-mono mt-0.5">
+                        <span v-if="item.scannedBarcode" class="text-emerald-400 font-bold">
+                          Terisi: {{ item.scannedBarcode }}
+                        </span>
+                        <span v-else-if="item.barcode" class="text-amber-300">
+                          Lama: {{ item.barcode }}
+                        </span>
+                        <span v-else class="text-slate-500 italic">
+                          Belum ada barcode
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Section B: Cari Produk Lainnya dari Seluruh Katalog Toko -->
+              <div class="space-y-2">
+                <label class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Search class="w-4 h-4 text-primary-400" />
+                  <span>Atau Cari & Pilih Produk Lainnya:</span>
+                </label>
+
+                <div class="relative">
+                  <input
+                    v-model="searchProductQuery"
+                    type="text"
+                    placeholder="Ketik nama, merek, atau SKU produk..."
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 pl-9 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+                  />
+                  <Search class="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <button
+                    v-if="searchProductQuery"
+                    @click="searchProductQuery = ''"
+                    type="button"
+                    class="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                  >
+                    <X class="w-4 h-4" />
+                  </button>
+                </div>
+
+                <!-- Dropdown / List Result for Other Products Search -->
+                <div v-if="searchProductQuery.trim()" class="max-h-48 overflow-y-auto space-y-1.5 bg-slate-950 p-2 rounded-xl border border-slate-800">
+                  <div v-if="isLoadingAllProducts" class="text-center py-4 text-xs text-slate-400 flex items-center justify-center gap-2">
+                    <Loader2 class="w-4 h-4 animate-spin text-primary-400" />
+                    <span>Memuat katalog produk...</span>
+                  </div>
+                  <div v-else-if="filteredOtherProducts.length === 0" class="text-center py-4 text-xs text-slate-500">
+                    Tidak ada produk yang cocok dengan "{{ searchProductQuery }}"
+                  </div>
+                  <button
+                    v-for="prod in filteredOtherProducts"
+                    :key="prod.id"
+                    @click="selectedTargetProduct = prod"
+                    type="button"
+                    class="w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between gap-3 cursor-pointer"
+                    :class="selectedTargetProduct?.id === prod.id
+                      ? 'bg-primary-950/80 border-primary-500 ring-1 ring-primary-500'
+                      : 'bg-slate-900 border-slate-800 hover:border-slate-700 hover:bg-slate-800/80'"
+                  >
+                    <div class="min-w-0 flex-1">
+                      <p class="text-xs font-bold text-white truncate">{{ prod.name }}</p>
+                      <p v-if="prod.sku" class="text-[11px] text-slate-400 font-mono truncate">SKU: {{ prod.sku }}</p>
+                    </div>
+                    <span v-if="prod.barcode" class="text-[10px] font-mono text-amber-300 shrink-0">
+                      {{ prod.barcode }}
+                    </span>
+                    <span v-else class="text-[10px] text-slate-500 italic shrink-0">
+                      Tanpa barcode
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Selected Product Indicator Summary -->
+              <div v-if="selectedTargetProduct" class="p-3.5 bg-emerald-950/60 border border-emerald-500/50 rounded-2xl flex items-center justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <span class="text-[10px] font-extrabold uppercase text-emerald-400 tracking-wider">Produk Tujuan Terpilih:</span>
+                  <h4 class="text-sm font-extrabold text-white truncate">{{ selectedTargetProduct.name }}</h4>
+                  <p v-if="selectedTargetProduct.sku" class="text-xs text-slate-300 font-mono truncate">
+                    SKU: {{ selectedTargetProduct.sku }}
+                  </p>
+                </div>
+                <CheckCircle2 class="w-6 h-6 text-emerald-400 shrink-0" />
+              </div>
+
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-800 shrink-0">
+              <button
+                @click="closeProductSelectionModal"
+                type="button"
+                class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw class="w-4 h-4" />
+                <span>Abaikan & Scan Ulang</span>
+              </button>
+
+              <button
+                @click="handleConfirmProductSave(false)"
+                :disabled="!selectedTargetProduct || !!duplicateWarning || isSaving"
+                type="button"
+                class="px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                :class="selectedTargetProduct && !duplicateWarning
+                  ? 'bg-gradient-to-r from-primary-600 to-emerald-600 hover:from-primary-500 hover:to-emerald-500 text-white shadow-primary-600/30'
+                  : 'bg-slate-800 text-slate-500'"
+              >
+                <Loader2 v-if="isSaving" class="w-4 h-4 animate-spin" />
+                <Save v-else class="w-4 h-4" />
+                <span>Simpan Barcode ke Produk Ini</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
         <!-- Overwrite Confirmation Modal -->
-        <div v-if="overwriteTarget" class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div class="bg-gray-900 border border-amber-500/40 rounded-2xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl">
+        <div v-if="overwriteTarget" class="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div class="bg-slate-900 border border-amber-500/40 rounded-2xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl">
             <div class="flex items-center gap-3 text-amber-400">
               <AlertTriangle class="w-6 h-6 shrink-0" />
               <h3 class="text-base font-bold">Konfirmasi Timpa Barcode</h3>
             </div>
-            <p class="text-xs text-gray-300 leading-relaxed">
+            <p class="text-xs text-slate-300 leading-relaxed">
               Produk <strong class="text-white">{{ overwriteTarget.item.name }}</strong> sudah memiliki barcode lama
-              <code class="bg-gray-800 text-amber-300 px-1.5 py-0.5 rounded font-mono">{{ overwriteTarget.item.barcode }}</code>.
+              <code class="bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded font-mono">{{ overwriteTarget.item.barcode }}</code>.
               <br /><br />
               Apakah Anda yakin ingin menimpanya dengan barcode baru
-              <code class="bg-gray-800 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold">{{ overwriteTarget.barcode }}</code>?
+              <code class="bg-slate-800 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold">{{ overwriteTarget.barcode }}</code>?
             </p>
             <div class="flex items-center justify-end gap-3 pt-2">
               <button
                 @click="cancelOverwrite"
                 type="button"
-                class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold"
+                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Batal
               </button>
               <button
                 @click="confirmOverwrite"
                 type="button"
-                class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-amber-600/30"
+                class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-amber-600/30 cursor-pointer"
               >
                 Ya, Timpa Barcode
               </button>
@@ -308,21 +530,21 @@
           </div>
         </div>
 
-        <!-- Warning Alert Modal (Duplicate / Error) -->
-        <div v-if="warningModal" class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div class="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl">
+        <!-- Warning Alert Modal (General Error) -->
+        <div v-if="warningModal" class="fixed inset-0 z-50 bg-slate-950/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div class="bg-slate-900 border border-red-500/40 rounded-2xl max-w-md w-full p-6 text-white space-y-4 shadow-2xl">
             <div class="flex items-center gap-3 text-red-400">
               <AlertOctagon class="w-6 h-6 shrink-0" />
-              <h3 class="text-base font-bold">Peringatan Barcode Duplikat</h3>
+              <h3 class="text-base font-bold">Peringatan Barcode</h3>
             </div>
-            <p class="text-xs text-gray-300 leading-relaxed">
+            <p class="text-xs text-slate-300 leading-relaxed">
               {{ warningModal.message }}
             </p>
             <div class="flex items-center justify-end pt-2">
               <button
                 @click="closeWarningModal"
                 type="button"
-                class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-600/30"
+                class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-600/30 cursor-pointer"
               >
                 Mengerti (Scan Ulang)
               </button>
@@ -344,11 +566,20 @@ import {
   CameraOff,
   CheckCircle2,
   ListOrdered,
-  SkipForward,
   ScanLine,
   Barcode,
   AlertTriangle,
-  AlertOctagon
+  AlertOctagon,
+  QrCode,
+  Search,
+  Sparkles,
+  RefreshCw,
+  Save,
+  ArrowRight,
+  History,
+  Package,
+  Check,
+  Loader2
 } from 'lucide-vue-next'
 
 const { fetchWithAuth } = useApi()
@@ -371,9 +602,17 @@ interface QueueItem {
   scannedBarcode: string | null
 }
 
+interface HistoryLog {
+  id: string
+  barcode: string
+  productId: string
+  productName: string
+  timestamp: Date
+}
+
 const props = defineProps<{
   isOpen: boolean
-  products: ProductProp[]
+  products?: ProductProp[]
 }>()
 
 const emit = defineEmits<{
@@ -383,6 +622,19 @@ const emit = defineEmits<{
 
 const items = ref<QueueItem[]>([])
 const currentIndex = ref(0)
+const activeDrawerTab = ref<'history' | 'queue'>('history')
+const sessionHistory = ref<HistoryLog[]>([])
+
+// Interactive Product Selection Modal state
+const showProductSelectionModal = ref(false)
+const scannedBarcodeResult = ref('')
+const selectedTargetProduct = ref<any>(null)
+const searchProductQuery = ref('')
+const allProductsCatalog = ref<any[]>([])
+const isLoadingAllProducts = ref(false)
+const isSaving = ref(false)
+const duplicateWarning = ref<string | null>(null)
+
 const isLocked = ref(false)
 const showSuccessFlash = ref(false)
 
@@ -394,7 +646,7 @@ const isTorchOn = ref(false)
 const hasTorchSupport = ref(false)
 const activeEngine = ref<'BarcodeDetector' | 'ZXing' | 'None'>('None')
 
-const overwriteTarget = ref<{ barcode: string; item: QueueItem } | null>(null)
+const overwriteTarget = ref<{ barcode: string; item: any } | null>(null)
 const warningModal = ref<{ message: string } | null>(null)
 
 let mediaStream: MediaStream | null = null
@@ -416,15 +668,40 @@ const progressPercentage = computed(() => {
   return Math.round((completedCount.value / items.value.length) * 100)
 })
 
-const isAllCompleted = computed(() => {
-  return items.value.length > 0 && items.value.every((i) => i.status === 'completed' || i.status === 'skipped')
-})
-
 const activeItem = computed(() => {
   if (currentIndex.value >= 0 && currentIndex.value < items.value.length) {
     return items.value[currentIndex.value]
   }
   return null
+})
+
+// Load full product catalog for live product search selection
+async function loadStoreProductsCatalog() {
+  if (allProductsCatalog.value.length > 0) return
+  try {
+    isLoadingAllProducts.value = true
+    const res = await fetchWithAuth<any>('/products?limit=1000')
+    if (res && res.success && Array.isArray(res.data)) {
+      allProductsCatalog.value = res.data
+    } else if (Array.isArray(res)) {
+      allProductsCatalog.value = res
+    }
+  } catch (err) {
+    console.error('Failed to load store products catalog:', err)
+  } finally {
+    isLoadingAllProducts.value = false
+  }
+}
+
+const filteredOtherProducts = computed(() => {
+  const q = searchProductQuery.value.trim().toLowerCase()
+  if (!q) return []
+  return allProductsCatalog.value.filter((p: any) => {
+    const nameMatch = p.name?.toLowerCase().includes(q)
+    const skuMatch = p.sku?.toLowerCase().includes(q)
+    const barcodeMatch = p.barcode?.toLowerCase().includes(q)
+    return nameMatch || skuMatch || barcodeMatch
+  }).slice(0, 20)
 })
 
 // Initialize items queue whenever modal is opened
@@ -444,6 +721,11 @@ watch(
       currentIndex.value = 0
       overwriteTarget.value = null
       warningModal.value = null
+      showProductSelectionModal.value = false
+      scannedBarcodeResult.value = ''
+      sessionHistory.value = []
+
+      loadStoreProductsCatalog()
 
       await nextTick()
       initCamera()
@@ -459,35 +741,29 @@ function selectActiveIndex(idx: number) {
   }
 }
 
-function skipCurrentItem() {
-  if (!activeItem.value) return
-  activeItem.value.status = 'skipped'
-  advanceToNextPending()
-}
-
 function advanceToNextPending() {
-  // Find next pending or skipped item starting from current index
   const nextPendingIdx = items.value.findIndex((item, i) => i > currentIndex.value && item.status === 'pending')
   if (nextPendingIdx !== -1) {
     currentIndex.value = nextPendingIdx
     return
   }
-  
-  // Otherwise wrap around to find any first pending item
   const firstPendingIdx = items.value.findIndex((item) => item.status === 'pending')
   if (firstPendingIdx !== -1) {
     currentIndex.value = firstPendingIdx
     return
   }
-
-  // If no pending left, check for skipped items
+  const nextSkippedIdx = items.value.findIndex((item, i) => i > currentIndex.value && item.status === 'skipped')
+  if (nextSkippedIdx !== -1) {
+    currentIndex.value = nextSkippedIdx
+    return
+  }
   const firstSkippedIdx = items.value.findIndex((item) => item.status === 'skipped')
   if (firstSkippedIdx !== -1) {
     currentIndex.value = firstSkippedIdx
   }
 }
 
-// Precise canvas crop logic matching scan window target ROI
+// Canvas crop logic matching scan frame target ROI
 function updateCropCanvas(): HTMLCanvasElement | null {
   if (!videoRef.value || !targetBoxRef.value) return null
   const video = videoRef.value
@@ -657,7 +933,7 @@ function startScanLoop() {
     if (!props.isOpen || !videoRef.value) return
 
     const now = performance.now()
-    if (!isLocked.value && !overwriteTarget.value && !warningModal.value && activeItem.value && videoRef.value.readyState >= 2 && now - lastScanTime >= 70) {
+    if (!isLocked.value && !showProductSelectionModal.value && !overwriteTarget.value && !warningModal.value && videoRef.value.readyState >= 2 && now - lastScanTime >= 70) {
       lastScanTime = now
       const croppedCanvas = updateCropCanvas()
       if (croppedCanvas) {
@@ -695,29 +971,62 @@ function startScanLoop() {
 }
 
 async function handleDetectedBarcode(scannedCode: string) {
-  if (isLocked.value || !activeItem.value) return
+  if (isLocked.value || showProductSelectionModal.value) return
 
   isLocked.value = true
+  scannedBarcodeResult.value = scannedCode
+  duplicateWarning.value = null
 
-  // Check batch session duplicate scan
-  const duplicateInBatch = items.value.find(
-    (i) => i.status === 'completed' && i.scannedBarcode === scannedCode && i.id !== activeItem.value?.id
-  )
-  if (duplicateInBatch) {
+  playSuccessBeep()
+  showSuccessFlash.value = true
+  setTimeout(() => {
+    showSuccessFlash.value = false
+  }, 300)
+
+  // Pre-select current queue target if available
+  if (activeItem.value) {
+    selectedTargetProduct.value = activeItem.value
+  } else if (items.value.length > 0) {
+    selectedTargetProduct.value = items.value[0]
+  } else {
+    selectedTargetProduct.value = null
+  }
+
+  searchProductQuery.value = ''
+  showProductSelectionModal.value = true
+
+  checkDuplicateBarcode(scannedCode)
+  loadStoreProductsCatalog()
+}
+
+function checkDuplicateBarcode(code: string) {
+  // Check session history
+  const histMatch = sessionHistory.value.find((h) => h.barcode === code)
+  if (histMatch) {
+    duplicateWarning.value = `Barcode "${code}" sudah digunakan oleh produk "${histMatch.productName}" pada sesi scan ini.`
     playErrorBeep()
-    warningModal.value = {
-      message: `Barcode "${scannedCode}" sudah digunakan pada produk "${duplicateInBatch.name}" dalam sesi scan masal ini!`
-    }
     return
   }
 
-  // Attempt saving to database API
-  await saveBarcodeToProduct(activeItem.value, scannedCode, false)
+  // Check store catalog
+  const storeMatch = allProductsCatalog.value.find(
+    (p) => p.barcode?.trim() === code && p.id !== selectedTargetProduct.value?.id
+  )
+  if (storeMatch) {
+    duplicateWarning.value = `Barcode "${code}" sudah terdaftar di database pada produk "${storeMatch.name}".`
+    playErrorBeep()
+  }
 }
 
-async function saveBarcodeToProduct(item: QueueItem, code: string, force = false) {
+async function handleConfirmProductSave(force = false) {
+  if (!selectedTargetProduct.value || !scannedBarcodeResult.value || isSaving.value) return
+
   try {
-    const res = await fetchWithAuth<any>(`/products/${item.id}/barcode`, {
+    isSaving.value = true
+    const prodId = selectedTargetProduct.value.id
+    const code = scannedBarcodeResult.value
+
+    const res = await fetchWithAuth<any>(`/products/${prodId}/barcode`, {
       method: 'PATCH',
       body: {
         barcode: code,
@@ -725,28 +1034,40 @@ async function saveBarcodeToProduct(item: QueueItem, code: string, force = false
       }
     })
 
-    if (res.success) {
+    if (res && res.success) {
       playSuccessBeep()
-      showSuccessFlash.value = true
-      setTimeout(() => {
-        showSuccessFlash.value = false
-      }, 300)
 
-      item.status = 'completed'
-      item.scannedBarcode = code
-      emit('updated-product', item.id, code)
-      toast.success(`Barcode ${code} disimpan untuk ${item.name}`)
+      // Log into session history
+      sessionHistory.value.unshift({
+        id: Math.random().toString(36).substring(2, 9),
+        barcode: code,
+        productId: prodId,
+        productName: selectedTargetProduct.value.name,
+        timestamp: new Date()
+      })
 
-      advanceToNextPending()
+      // Update queue item if exists
+      const queueItem = items.value.find((i) => i.id === prodId)
+      if (queueItem) {
+        queueItem.status = 'completed'
+        queueItem.scannedBarcode = code
+        advanceToNextPending()
+      }
 
-      if (lockTimer) clearTimeout(lockTimer)
-      lockTimer = setTimeout(() => {
-        isLocked.value = false
-      }, 600)
+      // Update local store catalog
+      const catItem = allProductsCatalog.value.find((p) => p.id === prodId)
+      if (catItem) {
+        catItem.barcode = code
+      }
+
+      emit('updated-product', prodId, code)
+      toast.success(`Barcode "${code}" berhasil disimpan untuk "${selectedTargetProduct.value.name}"!`)
+
+      closeProductSelectionModal()
     } else {
       playErrorBeep()
       warningModal.value = {
-        message: res.message || 'Gagal menyimpan barcode.'
+        message: res?.message || 'Gagal menyimpan barcode.'
       }
     }
   } catch (err: any) {
@@ -755,24 +1076,35 @@ async function saveBarcodeToProduct(item: QueueItem, code: string, force = false
     const msg = err.data?.message || err.message || 'Gagal menyimpan barcode'
 
     if (status === 409) {
-      // Conflict: existing barcode prompt
-      overwriteTarget.value = { barcode: code, item }
+      overwriteTarget.value = { barcode: scannedBarcodeResult.value, item: selectedTargetProduct.value }
     } else {
       warningModal.value = { message: msg }
     }
+  } finally {
+    isSaving.value = false
   }
 }
 
-async function confirmOverwrite() {
+function confirmOverwrite() {
   if (!overwriteTarget.value) return
-  const { barcode: code, item } = overwriteTarget.value
   overwriteTarget.value = null
-  await saveBarcodeToProduct(item, code, true)
+  handleConfirmProductSave(true)
 }
 
 function cancelOverwrite() {
   overwriteTarget.value = null
-  isLocked.value = false
+  closeProductSelectionModal()
+}
+
+function closeProductSelectionModal() {
+  showProductSelectionModal.value = false
+  scannedBarcodeResult.value = ''
+  selectedTargetProduct.value = null
+  duplicateWarning.value = null
+  if (lockTimer) clearTimeout(lockTimer)
+  lockTimer = setTimeout(() => {
+    isLocked.value = false
+  }, 400)
 }
 
 function closeWarningModal() {
@@ -792,38 +1124,26 @@ async function toggleTorch() {
   }
 }
 
+function formatTime(d: Date) {
+  return new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
 function stopEverything() {
   if (animFrameId) {
     cancelAnimationFrame(animFrameId)
     animFrameId = null
   }
-
-  if (zxingReader) {
-    try {
-      if (typeof zxingReader.reset === 'function') zxingReader.reset()
-    } catch (_) {}
-    zxingReader = null
-  }
-  barcodeDetector = null
-
   if (mediaStream) {
-    mediaStream.getTracks().forEach((track) => track.stop())
+    mediaStream.getTracks().forEach((t) => t.stop())
     mediaStream = null
     mediaTrack = null
   }
-
   if (videoRef.value) {
     videoRef.value.srcObject = null
   }
-
-  if (lockTimer) {
-    clearTimeout(lockTimer)
-    lockTimer = null
-  }
+  barcodeDetector = null
+  zxingReader = null
   isLocked.value = false
-  isTorchOn.value = false
-  cropCanvas = null
-  cropCtx = null
 }
 
 function closeScanner() {
@@ -841,7 +1161,6 @@ onUnmounted(() => {
 .fade-leave-active {
   transition: opacity 0.25s ease;
 }
-
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
@@ -852,7 +1171,7 @@ onUnmounted(() => {
     top: 5%;
   }
   50% {
-    top: 95%;
+    top: 92%;
   }
   100% {
     top: 5%;

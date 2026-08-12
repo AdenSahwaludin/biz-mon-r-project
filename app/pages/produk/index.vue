@@ -701,10 +701,6 @@ function clearSelection() {
 }
 
 function openBulkScanner() {
-  if (selectedProductIds.value.length === 0) {
-    toast.error('Pilih setidaknya 1 produk terlebih dahulu')
-    return
-  }
   unlockAudio()
   isBulkScannerOpen.value = true
 }
