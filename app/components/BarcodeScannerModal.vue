@@ -467,52 +467,83 @@ async function startScanEngine() {
 
   // ── Strategy 1: Native BarcodeDetector API (fastest) ──
   if ('BarcodeDetector' in window) {
-    try {
-      activeEngine.value = 'BarcodeDetector'
-      let formats: string[]
-      try {
-        formats = await (window as any).BarcodeDetector.getSupportedFormats()
-      } catch (_) {
-        formats = []
-      }
-      if (!formats || formats.length === 0) {
-        formats = [
-          'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39', 'code_93', 'code_128',
-          'itf', 'codabar', 'qr_code', 'data_matrix', 'pdf417', 'aztec'
-        ]
-      }
+  let lastCandidateCode = ''
+  let candidateMatchCount = 0
+  let lastCandidateTime = 0
 
-      barcodeDetector = new (window as any).BarcodeDetector({ formats })
-      startScanLoop()
-      return
-    } catch (e) {
-      console.warn('BarcodeDetector failed, falling back to ZXing:', e)
+  function isValidBarcodeText(code: string): boolean {
+    if (!code) return false
+    const trimmed = code.trim()
+    if (trimmed.length < 3) return false
+    if (/^(.)\1+$/i.test(trimmed)) return false
+    return true
+  }
+
+  function processCandidateBarcode(rawVal: string) {
+    if (!isValidBarcodeText(rawVal)) return
+
+    const now = performance.now()
+    if (rawVal === lastCandidateCode && (now - lastCandidateTime) <= 350) {
+      candidateMatchCount++
+    } else {
+      lastCandidateCode = rawVal
+      candidateMatchCount = 1
+    }
+    lastCandidateTime = now
+
+    if (candidateMatchCount >= 2) {
+      lastCandidateCode = ''
+      candidateMatchCount = 0
+      handleDetectedBarcode(rawVal)
     }
   }
 
-  // ── Strategy 2: ZXing library fallback ──
   try {
-    activeEngine.value = 'ZXing'
-    const { BrowserMultiFormatReader } = await import('@zxing/browser')
-    const { DecodeHintType, BarcodeFormat } = await import('@zxing/library')
+    activeEngine.value = 'BarcodeDetector'
+    let formats: string[]
+    try {
+      const supported = await (window as any).BarcodeDetector.getSupportedFormats()
+      formats = (supported || []).filter((f: string) => f !== 'itf' && f !== 'codabar')
+    } catch (_) {
+      formats = []
+    }
+    if (!formats || formats.length === 0) {
+      formats = [
+        'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39', 'code_93', 'code_128',
+        'qr_code', 'data_matrix', 'pdf417', 'aztec'
+      ]
+    }
 
-    const hints = new Map()
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-      BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
-      BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
-      BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.CODE_128,
-      BarcodeFormat.ITF, BarcodeFormat.CODABAR,
-      BarcodeFormat.QR_CODE, BarcodeFormat.DATA_MATRIX,
-      BarcodeFormat.PDF_417, BarcodeFormat.AZTEC
-    ])
-    hints.set(DecodeHintType.TRY_HARDER, true)
-
-    zxingReader = new BrowserMultiFormatReader(hints)
+    barcodeDetector = new (window as any).BarcodeDetector({ formats })
     startScanLoop()
+    return
   } catch (e) {
-    console.error('ZXing fallback failed:', e)
-    cameraError.value = 'Gagal memuat engine barcode scanner.'
+    console.warn('BarcodeDetector failed, falling back to ZXing:', e)
   }
+}
+
+// ── Strategy 2: ZXing library fallback ──
+try {
+  activeEngine.value = 'ZXing'
+  const { BrowserMultiFormatReader } = await import('@zxing/browser')
+  const { DecodeHintType, BarcodeFormat } = await import('@zxing/library')
+
+  const hints = new Map()
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+    BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
+    BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+    BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.CODE_128,
+    BarcodeFormat.QR_CODE, BarcodeFormat.DATA_MATRIX,
+    BarcodeFormat.PDF_417, BarcodeFormat.AZTEC
+  ])
+  hints.set(DecodeHintType.TRY_HARDER, true)
+
+  zxingReader = new BrowserMultiFormatReader(hints)
+  startScanLoop()
+} catch (e) {
+  console.error('ZXing fallback failed:', e)
+  cameraError.value = 'Gagal memuat engine barcode scanner.'
+}
 }
 
 function startScanLoop() {
@@ -535,7 +566,7 @@ function startScanLoop() {
             if (barcodes && barcodes.length > 0) {
               const rawVal = barcodes[0].rawValue?.trim()
               if (rawVal) {
-                handleDetectedBarcode(rawVal)
+                processCandidateBarcode(rawVal)
               }
             }
           } catch (_) {}
@@ -546,7 +577,7 @@ function startScanLoop() {
             if (result) {
               const text = typeof result.getText === 'function' ? result.getText()?.trim() : result.text?.trim()
               if (text) {
-                handleDetectedBarcode(text)
+                processCandidateBarcode(text)
               }
             }
           } catch (_) {}
