@@ -52,9 +52,9 @@ export default defineNuxtConfig({
       background_color: '#0f172a',
       display: 'standalone',
       orientation: 'any',
-      id: '/',
-      start_url: '/',
-      scope: '/',
+      id: 'https://rapidgumelar.vercel.app/',
+      start_url: 'https://rapidgumelar.vercel.app/',
+      scope: 'https://rapidgumelar.vercel.app/',
       icons: [
         {
           src: '/logo-sm.webp',
@@ -136,15 +136,20 @@ export default defineNuxtConfig({
       title: 'PantauBisnis — Monitoring & Penjualan Multi Bisnis',
       meta: [
         { name: 'description', content: 'Sistem monitoring dan penjualan multi bisnis — Wonton, Es Teh, Dimsum, Warung Sembako' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
         { name: 'theme-color', content: '#0f172a' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-        { name: 'mobile-web-app-capable', content: 'yes' }
+        { name: 'apple-mobile-web-app-title', content: 'PantauBisnis' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'application-name', content: 'PantauBisnis' },
+        { name: 'format-detection', content: 'telephone=no' }
       ],
       link: [
         { rel: 'icon', type: 'image/png', href: '/logo.png' },
-        { rel: 'apple-touch-icon', href: '/logo-sm.webp' },
+        { rel: 'apple-touch-icon', href: '/logo.png' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/logo.png' },
+        { rel: 'canonical', href: 'https://rapidgumelar.vercel.app/' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'preload', as: 'style', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' },

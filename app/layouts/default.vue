@@ -4,8 +4,9 @@
     <Transition name="fade">
       <div
         v-if="sidebarOpen"
-        class="fixed inset-0 bg-black/50 z-40 lg:hidden"
-        @click="sidebarOpen = false"
+        class="fixed inset-0 bg-black/50 z-40 lg:hidden cursor-pointer select-none touch-none"
+        @click.stop="sidebarOpen = false"
+        @touchstart.passive="sidebarOpen = false"
       />
     </Transition>
 
@@ -13,7 +14,7 @@
     <aside
       :class="[
         'fixed top-0 left-0 z-50 h-full bg-white border-r border-gray-200 transition-all duration-200 flex flex-col',
-        sidebarOpen ? 'w-64 translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-64',
+        sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 lg:w-64',
       ]"
     >
       <!-- Logo -->
@@ -25,7 +26,7 @@
           <span class="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">PantauBisnis</span>
           <span class="text-[10px] font-medium text-gray-400 leading-tight">v.1.1.0</span>
         </div>
-        <button @click="sidebarOpen = false" class="ml-auto lg:hidden text-gray-400 hover:text-gray-600 p-1">
+        <button @click="sidebarOpen = false" type="button" class="ml-auto lg:hidden text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
           <X class="w-5 h-5" />
         </button>
       </div>
@@ -34,6 +35,7 @@
       <div class="relative mx-4 mt-4 mb-2" ref="sidebarBizDropdownRef" v-if="biz.activeBusiness">
         <button
           @click="toggleSidebarBizDropdown"
+          type="button"
           class="w-full px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-between transition-all cursor-pointer border border-transparent hover:border-gray-200"
           :style="{ backgroundColor: biz.activeBusiness.color + '15', color: biz.activeBusiness.color }"
           title="Ganti Bisnis / Cabang"
@@ -56,8 +58,9 @@
                 <button
                   v-for="branch in b.branches"
                   :key="branch.id"
+                  type="button"
                   @click="switchBranch(branch.id); showSidebarBizDropdown = false"
-                  class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors text-left cursor-pointer"
                   :class="branch.id === biz.activeBranchId ? 'bg-primary-50 text-primary-600 font-semibold' : 'text-gray-700'"
                 >
                   <span class="ml-4 truncate">{{ branch.name }}</span>
@@ -103,7 +106,7 @@
             <p class="text-sm font-medium text-gray-900 truncate">{{ auth.user?.name }}</p>
             <p class="text-xs text-gray-500">{{ auth.user?.role }}</p>
           </div>
-          <button @click="auth.logout()" class="text-gray-400 hover:text-red-500 transition-colors" title="Keluar">
+          <button @click="auth.logout()" type="button" class="text-gray-400 hover:text-red-500 transition-colors p-1 cursor-pointer" title="Keluar">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           </button>
         </div>
@@ -131,8 +134,14 @@
       <!-- Navbar -->
       <header class="sticky top-0 z-30 h-16 bg-white border-b border-gray-200 shadow-sm flex items-center px-4 lg:px-6 shrink-0">
         <!-- Hamburger -->
-        <button @click="sidebarOpen = true" class="lg:hidden mr-3 text-gray-500 hover:text-gray-700">
-          <Menu class="w-6 h-6" />
+        <button
+          type="button"
+          @click.stop="toggleSidebar"
+          @touchstart.passive="toggleSidebar"
+          class="lg:hidden mr-3 text-gray-500 hover:text-gray-700 p-1.5 -ml-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 active:bg-gray-100 cursor-pointer select-none"
+          aria-label="Buka Menu Sidebar"
+        >
+          <Menu class="w-6 h-6 pointer-events-none" />
         </button>
 
         <!-- Page Title / Breadcrumb -->
@@ -157,6 +166,7 @@
           <div class="relative" ref="bizDropdownRef" v-if="biz.activeBusiness">
             <button
               @click="toggleBizDropdown"
+              type="button"
               class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm transition-colors cursor-pointer"
             >
               <component :is="getBusinessIcon(biz.activeBusiness.icon)" class="w-4 h-4" :style="{ color: biz.activeBusiness.color }" />
@@ -174,8 +184,9 @@
                     <button
                       v-for="branch in b.branches"
                       :key="branch.id"
+                      type="button"
                       @click="switchBranch(branch.id)"
-                      class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors text-left"
+                      class="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors text-left cursor-pointer"
                       :class="branch.id === biz.activeBranchId ? 'bg-primary-50 text-primary-600 font-semibold' : 'text-gray-700'"
                     >
                       <span class="ml-5">{{ branch.name }}</span>
@@ -199,6 +210,7 @@
           <div class="relative" ref="userDropdownRef">
             <button
               @click="toggleUserDropdown"
+              type="button"
               class="w-9 h-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-semibold hover:bg-primary-200 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500/20"
               title="Menu Pengguna"
             >
@@ -229,6 +241,7 @@
 
                   <button
                     @click="handleLogout"
+                    type="button"
                     class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left font-medium cursor-pointer"
                   >
                     <LogOut class="w-4 h-4 text-red-500" />
@@ -250,7 +263,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useNetwork } from '@vueuse/core'
 import { BarChart2, CreditCard, Package, Tag, ClipboardList, TrendingUp, Users, User, Settings, LogOut, Menu, ChevronDown, ChevronLeft, ChevronRight, X, Soup, CupSoda, Utensils, Store, Coffee, ShoppingBag, Shirt, Scissors, Wrench, Sparkles, Building, Heart, Star, Pizza, Sandwich, Cake, CalendarDays, Download, WifiOff, RefreshCw } from 'lucide-vue-next'
 
@@ -270,6 +283,17 @@ const showUserDropdown = ref(false)
 const userDropdownRef = ref<HTMLElement | null>(null)
 const bizDropdownRef = ref<HTMLElement | null>(null)
 const sidebarBizDropdownRef = ref<HTMLElement | null>(null)
+
+function toggleSidebar() {
+  sidebarOpen.value = !sidebarOpen.value
+}
+
+function resetAllOverlays() {
+  sidebarOpen.value = false
+  showBizDropdown.value = false
+  showSidebarBizDropdown.value = false
+  showUserDropdown.value = false
+}
 
 function toggleUserDropdown() {
   showUserDropdown.value = !showUserDropdown.value
@@ -398,8 +422,46 @@ function switchBranch(branchId: string) {
   showBizDropdown.value = false
 }
 
-// Close dropdown on click outside
+watch(
+  () => route.fullPath,
+  () => {
+    resetAllOverlays()
+  }
+)
+
+const handleDocumentClick = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (!target) return
+  if (userDropdownRef.value && !userDropdownRef.value.contains(target)) {
+    showUserDropdown.value = false
+  }
+  if (bizDropdownRef.value && !bizDropdownRef.value.contains(target)) {
+    showBizDropdown.value = false
+  }
+  if (sidebarBizDropdownRef.value && !sidebarBizDropdownRef.value.contains(target)) {
+    showSidebarBizDropdown.value = false
+  }
+}
+
+const handlePageRestore = () => {
+  resetAllOverlays()
+}
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    resetAllOverlays()
+  }
+}
+
 onMounted(async () => {
+  resetAllOverlays()
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pageshow', handlePageRestore)
+    window.addEventListener('popstate', handlePageRestore)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+  }
+
   if (biz.businesses.length === 0) {
     await biz.fetchAll()
   }
@@ -411,17 +473,15 @@ onMounted(async () => {
     biz.setBranch(validActiveBranches[0].id)
   }
 
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement
-    if (userDropdownRef.value && !userDropdownRef.value.contains(target)) {
-      showUserDropdown.value = false
-    }
-    if (bizDropdownRef.value && !bizDropdownRef.value.contains(target)) {
-      showBizDropdown.value = false
-    }
-    if (sidebarBizDropdownRef.value && !sidebarBizDropdownRef.value.contains(target)) {
-      showSidebarBizDropdown.value = false
-    }
-  })
+  document.addEventListener('click', handleDocumentClick)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleDocumentClick)
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('pageshow', handlePageRestore)
+    window.removeEventListener('popstate', handlePageRestore)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
 })
 </script>
