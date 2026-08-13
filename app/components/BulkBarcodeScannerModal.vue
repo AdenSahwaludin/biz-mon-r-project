@@ -172,7 +172,7 @@
                 :class="activeDrawerTab === 'queue' ? 'bg-gradient-to-r from-primary-600 to-emerald-600 text-white font-extrabold shadow-md shadow-primary-600/30 border border-primary-400/40' : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700/50'"
               >
                 <ListOrdered class="w-4 h-4" />
-                <span>Antrean Target</span>
+                <span>Daftar Produk</span>
                 <span class="px-1.5 py-0.2 bg-black/30 text-white rounded-md text-[10px]">
                   {{ items.length }}
                 </span>
@@ -719,6 +719,7 @@ watch(
         scannedBarcode: null
       }))
       currentIndex.value = 0
+      activeDrawerTab.value = items.value.length > 0 ? 'queue' : 'history'
       overwriteTarget.value = null
       warningModal.value = null
       showProductSelectionModal.value = false
