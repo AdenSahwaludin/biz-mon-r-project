@@ -1281,10 +1281,11 @@ async function handleConfirmProductSave(forceOverwrite = false) {
 
   try {
     isSaving.value = true
-    const res = await fetchWithAuth<any>(`/products/${prod.id}`, {
-      method: 'PUT',
+    const res = await fetchWithAuth<any>(`/products/${prod.id}/barcode`, {
+      method: 'PATCH',
       body: {
-        barcode: newBarcode
+        barcode: newBarcode,
+        force: forceOverwrite
       }
     })
 

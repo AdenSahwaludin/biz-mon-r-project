@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
     const id = getRouterParam(event, 'id')
     if (!id) {
-      return errorResponse(event, 'Product ID is required', 400)
+      return errorResponse(event, 400, 'Product ID is required')
     }
 
     const body = await readBody(event)
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
 
     const product = await prisma.product.findUnique({ where: { id } })
     if (!product) {
-      return errorResponse(event, 'Produk tidak ditemukan', 404)
+      return errorResponse(event, 404, 'Produk tidak ditemukan')
     }
 
     const finalBarcode = barcode.trim()
@@ -43,8 +43,8 @@ export default defineEventHandler(async (event) => {
     if (existingProduct) {
       return errorResponse(
         event,
-        `Barcode "${finalBarcode}" sudah digunakan oleh produk "${existingProduct.name}"`,
-        400
+        400,
+        `Barcode "${finalBarcode}" sudah digunakan oleh produk "${existingProduct.name}"`
       )
     }
 
@@ -52,8 +52,8 @@ export default defineEventHandler(async (event) => {
     if (product.barcode && product.barcode !== finalBarcode && !force) {
       return errorResponse(
         event,
-        `Produk "${product.name}" sudah memiliki barcode (${product.barcode}). Konfirmasi diperlukan untuk menimpa.`,
-        409
+        409,
+        `Produk "${product.name}" sudah memiliki barcode (${product.barcode}). Konfirmasi diperlukan untuk menimpa.`
       )
     }
 
@@ -68,8 +68,8 @@ export default defineEventHandler(async (event) => {
     return successResponse(updated, 'Barcode produk berhasil diperbarui')
   } catch (error: any) {
     if (error.name === 'ZodError') {
-      return errorResponse(event, 'Validasi gagal: ' + error.errors.map((e: any) => e.message).join(', '), 400)
+      return errorResponse(event, 400, 'Validasi gagal: ' + error.errors.map((e: any) => e.message).join(', '))
     }
-    return errorResponse(event, error.message || 'Gagal memperbarui barcode', 500)
+    return errorResponse(event, 500, error.message || 'Gagal memperbarui barcode')
   }
 })
