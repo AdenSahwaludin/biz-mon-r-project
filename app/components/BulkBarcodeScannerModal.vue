@@ -657,6 +657,8 @@ let zxingReader: any = null
 let lockTimer: any = null
 let scanCanvas: HTMLCanvasElement | null = null
 let scanCtx: CanvasRenderingContext2D | null = null
+let rotatedCanvas: HTMLCanvasElement | null = null
+let rotatedCtx: CanvasRenderingContext2D | null = null
 let lastScanTime = 0
 
 const completedCount = computed(() => {
@@ -787,6 +789,35 @@ function getScanCanvas(): HTMLCanvasElement | null {
   }
 
   return scanCanvas
+}
+
+// Capture 90-degree rotated video frame to guarantee decoding 90 deg / vertical barcodes & QR codes
+function getRotatedScanCanvas(): HTMLCanvasElement | null {
+  if (!videoRef.value) return null
+  const video = videoRef.value
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  if (!vw || !vh) return null
+
+  if (!rotatedCanvas) {
+    rotatedCanvas = document.createElement('canvas')
+    rotatedCtx = rotatedCanvas.getContext('2d', { willReadFrequently: true })
+  }
+
+  if (rotatedCanvas.width !== vh || rotatedCanvas.height !== vw) {
+    rotatedCanvas.width = vh
+    rotatedCanvas.height = vw
+  }
+
+  if (rotatedCtx) {
+    rotatedCtx.save()
+    rotatedCtx.translate(vh / 2, vw / 2)
+    rotatedCtx.rotate(Math.PI / 2)
+    rotatedCtx.drawImage(video, -vw / 2, -vh / 2)
+    rotatedCtx.restore()
+  }
+
+  return rotatedCanvas
 }
 
 async function initCamera() {
@@ -928,8 +959,15 @@ function startScanLoop() {
 
       if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
         try {
-          // Detect barcode/QR code anywhere in full frame at any rotation angle
-          const barcodes = await barcodeDetector.detect(videoRef.value)
+          // Detect barcode/QR code anywhere in full frame
+          let barcodes = await barcodeDetector.detect(videoRef.value)
+          if (!barcodes || barcodes.length === 0) {
+            // If missed horizontally, check 90-degree rotated frame
+            const rotCanvas = getRotatedScanCanvas()
+            if (rotCanvas) {
+              barcodes = await barcodeDetector.detect(rotCanvas)
+            }
+          }
           if (barcodes && barcodes.length > 0) {
             const rawVal = barcodes[0].rawValue?.trim()
             if (rawVal) {
@@ -940,7 +978,13 @@ function startScanLoop() {
           try {
             const canvas = getScanCanvas()
             if (canvas) {
-              const barcodes = await barcodeDetector.detect(canvas)
+              let barcodes = await barcodeDetector.detect(canvas)
+              if (!barcodes || barcodes.length === 0) {
+                const rotCanvas = getRotatedScanCanvas()
+                if (rotCanvas) {
+                  barcodes = await barcodeDetector.detect(rotCanvas)
+                }
+              }
               if (barcodes && barcodes.length > 0) {
                 const rawVal = barcodes[0].rawValue?.trim()
                 if (rawVal) {
@@ -954,8 +998,23 @@ function startScanLoop() {
         try {
           const canvas = getScanCanvas()
           if (canvas) {
-            const res = zxingReader.decodeFromCanvas(canvas)
-            const result = res && typeof res.then === 'function' ? await res : res
+            let result: any = null
+            try {
+              const res = zxingReader.decodeFromCanvas(canvas)
+              result = res && typeof res.then === 'function' ? await res : res
+            } catch (_) {}
+
+            // Try 90-degree rotated canvas if 0-degree fails
+            if (!result) {
+              const rotCanvas = getRotatedScanCanvas()
+              if (rotCanvas) {
+                try {
+                  const resRot = zxingReader.decodeFromCanvas(rotCanvas)
+                  result = resRot && typeof resRot.then === 'function' ? await resRot : resRot
+                } catch (_) {}
+              }
+            }
+
             if (result) {
               const text = typeof result.getText === 'function' ? result.getText()?.trim() : result.text?.trim()
               if (text) {
@@ -1013,103 +1072,110 @@ function checkDuplicateBarcode(code: string) {
     return
   }
 
-  // Check store catalog
-  const storeMatch = allProductsCatalog.value.find(
-    (p) => p.barcode?.trim() === code && p.id !== selectedTargetProduct.value?.id
-  )
-  if (storeMatch) {
-    duplicateWarning.value = `Barcode "${code}" sudah terdaftar di database pada produk "${storeMatch.name}".`
+  // Check store catalog for duplicate
+  const catalogMatch = allProductsCatalog.value.find((p) => p.barcode === code && (!selectedTargetProduct.value || p.id !== selectedTargetProduct.value.id))
+  if (catalogMatch) {
+    duplicateWarning.value = `Barcode "${code}" sudah terdaftar pada produk "${catalogMatch.name}".`
     playErrorBeep()
   }
 }
 
-async function handleConfirmProductSave(force = false) {
-  if (!selectedTargetProduct.value || !scannedBarcodeResult.value || isSaving.value) return
+async function handleConfirmProductSave(forceOverwrite = false) {
+  if (!selectedTargetProduct.value || isSaving.value || !!duplicateWarning.value) return
+
+  const prod = selectedTargetProduct.value
+  const newBarcode = scannedBarcodeResult.value.trim()
+
+  if (!newBarcode) return
+
+  // If product already has a DIFFERENT barcode and not forceOverwrite, prompt confirmation
+  if (prod.barcode && prod.barcode !== newBarcode && !forceOverwrite) {
+    overwriteTarget.value = {
+      barcode: newBarcode,
+      item: prod
+    }
+    return
+  }
 
   try {
     isSaving.value = true
-    const prodId = selectedTargetProduct.value.id
-    const code = scannedBarcodeResult.value
-
-    const res = await fetchWithAuth<any>(`/products/${prodId}/barcode`, {
-      method: 'PATCH',
+    const res = await fetchWithAuth<any>(`/products/${prod.id}`, {
+      method: 'PUT',
       body: {
-        barcode: code,
-        force
+        barcode: newBarcode
       }
     })
 
     if (res && res.success) {
+      toast.success(`Barcode berhasil disimpan untuk ${prod.name}`)
       playSuccessBeep()
 
-      // Log into session history
+      // Update in queue item
+      const qItem = items.value.find((i) => i.id === prod.id)
+      if (qItem) {
+        qItem.barcode = newBarcode
+        qItem.scannedBarcode = newBarcode
+        qItem.status = 'completed'
+      }
+
+      // Update in store catalog cache
+      const cItem = allProductsCatalog.value.find((p) => p.id === prod.id)
+      if (cItem) {
+        cItem.barcode = newBarcode
+      }
+
+      // Add to session history
       sessionHistory.value.unshift({
-        id: Math.random().toString(36).substring(2, 9),
-        barcode: code,
-        productId: prodId,
-        productName: selectedTargetProduct.value.name,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        barcode: newBarcode,
+        productId: prod.id,
+        productName: prod.name,
         timestamp: new Date()
       })
 
-      // Update queue item if exists
-      const queueItem = items.value.find((i) => i.id === prodId)
-      if (queueItem) {
-        queueItem.status = 'completed'
-        queueItem.scannedBarcode = code
-        advanceToNextPending()
-      }
+      emit('updated-product', prod.id, newBarcode)
 
-      // Update local store catalog
-      const catItem = allProductsCatalog.value.find((p) => p.id === prodId)
-      if (catItem) {
-        catItem.barcode = code
-      }
+      // Close product modal & prepare for next scan
+      showProductSelectionModal.value = false
+      selectedTargetProduct.value = null
+      overwriteTarget.value = null
 
-      emit('updated-product', prodId, code)
-      toast.success(`Barcode "${code}" berhasil disimpan untuk "${selectedTargetProduct.value.name}"!`)
+      advanceToNextPending()
 
-      closeProductSelectionModal()
+      // Unlock after 800ms to allow next continuous scan
+      setTimeout(() => {
+        isLocked.value = false
+      }, 800)
     } else {
+      toast.error(res?.message || 'Gagal menyimpan barcode produk.')
       playErrorBeep()
-      warningModal.value = {
-        message: res?.message || 'Gagal menyimpan barcode.'
-      }
     }
   } catch (err: any) {
+    console.error('Failed to save barcode:', err)
+    toast.error(err?.data?.message || 'Terjadi kesalahan saat menyimpan barcode.')
     playErrorBeep()
-    const status = err.statusCode || err.status || err.data?.statusCode
-    const msg = err.data?.message || err.message || 'Gagal menyimpan barcode'
-
-    if (status === 409) {
-      overwriteTarget.value = { barcode: scannedBarcodeResult.value, item: selectedTargetProduct.value }
-    } else {
-      warningModal.value = { message: msg }
-    }
   } finally {
     isSaving.value = false
   }
 }
 
 function confirmOverwrite() {
-  if (!overwriteTarget.value) return
-  overwriteTarget.value = null
-  handleConfirmProductSave(true)
+  if (overwriteTarget.value) {
+    overwriteTarget.value = null
+    handleConfirmProductSave(true)
+  }
 }
 
 function cancelOverwrite() {
   overwriteTarget.value = null
-  closeProductSelectionModal()
 }
 
 function closeProductSelectionModal() {
   showProductSelectionModal.value = false
-  scannedBarcodeResult.value = ''
   selectedTargetProduct.value = null
+  overwriteTarget.value = null
   duplicateWarning.value = null
-  if (lockTimer) clearTimeout(lockTimer)
-  lockTimer = setTimeout(() => {
-    isLocked.value = false
-  }, 400)
+  isLocked.value = false
 }
 
 function closeWarningModal() {
@@ -1151,6 +1217,8 @@ function stopEverything() {
   isLocked.value = false
   scanCanvas = null
   scanCtx = null
+  rotatedCanvas = null
+  rotatedCtx = null
 }
 
 function closeScanner() {

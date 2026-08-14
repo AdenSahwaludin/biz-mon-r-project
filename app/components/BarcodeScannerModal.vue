@@ -12,10 +12,7 @@
               <ScanLine class="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <div class="flex items-center gap-2">
-                <h3 class="text-base font-bold leading-tight">Scan Barcode Produk</h3>
-                <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-full tracking-wider animate-pulse">BETA</span>
-              </div>
+              <h3 class="text-base font-bold leading-tight">Scan Barcode Produk</h3>
               <p class="text-xs text-gray-400">Gunakan kamera belakang HP</p>
             </div>
           </div>
@@ -319,11 +316,13 @@ let zxingReader: any = null
 let lockTimer: any = null
 let scanCanvas: HTMLCanvasElement | null = null
 let scanCtx: CanvasRenderingContext2D | null = null
+let rotatedCanvas: HTMLCanvasElement | null = null
+let rotatedCtx: CanvasRenderingContext2D | null = null
 let lastScanTime = 0
 
 const { unlockAudio } = useAudioBeep()
 
-// Capture full video frame for ZXing / fallback decoding
+// Capture full video frame for ZXing / fallback decoding (0 deg)
 function getScanCanvas(): HTMLCanvasElement | null {
   if (!videoRef.value) return null
   const video = videoRef.value
@@ -346,6 +345,35 @@ function getScanCanvas(): HTMLCanvasElement | null {
   }
 
   return scanCanvas
+}
+
+// Capture 90-degree rotated video frame to guarantee decoding 90 deg / vertical barcodes & QR codes
+function getRotatedScanCanvas(): HTMLCanvasElement | null {
+  if (!videoRef.value) return null
+  const video = videoRef.value
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  if (!vw || !vh) return null
+
+  if (!rotatedCanvas) {
+    rotatedCanvas = document.createElement('canvas')
+    rotatedCtx = rotatedCanvas.getContext('2d', { willReadFrequently: true })
+  }
+
+  if (rotatedCanvas.width !== vh || rotatedCanvas.height !== vw) {
+    rotatedCanvas.width = vh
+    rotatedCanvas.height = vw
+  }
+
+  if (rotatedCtx) {
+    rotatedCtx.save()
+    rotatedCtx.translate(vh / 2, vw / 2)
+    rotatedCtx.rotate(Math.PI / 2)
+    rotatedCtx.drawImage(video, -vw / 2, -vh / 2)
+    rotatedCtx.restore()
+  }
+
+  return rotatedCanvas
 }
 
 // Watch isOpen to initialize or stop camera
@@ -516,8 +544,15 @@ function startScanLoop() {
 
       if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
         try {
-          // Native BarcodeDetector scans full video frame at any angle (0-360 deg)
-          const barcodes = await barcodeDetector.detect(videoRef.value)
+          // Native BarcodeDetector scans full video frame
+          let barcodes = await barcodeDetector.detect(videoRef.value)
+          if (!barcodes || barcodes.length === 0) {
+            // If horizontal detect misses 90-degree / tilted code, scan rotated canvas
+            const rotCanvas = getRotatedScanCanvas()
+            if (rotCanvas) {
+              barcodes = await barcodeDetector.detect(rotCanvas)
+            }
+          }
           if (barcodes && barcodes.length > 0) {
             const rawVal = barcodes[0].rawValue?.trim()
             if (rawVal) {
@@ -528,7 +563,13 @@ function startScanLoop() {
           try {
             const canvas = getScanCanvas()
             if (canvas) {
-              const barcodes = await barcodeDetector.detect(canvas)
+              let barcodes = await barcodeDetector.detect(canvas)
+              if (!barcodes || barcodes.length === 0) {
+                const rotCanvas = getRotatedScanCanvas()
+                if (rotCanvas) {
+                  barcodes = await barcodeDetector.detect(rotCanvas)
+                }
+              }
               if (barcodes && barcodes.length > 0) {
                 const rawVal = barcodes[0].rawValue?.trim()
                 if (rawVal) {
@@ -542,8 +583,23 @@ function startScanLoop() {
         try {
           const canvas = getScanCanvas()
           if (canvas) {
-            const res = zxingReader.decodeFromCanvas(canvas)
-            const result = res && typeof res.then === 'function' ? await res : res
+            let result: any = null
+            try {
+              const res = zxingReader.decodeFromCanvas(canvas)
+              result = res && typeof res.then === 'function' ? await res : res
+            } catch (_) {}
+
+            // If 0-degree fails, immediately try 90-degree rotated canvas!
+            if (!result) {
+              const rotCanvas = getRotatedScanCanvas()
+              if (rotCanvas) {
+                try {
+                  const resRot = zxingReader.decodeFromCanvas(rotCanvas)
+                  result = resRot && typeof resRot.then === 'function' ? await resRot : resRot
+                } catch (_) {}
+              }
+            }
+
             if (result) {
               const text = typeof result.getText === 'function' ? result.getText()?.trim() : result.text?.trim()
               if (text) {
@@ -643,6 +699,8 @@ function stopEverything() {
   isTorchOn.value = false
   scanCanvas = null
   scanCtx = null
+  rotatedCanvas = null
+  rotatedCtx = null
 }
 
 function closeScanner() {
