@@ -314,15 +314,79 @@ let animFrameId: number | null = null
 let barcodeDetector: any = null
 let zxingReader: any = null
 let lockTimer: any = null
-let scanCanvas: HTMLCanvasElement | null = null
-let scanCtx: CanvasRenderingContext2D | null = null
+let roiCanvas: HTMLCanvasElement | null = null
+let roiCtx: CanvasRenderingContext2D | null = null
+let fullCanvas: HTMLCanvasElement | null = null
+let fullCtx: CanvasRenderingContext2D | null = null
 let lastScanTime = 0
 let isDetecting = false
+let scanPassCount = 0
 
 const { unlockAudio } = useAudioBeep()
 
-// Capture scaled video frame for ZXing fallback decoding
-function getScanCanvas(maxDim = 640): HTMLCanvasElement | null {
+// Extract high-contrast, uncompressed native-pixel ROI from viewfinder area (0ms instant path)
+function getRoiCanvas(): HTMLCanvasElement | null {
+  if (!videoRef.value) return null
+  const video = videoRef.value
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  if (!vw || !vh) return null
+
+  let roiX = 0, roiY = 0, roiW = vw, roiH = vh
+
+  if (targetBoxRef.value) {
+    const vRect = video.getBoundingClientRect()
+    const tRect = targetBoxRef.value.getBoundingClientRect()
+    if (vRect.width && vRect.height && tRect.width && tRect.height) {
+      const scale = Math.max(vRect.width / vw, vRect.height / vh)
+      const offsetX = (vRect.width - vw * scale) / 2
+      const offsetY = (vRect.height - vh * scale) / 2
+
+      // Add generous margin (+25%) around target box
+      const padX = tRect.width * 0.15
+      const padY = tRect.height * 0.15
+
+      roiX = (tRect.left - padX - vRect.left - offsetX) / scale
+      roiY = (tRect.top - padY - vRect.top - offsetY) / scale
+      roiW = (tRect.width + padX * 2) / scale
+      roiH = (tRect.height + padY * 2) / scale
+
+      roiX = Math.max(0, roiX)
+      roiY = Math.max(0, roiY)
+      if (roiX + roiW > vw) roiW = vw - roiX
+      if (roiY + roiH > vh) roiH = vh - roiY
+    }
+  } else {
+    roiX = vw * 0.15
+    roiY = vh * 0.15
+    roiW = vw * 0.7
+    roiH = vh * 0.7
+  }
+
+  if (roiW <= 0 || roiH <= 0) return null
+
+  if (!roiCanvas) {
+    roiCanvas = document.createElement('canvas')
+    roiCtx = roiCanvas.getContext('2d', { willReadFrequently: true })
+  }
+
+  const targetW = Math.round(roiW)
+  const targetH = Math.round(roiH)
+
+  if (roiCanvas.width !== targetW || roiCanvas.height !== targetH) {
+    roiCanvas.width = targetW
+    roiCanvas.height = targetH
+  }
+
+  if (roiCtx) {
+    roiCtx.drawImage(video, roiX, roiY, roiW, roiH, 0, 0, targetW, targetH)
+  }
+
+  return roiCanvas
+}
+
+// Extract full frame for detection outside the center box
+function getFullCanvas(maxDim = 800): HTMLCanvasElement | null {
   if (!videoRef.value) return null
   const video = videoRef.value
   const vw = video.videoWidth
@@ -341,21 +405,21 @@ function getScanCanvas(maxDim = 640): HTMLCanvasElement | null {
     }
   }
 
-  if (!scanCanvas) {
-    scanCanvas = document.createElement('canvas')
-    scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true })
+  if (!fullCanvas) {
+    fullCanvas = document.createElement('canvas')
+    fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true })
   }
 
-  if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
-    scanCanvas.width = targetW
-    scanCanvas.height = targetH
+  if (fullCanvas.width !== targetW || fullCanvas.height !== targetH) {
+    fullCanvas.width = targetW
+    fullCanvas.height = targetH
   }
 
-  if (scanCtx) {
-    scanCtx.drawImage(video, 0, 0, targetW, targetH)
+  if (fullCtx) {
+    fullCtx.drawImage(video, 0, 0, targetW, targetH)
   }
 
-  return scanCanvas
+  return fullCanvas
 }
 
 // Watch isOpen to initialize or stop camera
@@ -387,7 +451,7 @@ async function initCamera() {
   stopEverything()
 
   try {
-    // Request camera stream with preferred rear camera & autofocus
+    // Request camera stream with preferred rear camera & continuous autofocus
     let stream: MediaStream
     const constraints: MediaStreamConstraints = {
       video: {
@@ -414,7 +478,7 @@ async function initCamera() {
     mediaStream = stream
     mediaTrack = stream.getVideoTracks()[0] || null
 
-    // Enable continuous autofocus & detect flashlight support
+    // Enable continuous autofocus & flashlight support
     if (mediaTrack && typeof mediaTrack.applyConstraints === 'function') {
       try {
         const caps = typeof mediaTrack.getCapabilities === 'function' ? (mediaTrack.getCapabilities() as any) : {}
@@ -472,7 +536,7 @@ function processCandidateBarcode(rawVal: string) {
 async function startScanEngine() {
   if (!process.client || !videoRef.value) return
 
-  // ── Strategy 1: Native BarcodeDetector API (fastest & handles multi-angle / full frame) ──
+  // ── Strategy 1: Native BarcodeDetector API (fastest) ──
   if ('BarcodeDetector' in window) {
     try {
       activeEngine.value = 'BarcodeDetector'
@@ -530,13 +594,29 @@ function startScanLoop() {
     if (!props.isOpen || !videoRef.value) return
 
     const now = performance.now()
-    if (!isLocked.value && !isDetecting && videoRef.value.readyState >= 2 && now - lastScanTime >= 35) {
+    if (!isLocked.value && !isDetecting && videoRef.value.readyState >= 2 && now - lastScanTime >= 28) {
       lastScanTime = now
       isDetecting = true
+      scanPassCount++
 
       try {
         if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
-          const barcodes = await barcodeDetector.detect(videoRef.value)
+          // Priority 1: High-contrast native ROI canvas (ultra fast for 1D & QR in viewfinder)
+          let barcodes: any[] = []
+          const roi = getRoiCanvas()
+          if (roi) {
+            try {
+              barcodes = await barcodeDetector.detect(roi)
+            } catch (_) {}
+          }
+
+          // Priority 2: Full video frame (scans barcodes/QR located outside the box)
+          if (!barcodes || barcodes.length === 0) {
+            try {
+              barcodes = await barcodeDetector.detect(videoRef.value)
+            } catch (_) {}
+          }
+
           if (barcodes && barcodes.length > 0) {
             const rawVal = barcodes[0].rawValue?.trim()
             if (rawVal) {
@@ -544,15 +624,31 @@ function startScanLoop() {
             }
           }
         } else if (activeEngine.value === 'ZXing' && zxingReader) {
-          const canvas = getScanCanvas()
-          if (canvas) {
-            const res = zxingReader.decodeFromCanvas(canvas)
-            const result = res && typeof res.then === 'function' ? await res : res
-            if (result) {
-              const text = typeof result.getText === 'function' ? result.getText()?.trim() : result.text?.trim()
-              if (text) {
-                processCandidateBarcode(text)
-              }
+          // Priority 1: High-contrast ROI canvas
+          let result: any = null
+          const roi = getRoiCanvas()
+          if (roi) {
+            try {
+              const res = zxingReader.decodeFromCanvas(roi)
+              result = res && typeof res.then === 'function' ? await res : res
+            } catch (_) {}
+          }
+
+          // Priority 2: Scaled full canvas every alternating frame
+          if (!result && scanPassCount % 2 === 0) {
+            const full = getFullCanvas(640)
+            if (full) {
+              try {
+                const res = zxingReader.decodeFromCanvas(full)
+                result = res && typeof res.then === 'function' ? await res : res
+              } catch (_) {}
+            }
+          }
+
+          if (result) {
+            const text = typeof result.getText === 'function' ? result.getText()?.trim() : result.text?.trim()
+            if (text) {
+              processCandidateBarcode(text)
             }
           }
         }
@@ -650,8 +746,10 @@ function stopEverything() {
   isLocked.value = false
   isDetecting = false
   isTorchOn.value = false
-  scanCanvas = null
-  scanCtx = null
+  roiCanvas = null
+  roiCtx = null
+  fullCanvas = null
+  fullCtx = null
 }
 
 function closeScanner() {
