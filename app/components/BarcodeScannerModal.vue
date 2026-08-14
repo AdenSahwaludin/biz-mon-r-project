@@ -316,64 +316,46 @@ let zxingReader: any = null
 let lockTimer: any = null
 let scanCanvas: HTMLCanvasElement | null = null
 let scanCtx: CanvasRenderingContext2D | null = null
-let rotatedCanvas: HTMLCanvasElement | null = null
-let rotatedCtx: CanvasRenderingContext2D | null = null
 let lastScanTime = 0
+let isDetecting = false
 
 const { unlockAudio } = useAudioBeep()
 
-// Capture full video frame for ZXing / fallback decoding (0 deg)
-function getScanCanvas(): HTMLCanvasElement | null {
+// Capture scaled video frame for ZXing fallback decoding
+function getScanCanvas(maxDim = 640): HTMLCanvasElement | null {
   if (!videoRef.value) return null
   const video = videoRef.value
   const vw = video.videoWidth
   const vh = video.videoHeight
   if (!vw || !vh) return null
+
+  let targetW = vw
+  let targetH = vh
+  if (targetW > maxDim || targetH > maxDim) {
+    if (targetW >= targetH) {
+      targetH = Math.round((vh / vw) * maxDim)
+      targetW = maxDim
+    } else {
+      targetW = Math.round((vw / vh) * maxDim)
+      targetH = maxDim
+    }
+  }
 
   if (!scanCanvas) {
     scanCanvas = document.createElement('canvas')
     scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true })
   }
 
-  if (scanCanvas.width !== vw || scanCanvas.height !== vh) {
-    scanCanvas.width = vw
-    scanCanvas.height = vh
+  if (scanCanvas.width !== targetW || scanCanvas.height !== targetH) {
+    scanCanvas.width = targetW
+    scanCanvas.height = targetH
   }
 
   if (scanCtx) {
-    scanCtx.drawImage(video, 0, 0, vw, vh)
+    scanCtx.drawImage(video, 0, 0, targetW, targetH)
   }
 
   return scanCanvas
-}
-
-// Capture 90-degree rotated video frame to guarantee decoding 90 deg / vertical barcodes & QR codes
-function getRotatedScanCanvas(): HTMLCanvasElement | null {
-  if (!videoRef.value) return null
-  const video = videoRef.value
-  const vw = video.videoWidth
-  const vh = video.videoHeight
-  if (!vw || !vh) return null
-
-  if (!rotatedCanvas) {
-    rotatedCanvas = document.createElement('canvas')
-    rotatedCtx = rotatedCanvas.getContext('2d', { willReadFrequently: true })
-  }
-
-  if (rotatedCanvas.width !== vh || rotatedCanvas.height !== vw) {
-    rotatedCanvas.width = vh
-    rotatedCanvas.height = vw
-  }
-
-  if (rotatedCtx) {
-    rotatedCtx.save()
-    rotatedCtx.translate(vh / 2, vw / 2)
-    rotatedCtx.rotate(Math.PI / 2)
-    rotatedCtx.drawImage(video, -vw / 2, -vh / 2)
-    rotatedCtx.restore()
-  }
-
-  return rotatedCanvas
 }
 
 // Watch isOpen to initialize or stop camera
@@ -399,43 +381,54 @@ async function initCamera() {
   hasTorchSupport.value = false
   activeEngine.value = 'None'
   isLocked.value = false
+  isDetecting = false
 
   // Clean up any previous session fully
   stopEverything()
 
   try {
-    // Request camera stream with preferred rear camera & 720p
+    // Request camera stream with preferred rear camera & autofocus
     let stream: MediaStream
+    const constraints: MediaStreamConstraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280, min: 640 },
+        height: { ideal: 720, min: 480 }
+      },
+      audio: false
+    }
+
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { exact: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 }
         },
         audio: false
       })
     } catch (_) {
-      // Fallback without exact constraint (desktop/devices without rear cam)
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      })
+      stream = await navigator.mediaDevices.getUserMedia(constraints)
     }
 
     mediaStream = stream
     mediaTrack = stream.getVideoTracks()[0] || null
 
-    // Check torch/flashlight capabilities
-    if (mediaTrack && typeof mediaTrack.getCapabilities === 'function') {
-      const caps = mediaTrack.getCapabilities() as any
-      if (caps?.torch) {
-        hasTorchSupport.value = true
-      }
+    // Enable continuous autofocus & detect flashlight support
+    if (mediaTrack && typeof mediaTrack.applyConstraints === 'function') {
+      try {
+        const caps = typeof mediaTrack.getCapabilities === 'function' ? (mediaTrack.getCapabilities() as any) : {}
+        const adv: any = {}
+        if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+          adv.focusMode = 'continuous'
+        }
+        if (caps.torch) {
+          hasTorchSupport.value = true
+        }
+        if (Object.keys(adv).length > 0) {
+          await mediaTrack.applyConstraints({ advanced: [adv] })
+        }
+      } catch (_) {}
     }
 
     if (videoRef.value) {
@@ -483,18 +476,13 @@ async function startScanEngine() {
   if ('BarcodeDetector' in window) {
     try {
       activeEngine.value = 'BarcodeDetector'
-      let formats: string[]
-      try {
-        const supported = await (window as any).BarcodeDetector.getSupportedFormats()
-        formats = (supported || []).filter((f: string) => f !== 'itf' && f !== 'codabar')
-      } catch (_) {
-        formats = []
-      }
-      if (!formats || formats.length === 0) {
-        formats = [
-          'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_39', 'code_93', 'code_128',
-          'qr_code', 'data_matrix', 'pdf417', 'aztec'
-        ]
+      const supported = await (window as any).BarcodeDetector.getSupportedFormats().catch(() => [])
+      let formats = [
+        'qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e',
+        'data_matrix', 'code_93', 'pdf417', 'aztec'
+      ]
+      if (Array.isArray(supported) && supported.length > 0) {
+        formats = formats.filter((f) => supported.includes(f))
       }
 
       barcodeDetector = new (window as any).BarcodeDetector({ formats })
@@ -513,11 +501,14 @@ async function startScanEngine() {
 
     const hints = new Map()
     hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-      BarcodeFormat.EAN_13, BarcodeFormat.EAN_8,
-      BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
-      BarcodeFormat.CODE_39, BarcodeFormat.CODE_93, BarcodeFormat.CODE_128,
-      BarcodeFormat.QR_CODE, BarcodeFormat.DATA_MATRIX,
-      BarcodeFormat.PDF_417, BarcodeFormat.AZTEC
+      BarcodeFormat.QR_CODE,
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.DATA_MATRIX
     ])
     hints.set(DecodeHintType.TRY_HARDER, true)
 
@@ -539,67 +530,24 @@ function startScanLoop() {
     if (!props.isOpen || !videoRef.value) return
 
     const now = performance.now()
-    if (!isLocked.value && videoRef.value.readyState >= 2 && now - lastScanTime >= 70) {
+    if (!isLocked.value && !isDetecting && videoRef.value.readyState >= 2 && now - lastScanTime >= 35) {
       lastScanTime = now
+      isDetecting = true
 
-      if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
-        try {
-          // Native BarcodeDetector scans full video frame
-          let barcodes = await barcodeDetector.detect(videoRef.value)
-          if (!barcodes || barcodes.length === 0) {
-            // If horizontal detect misses 90-degree / tilted code, scan rotated canvas
-            const rotCanvas = getRotatedScanCanvas()
-            if (rotCanvas) {
-              barcodes = await barcodeDetector.detect(rotCanvas)
-            }
-          }
+      try {
+        if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
+          const barcodes = await barcodeDetector.detect(videoRef.value)
           if (barcodes && barcodes.length > 0) {
             const rawVal = barcodes[0].rawValue?.trim()
             if (rawVal) {
               processCandidateBarcode(rawVal)
             }
           }
-        } catch (_) {
-          try {
-            const canvas = getScanCanvas()
-            if (canvas) {
-              let barcodes = await barcodeDetector.detect(canvas)
-              if (!barcodes || barcodes.length === 0) {
-                const rotCanvas = getRotatedScanCanvas()
-                if (rotCanvas) {
-                  barcodes = await barcodeDetector.detect(rotCanvas)
-                }
-              }
-              if (barcodes && barcodes.length > 0) {
-                const rawVal = barcodes[0].rawValue?.trim()
-                if (rawVal) {
-                  processCandidateBarcode(rawVal)
-                }
-              }
-            }
-          } catch (_) {}
-        }
-      } else if (activeEngine.value === 'ZXing' && zxingReader) {
-        try {
+        } else if (activeEngine.value === 'ZXing' && zxingReader) {
           const canvas = getScanCanvas()
           if (canvas) {
-            let result: any = null
-            try {
-              const res = zxingReader.decodeFromCanvas(canvas)
-              result = res && typeof res.then === 'function' ? await res : res
-            } catch (_) {}
-
-            // If 0-degree fails, immediately try 90-degree rotated canvas!
-            if (!result) {
-              const rotCanvas = getRotatedScanCanvas()
-              if (rotCanvas) {
-                try {
-                  const resRot = zxingReader.decodeFromCanvas(rotCanvas)
-                  result = resRot && typeof resRot.then === 'function' ? await resRot : resRot
-                } catch (_) {}
-              }
-            }
-
+            const res = zxingReader.decodeFromCanvas(canvas)
+            const result = res && typeof res.then === 'function' ? await res : res
             if (result) {
               const text = typeof result.getText === 'function' ? result.getText()?.trim() : result.text?.trim()
               if (text) {
@@ -607,7 +555,11 @@ function startScanLoop() {
               }
             }
           }
-        } catch (_) {}
+        }
+      } catch (_) {
+        // Ignored
+      } finally {
+        isDetecting = false
       }
     }
 
@@ -696,11 +648,10 @@ function stopEverything() {
     lockTimer = null
   }
   isLocked.value = false
+  isDetecting = false
   isTorchOn.value = false
   scanCanvas = null
   scanCtx = null
-  rotatedCanvas = null
-  rotatedCtx = null
 }
 
 function closeScanner() {
