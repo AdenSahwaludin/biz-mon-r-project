@@ -657,8 +657,12 @@ let zxingReader: any = null
 let lockTimer: any = null
 let roiCanvas: HTMLCanvasElement | null = null
 let roiCtx: CanvasRenderingContext2D | null = null
+let roiRotCanvas: HTMLCanvasElement | null = null
+let roiRotCtx: CanvasRenderingContext2D | null = null
 let fullCanvas: HTMLCanvasElement | null = null
 let fullCtx: CanvasRenderingContext2D | null = null
+let fullRotCanvas: HTMLCanvasElement | null = null
+let fullRotCtx: CanvasRenderingContext2D | null = null
 let lastScanTime = 0
 let isDetecting = false
 let scanPassCount = 0
@@ -768,18 +772,11 @@ function advanceToNextPending() {
   }
 }
 
-// Extract high-contrast, uncompressed native-pixel ROI from viewfinder area (0ms instant path)
-function getRoiCanvas(): HTMLCanvasElement | null {
-  if (!videoRef.value) return null
-  const video = videoRef.value
-  const vw = video.videoWidth
-  const vh = video.videoHeight
-  if (!vw || !vh) return null
-
+function computeRoi(vw: number, vh: number) {
   let roiX = 0, roiY = 0, roiW = vw, roiH = vh
 
-  if (targetBoxRef.value) {
-    const vRect = video.getBoundingClientRect()
+  if (targetBoxRef.value && videoRef.value) {
+    const vRect = videoRef.value.getBoundingClientRect()
     const tRect = targetBoxRef.value.getBoundingClientRect()
     if (vRect.width && vRect.height && tRect.width && tRect.height) {
       const scale = Math.max(vRect.width / vw, vRect.height / vh)
@@ -807,6 +804,18 @@ function getRoiCanvas(): HTMLCanvasElement | null {
     roiH = vh * 0.7
   }
 
+  return { roiX, roiY, roiW, roiH }
+}
+
+// 0 degrees normal ROI (uncompressed native pixels)
+function getRoiCanvas(): HTMLCanvasElement | null {
+  if (!videoRef.value) return null
+  const video = videoRef.value
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  if (!vw || !vh) return null
+
+  const { roiX, roiY, roiW, roiH } = computeRoi(vw, vh)
   if (roiW <= 0 || roiH <= 0) return null
 
   if (!roiCanvas) {
@@ -829,8 +838,43 @@ function getRoiCanvas(): HTMLCanvasElement | null {
   return roiCanvas
 }
 
+// 90 degrees rotated ROI (for vertical barcodes standing up)
+function getRoiRotatedCanvas(): HTMLCanvasElement | null {
+  if (!videoRef.value) return null
+  const video = videoRef.value
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  if (!vw || !vh) return null
+
+  const { roiX, roiY, roiW, roiH } = computeRoi(vw, vh)
+  if (roiW <= 0 || roiH <= 0) return null
+
+  const targetW = Math.round(roiH)
+  const targetH = Math.round(roiW)
+
+  if (!roiRotCanvas) {
+    roiRotCanvas = document.createElement('canvas')
+    roiRotCtx = roiRotCanvas.getContext('2d', { willReadFrequently: true })
+  }
+
+  if (roiRotCanvas.width !== targetW || roiRotCanvas.height !== targetH) {
+    roiRotCanvas.width = targetW
+    roiRotCanvas.height = targetH
+  }
+
+  if (roiRotCtx) {
+    roiRotCtx.save()
+    roiRotCtx.translate(targetW, 0)
+    roiRotCtx.rotate(Math.PI / 2)
+    roiRotCtx.drawImage(video, roiX, roiY, roiW, roiH, 0, 0, Math.round(roiW), Math.round(roiH))
+    roiRotCtx.restore()
+  }
+
+  return roiRotCanvas
+}
+
 // Extract full frame for detection outside the center box
-function getFullCanvas(maxDim = 800): HTMLCanvasElement | null {
+function getFullCanvas(maxDim = 640): HTMLCanvasElement | null {
   if (!videoRef.value) return null
   const video = videoRef.value
   const vw = video.videoWidth
@@ -864,6 +908,50 @@ function getFullCanvas(maxDim = 800): HTMLCanvasElement | null {
   }
 
   return fullCanvas
+}
+
+// Extract 90-degree rotated full frame
+function getFullRotatedCanvas(maxDim = 640): HTMLCanvasElement | null {
+  if (!videoRef.value) return null
+  const video = videoRef.value
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  if (!vw || !vh) return null
+
+  let targetW = vw
+  let targetH = vh
+  if (targetW > maxDim || targetH > maxDim) {
+    if (targetW >= targetH) {
+      targetH = Math.round((vh / vw) * maxDim)
+      targetW = maxDim
+    } else {
+      targetW = Math.round((vw / vh) * maxDim)
+      targetH = maxDim
+    }
+  }
+
+  const rotW = targetH
+  const rotH = targetW
+
+  if (!fullRotCanvas) {
+    fullRotCanvas = document.createElement('canvas')
+    fullRotCtx = fullRotCanvas.getContext('2d', { willReadFrequently: true })
+  }
+
+  if (fullRotCanvas.width !== rotW || fullRotCanvas.height !== rotH) {
+    fullRotCanvas.width = rotW
+    fullRotCanvas.height = rotH
+  }
+
+  if (fullRotCtx) {
+    fullRotCtx.save()
+    fullRotCtx.translate(rotW, 0)
+    fullRotCtx.rotate(Math.PI / 2)
+    fullRotCtx.drawImage(video, 0, 0, targetW, targetH)
+    fullRotCtx.restore()
+  }
+
+  return fullRotCanvas
 }
 
 async function initCamera() {
@@ -1019,8 +1107,9 @@ function startScanLoop() {
 
       try {
         if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
-          // Priority 1: High-contrast native ROI canvas (ultra fast for 1D & QR in viewfinder)
           let barcodes: any[] = []
+
+          // Pass 1: 0° High-contrast ROI
           const roi = getRoiCanvas()
           if (roi) {
             try {
@@ -1028,11 +1117,31 @@ function startScanLoop() {
             } catch (_) {}
           }
 
-          // Priority 2: Full video frame (scans barcodes/QR located outside the box)
+          // Pass 2: 90° Rotated ROI (detects vertical 90-degree barcodes instantly!)
+          if (!barcodes || barcodes.length === 0) {
+            const roiRot = getRoiRotatedCanvas()
+            if (roiRot) {
+              try {
+                barcodes = await barcodeDetector.detect(roiRot)
+              } catch (_) {}
+            }
+          }
+
+          // Pass 3: Full video frame (0 deg)
           if (!barcodes || barcodes.length === 0) {
             try {
               barcodes = await barcodeDetector.detect(videoRef.value)
             } catch (_) {}
+          }
+
+          // Pass 4: 90° Rotated full frame (for vertical barcodes outside the center box)
+          if ((!barcodes || barcodes.length === 0) && scanPassCount % 2 === 0) {
+            const fullRot = getFullRotatedCanvas(640)
+            if (fullRot) {
+              try {
+                barcodes = await barcodeDetector.detect(fullRot)
+              } catch (_) {}
+            }
           }
 
           if (barcodes && barcodes.length > 0) {
@@ -1042,8 +1151,9 @@ function startScanLoop() {
             }
           }
         } else if (activeEngine.value === 'ZXing' && zxingReader) {
-          // Priority 1: High-contrast ROI canvas
           let result: any = null
+
+          // Pass 1: 0° High-contrast ROI
           const roi = getRoiCanvas()
           if (roi) {
             try {
@@ -1052,14 +1162,35 @@ function startScanLoop() {
             } catch (_) {}
           }
 
-          // Priority 2: Scaled full canvas every alternating frame
-          if (!result && scanPassCount % 2 === 0) {
-            const full = getFullCanvas(640)
-            if (full) {
+          // Pass 2: 90° Rotated ROI (detects vertical 90-degree barcodes instantly!)
+          if (!result) {
+            const roiRot = getRoiRotatedCanvas()
+            if (roiRot) {
               try {
-                const res = zxingReader.decodeFromCanvas(full)
-                result = res && typeof res.then === 'function' ? await res : res
+                const resRot = zxingReader.decodeFromCanvas(roiRot)
+                result = resRot && typeof resRot.then === 'function' ? await resRot : resRot
               } catch (_) {}
+            }
+          }
+
+          // Pass 3: Full frame 0° on even frames, 90° on odd frames
+          if (!result) {
+            if (scanPassCount % 2 === 0) {
+              const full = getFullCanvas(640)
+              if (full) {
+                try {
+                  const res = zxingReader.decodeFromCanvas(full)
+                  result = res && typeof res.then === 'function' ? await res : res
+                } catch (_) {}
+              }
+            } else {
+              const fullRot = getFullRotatedCanvas(640)
+              if (fullRot) {
+                try {
+                  const resRot = zxingReader.decodeFromCanvas(fullRot)
+                  result = resRot && typeof resRot.then === 'function' ? await resRot : resRot
+                } catch (_) {}
+              }
             }
           }
 
@@ -1269,8 +1400,12 @@ function stopEverything() {
   isDetecting = false
   roiCanvas = null
   roiCtx = null
+  roiRotCanvas = null
+  roiRotCtx = null
   fullCanvas = null
   fullCtx = null
+  fullRotCanvas = null
+  fullRotCtx = null
 }
 
 function closeScanner() {
