@@ -102,11 +102,11 @@
               <!-- Dim Backdrop Mask around scan frame -->
               <div class="absolute inset-0 z-10 pointer-events-none flex flex-col">
                 <!-- Top Mask -->
-                <div class="bg-black/60 flex-1"></div>
+                <div class="bg-black/40 flex-1"></div>
 
                 <!-- Center Strip with Scan Frame -->
                 <div class="flex h-52 sm:h-60">
-                  <div class="bg-black/60 flex-1"></div>
+                  <div class="bg-black/40 flex-1"></div>
 
                   <!-- Scan Box Frame -->
                   <div ref="targetBoxRef" class="relative w-72 sm:w-80 h-full">
@@ -129,15 +129,15 @@
                     ></div>
                   </div>
 
-                  <div class="bg-black/60 flex-1"></div>
+                  <div class="bg-black/40 flex-1"></div>
                 </div>
 
                 <!-- Bottom Mask & Instructions -->
-                <div class="bg-black/60 flex-1 flex flex-col items-center justify-start pt-4 px-4 gap-2">
+                <div class="bg-black/40 flex-1 flex flex-col items-center justify-start pt-4 px-4 gap-2">
                   <div class="bg-slate-900/90 border border-primary-500/30 px-4 py-2 rounded-2xl shadow-xl backdrop-blur-md flex items-center gap-2 pointer-events-auto">
                     <QrCode class="w-4 h-4 text-primary-400 animate-pulse" />
                     <span class="text-xs font-semibold text-slate-100">
-                      {{ isLocked ? 'Memproses barcode yang terbaca...' : 'Posisikan Barcode / QR Code di dalam kotak scan' }}
+                      {{ isLocked ? 'Memproses barcode yang terbaca...' : 'Arahkan kamera ke barcode atau QR code' }}
                     </span>
                   </div>
                   <p class="text-[11px] text-slate-400 italic">
@@ -655,8 +655,8 @@ let animFrameId: number | null = null
 let barcodeDetector: any = null
 let zxingReader: any = null
 let lockTimer: any = null
-let cropCanvas: HTMLCanvasElement | null = null
-let cropCtx: CanvasRenderingContext2D | null = null
+let scanCanvas: HTMLCanvasElement | null = null
+let scanCtx: CanvasRenderingContext2D | null = null
 let lastScanTime = 0
 
 const completedCount = computed(() => {
@@ -764,53 +764,29 @@ function advanceToNextPending() {
   }
 }
 
-// Canvas crop logic matching scan frame target ROI
-function updateCropCanvas(): HTMLCanvasElement | null {
-  if (!videoRef.value || !targetBoxRef.value) return null
+// Capture full video frame for ZXing / fallback decoding
+function getScanCanvas(): HTMLCanvasElement | null {
+  if (!videoRef.value) return null
   const video = videoRef.value
-  const vRect = video.getBoundingClientRect()
-  const tRect = targetBoxRef.value.getBoundingClientRect()
-
   const vw = video.videoWidth
   const vh = video.videoHeight
-  if (!vw || !vh || !vRect.width || !vRect.height || !tRect.width || !tRect.height) {
-    return null
+  if (!vw || !vh) return null
+
+  if (!scanCanvas) {
+    scanCanvas = document.createElement('canvas')
+    scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true })
   }
 
-  const scale = Math.max(vRect.width / vw, vRect.height / vh)
-  const offsetX = (vRect.width - vw * scale) / 2
-  const offsetY = (vRect.height - vh * scale) / 2
-
-  let roiX = (tRect.left - vRect.left - offsetX) / scale
-  let roiY = (tRect.top - vRect.top - offsetY) / scale
-  let roiW = tRect.width / scale
-  let roiH = tRect.height / scale
-
-  roiX = Math.max(0, roiX)
-  roiY = Math.max(0, roiY)
-  if (roiX + roiW > vw) roiW = vw - roiX
-  if (roiY + roiH > vh) roiH = vh - roiY
-
-  if (roiW <= 0 || roiH <= 0) return null
-
-  if (!cropCanvas) {
-    cropCanvas = document.createElement('canvas')
-    cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true })
+  if (scanCanvas.width !== vw || scanCanvas.height !== vh) {
+    scanCanvas.width = vw
+    scanCanvas.height = vh
   }
 
-  const targetW = Math.round(roiW)
-  const targetH = Math.round(roiH)
-
-  if (cropCanvas.width !== targetW || cropCanvas.height !== targetH) {
-    cropCanvas.width = targetW
-    cropCanvas.height = targetH
+  if (scanCtx) {
+    scanCtx.drawImage(video, 0, 0, vw, vh)
   }
 
-  if (cropCtx) {
-    cropCtx.drawImage(video, roiX, roiY, roiW, roiH, 0, 0, targetW, targetH)
-  }
-
-  return cropCanvas
+  return scanCanvas
 }
 
 async function initCamera() {
@@ -949,21 +925,36 @@ function startScanLoop() {
     const now = performance.now()
     if (!isLocked.value && !showProductSelectionModal.value && !overwriteTarget.value && !warningModal.value && videoRef.value.readyState >= 2 && now - lastScanTime >= 70) {
       lastScanTime = now
-      const croppedCanvas = updateCropCanvas()
-      if (croppedCanvas) {
-        if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
+
+      if (activeEngine.value === 'BarcodeDetector' && barcodeDetector) {
+        try {
+          // Detect barcode/QR code anywhere in full frame at any rotation angle
+          const barcodes = await barcodeDetector.detect(videoRef.value)
+          if (barcodes && barcodes.length > 0) {
+            const rawVal = barcodes[0].rawValue?.trim()
+            if (rawVal) {
+              processCandidateBarcode(rawVal)
+            }
+          }
+        } catch (_) {
           try {
-            const barcodes = await barcodeDetector.detect(croppedCanvas)
-            if (barcodes && barcodes.length > 0) {
-              const rawVal = barcodes[0].rawValue?.trim()
-              if (rawVal) {
-                processCandidateBarcode(rawVal)
+            const canvas = getScanCanvas()
+            if (canvas) {
+              const barcodes = await barcodeDetector.detect(canvas)
+              if (barcodes && barcodes.length > 0) {
+                const rawVal = barcodes[0].rawValue?.trim()
+                if (rawVal) {
+                  processCandidateBarcode(rawVal)
+                }
               }
             }
           } catch (_) {}
-        } else if (activeEngine.value === 'ZXing' && zxingReader) {
-          try {
-            const res = zxingReader.decodeFromCanvas(croppedCanvas)
+        }
+      } else if (activeEngine.value === 'ZXing' && zxingReader) {
+        try {
+          const canvas = getScanCanvas()
+          if (canvas) {
+            const res = zxingReader.decodeFromCanvas(canvas)
             const result = res && typeof res.then === 'function' ? await res : res
             if (result) {
               const text = typeof result.getText === 'function' ? result.getText()?.trim() : result.text?.trim()
@@ -971,8 +962,8 @@ function startScanLoop() {
                 processCandidateBarcode(text)
               }
             }
-          } catch (_) {}
-        }
+          }
+        } catch (_) {}
       }
     }
 
@@ -1158,6 +1149,8 @@ function stopEverything() {
   barcodeDetector = null
   zxingReader = null
   isLocked.value = false
+  scanCanvas = null
+  scanCtx = null
 }
 
 function closeScanner() {
