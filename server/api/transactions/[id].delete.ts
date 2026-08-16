@@ -19,21 +19,22 @@ export default defineEventHandler(async (event) => {
     throw createError(errorResponse(event, 404, 'Transaction not found'))
   }
 
-  // Restore product stocks
-  for (const detail of transaction.details) {
-    await prisma.product.update({
-      where: { id: detail.productId },
-      data: {
-        stock: { increment: detail.qty }
-      }
-    }).catch(() => {
-      // Ignore if product was deleted
-    })
-  }
+  await prisma.$transaction(async (tx) => {
+    for (const detail of transaction.details) {
+      await tx.product.update({
+        where: { id: detail.productId },
+        data: {
+          stock: { increment: detail.qty }
+        }
+      }).catch(() => {
+        // Ignore if product was deleted
+      })
+    }
 
-  // Delete transaction (TransactionDetail will be deleted automatically due to onDelete: Cascade)
-  await prisma.transaction.delete({
-    where: { id }
+    // Delete transaction (TransactionDetail will be deleted automatically due to onDelete: Cascade)
+    await tx.transaction.delete({
+      where: { id }
+    })
   })
 
   return successResponse(null, 'Transaction deleted successfully and stock restored')

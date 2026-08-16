@@ -41,7 +41,7 @@
         <div class="w-full sm:w-auto">
           <select v-model="filterMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white font-medium truncate">
             <option value="">Semua Metode Pembayaran</option>
-            <option value="CASH">Tunai</option>
+            <option value="Tunai">Tunai</option>
             <option value="QRIS">QRIS</option>
           </select>
         </div>

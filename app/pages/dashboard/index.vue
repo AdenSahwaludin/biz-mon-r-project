@@ -247,6 +247,7 @@ watch(() => bizStore.activeBranchId, async () => {
 async function fetchDashboardData(forceRefresh = false) {
   const branchId = bizStore.activeBranchId
   const queryParam = branchId ? `?branchId=${branchId}` : ''
+  const trxUrl = branchId ? `/transactions?branchId=${branchId}&limit=5` : '/transactions?limit=5'
 
   if (!timeseries.value.length && !forceRefresh) {
     isLoading.value = true
@@ -269,7 +270,7 @@ async function fetchDashboardData(forceRefresh = false) {
           if (fresh.success) bestSellers.value = fresh.data || []
         }
       }),
-      fetchWithCache<any>(`/transactions${queryParam}&limit=5`, {
+      fetchWithCache<any>(trxUrl, {
         forceRefresh,
         onRevalidated: (fresh) => {
           if (fresh.success) recentTransactions.value = fresh.data || []

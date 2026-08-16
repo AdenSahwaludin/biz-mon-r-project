@@ -61,8 +61,7 @@ export default defineEventHandler(async (event) => {
   const timeseries: Record<string, { tanggal: string, transaksi: number, omzet: number, cash: number, qris: number }> = {}
 
   const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const startOfTodayMs = startOfToday.getTime()
+  const startOfTodayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   const past7DaysMs = startOfTodayMs - (6 * 24 * 60 * 60 * 1000)
   const past30DaysMs = startOfTodayMs - (29 * 24 * 60 * 60 * 1000)
 

@@ -7,23 +7,27 @@ declare global {
 }
 
 /**
- * Deteksi jenis database dari DATABASE_URL:
+ * Deteksi jenis database:
  *   - "file:./dev.db"          → SQLite lokal (Prisma default)
- *   - "libsql://..." / "https://..." → Turso Cloud (pakai TURSO_AUTH_TOKEN)
+ *   - "libsql://..." / "https://..." di DATABASE_URL → Turso Cloud
+ *   - TURSO_DATABASE_URL ada tapi DATABASE_URL SQLite lokal → pakai Turso
  */
 function createPrismaClient(): PrismaClient {
   const rawUrl = (process.env.DATABASE_URL || '').trim().replace(/^["']|["']$/g, '')
+  const rawTursoUrl = (process.env.TURSO_DATABASE_URL || '').trim().replace(/^["']|["']$/g, '')
 
   const isTurso = rawUrl.startsWith('libsql://') || rawUrl.startsWith('https://')
+  const tursoUrlAvailable = rawTursoUrl.startsWith('libsql://') || rawTursoUrl.startsWith('https://')
+  const isTursoFallback = !isTurso && tursoUrlAvailable && (!rawUrl || process.env.NODE_ENV === 'production')
 
-  if (isTurso) {
+  if (isTurso || isTursoFallback) {
+    let url = isTurso ? rawUrl : rawTursoUrl
     const rawToken = process.env.TURSO_AUTH_TOKEN
     const authToken = rawToken
       ? rawToken.trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '')
       : undefined
 
     // LibSQL client needs https:// URL
-    let url = rawUrl
     if (url.startsWith('libsql://')) {
       url = url.replace('libsql://', 'https://')
     }
@@ -31,7 +35,7 @@ function createPrismaClient(): PrismaClient {
     try {
       const libsql = createClient({ url, authToken })
       const adapter = new PrismaLibSQL(libsql)
-      console.log('[prisma] Connected to Turso Cloud DB:', rawUrl)
+      console.log('[prisma] Connected to Turso Cloud DB:', url)
       return new PrismaClient({ adapter } as any)
     } catch (e) {
       console.error('[prisma] Failed to initialize Turso adapter, falling back to default:', e)

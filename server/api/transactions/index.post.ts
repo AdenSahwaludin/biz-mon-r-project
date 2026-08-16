@@ -14,6 +14,13 @@ const createSchema = z.object({
   details: z.array(detailSchema).min(1)
 })
 
+function formatTrxId(now: Date, seq: number): string {
+  const d = now.getDate().toString().padStart(2, '0')
+  const m = (now.getMonth() + 1).toString().padStart(2, '0')
+  const y = now.getFullYear().toString().substring(2)
+  return `TRX-${d}${m}${y}-${seq.toString().padStart(4, '0')}`
+}
+
 export default defineEventHandler(async (event) => {
   try {
     const user = requireAuth(event)
@@ -43,83 +50,97 @@ export default defineEventHandler(async (event) => {
       throw createError(errorResponse(event, 400, 'The parent business is not active'))
     }
 
-    let total = 0
-    const transactionDetails = []
+    // Generate transaction inside a DB transaction so stock decrement,
+    // ID sequence and transaction creation are atomic. Retry on ID collision
+    // (two concurrent requests may compute the same sequence number).
+    let transaction: any = null
+    let attempts = 0
+    const maxAttempts = 5
 
-    for (const item of data.details) {
-      const product = await prisma.product.findUnique({ where: { id: item.productId } })
-      
-      if (!product) {
-        throw createError(errorResponse(event, 400, `Product with ID ${item.productId} not found`))
-      }
-      if (!product.isActive) {
-        throw createError(errorResponse(event, 400, `Product ${product.name} is inactive and cannot be sold`))
-      }
-      if (product.stock < item.qty) {
-        throw createError(errorResponse(event, 400, `Stok produk "${product.name}" tidak mencukupi (Tersisa: ${product.stock}, diminta: ${item.qty})`))
-      }
+    while (!transaction && attempts < maxAttempts) {
+      attempts++
 
-      const subtotal = product.price * item.qty
-      total += subtotal
+      try {
+        transaction = await prisma.$transaction(async (tx) => {
+          const now = new Date()
+          const datePrefix = `TRX-${now.getDate().toString().padStart(2, '0')}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getFullYear().toString().substring(2)}-`
 
-      transactionDetails.push({
-        productId: product.id,
-        snapshotPrice: product.price,
-        qty: item.qty,
-        subtotal
-      })
+          const latestTrxToday = await tx.transaction.findFirst({
+            where: { id: { startsWith: datePrefix } },
+            orderBy: { createdAt: 'desc' }
+          })
 
-      // Update product stock
-      await prisma.product.update({
-        where: { id: product.id },
-        data: { stock: { decrement: item.qty } }
-      })
-    }
+          let nextSeq = 1
+          if (latestTrxToday) {
+            const parts = latestTrxToday.id.split('-')
+            const lastNumber = parseInt(parts[parts.length - 1], 10)
+            if (!isNaN(lastNumber)) {
+              nextSeq = lastNumber + 1
+            }
+          }
 
-    // Format transaction ID: TRX-DDMMYY-XXXX (e.g., TRX-180726-0001)
-    const now = new Date()
-    const d = now.getDate().toString().padStart(2, '0')
-    const m = (now.getMonth() + 1).toString().padStart(2, '0')
-    const y = now.getFullYear().toString().substring(2)
-    const datePrefix = `TRX-${d}${m}${y}-`
+          const customId = formatTrxId(now, nextSeq)
 
-    // Find latest transaction generated today with this date prefix
-    const latestTrxToday = await prisma.transaction.findFirst({
-      where: {
-        id: {
-          startsWith: datePrefix
+          let total = 0
+          const transactionDetails = []
+
+          for (const item of data.details) {
+            const product = await tx.product.findUnique({ where: { id: item.productId } })
+
+            if (!product) {
+              throw createError(errorResponse(event, 400, `Product with ID ${item.productId} not found`))
+            }
+            if (!product.isActive) {
+              throw createError(errorResponse(event, 400, `Product ${product.name} is inactive and cannot be sold`))
+            }
+            if (product.stock < item.qty) {
+              throw createError(errorResponse(event, 400, `Stok produk "${product.name}" tidak mencukupi (Tersisa: ${product.stock}, diminta: ${item.qty})`))
+            }
+
+            const subtotal = product.price * item.qty
+            total += subtotal
+
+            transactionDetails.push({
+              productId: product.id,
+              snapshotPrice: product.price,
+              qty: item.qty,
+              subtotal
+            })
+          }
+
+          const created = await tx.transaction.create({
+            data: {
+              id: customId,
+              total,
+              paymentMethod: data.paymentMethod,
+              cashierId: user.id,
+              branchId: data.branchId,
+              details: {
+                create: transactionDetails
+              }
+            },
+            include: { details: true }
+          })
+
+          // Decrement stock inside the same DB transaction:
+          // if this fails, everything above is rolled back
+          for (const item of data.details) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stock: { decrement: item.qty } }
+            })
+          }
+
+          return created
+        })
+      } catch (e: any) {
+        // P2002 = duplicate primary key (ID collision), P2034 = write conflict
+        if ((e.code === 'P2002' || e.code === 'P2034') && attempts < maxAttempts) {
+          continue
         }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
-
-    let nextSeq = 1
-    if (latestTrxToday) {
-      const parts = latestTrxToday.id.split('-')
-      const lastNumber = parseInt(parts[parts.length - 1], 10)
-      if (!isNaN(lastNumber)) {
-        nextSeq = lastNumber + 1
+        throw e
       }
     }
-
-    const seqStr = nextSeq.toString().padStart(4, '0')
-    const customId = `${datePrefix}${seqStr}`
-
-    const transaction = await prisma.transaction.create({
-      data: {
-        id: customId,
-        total,
-        paymentMethod: data.paymentMethod,
-        cashierId: user.id,
-        branchId: data.branchId,
-        details: {
-          create: transactionDetails
-        }
-      },
-      include: { details: true }
-    })
 
     return successResponse(transaction, 'Transaction created successfully')
   } catch (error: any) {
