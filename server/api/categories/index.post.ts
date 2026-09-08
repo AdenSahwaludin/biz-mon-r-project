@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireAuth } from '../../utils/authGuard'
+import { requireAuth, assertBusinessAccess } from '../../utils/authGuard'
 import { prisma } from '../../utils/prisma'
 import { successResponse, errorResponse } from '../../utils/response'
 
@@ -10,9 +10,10 @@ const createSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   try {
-    requireAuth(event)
+    const user = requireAuth(event)
     const body = await readBody(event)
     const data = createSchema.parse(body)
+    await assertBusinessAccess(event, user, data.businessId)
 
     const business = await prisma.business.findUnique({ where: { id: data.businessId } })
     if (!business) {

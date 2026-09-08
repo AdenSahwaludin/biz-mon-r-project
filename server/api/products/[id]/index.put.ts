@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireAuth } from '../../../utils/authGuard'
+import { requireAuth, assertBusinessAccess } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
@@ -16,7 +16,7 @@ const updateSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   try {
-    requireAuth(event)
+    const user = requireAuth(event)
     const id = event.context.params?.id
     if (!id) {
       throw createError(errorResponse(event, 400, 'Product ID is required'))
@@ -29,6 +29,8 @@ export default defineEventHandler(async (event) => {
     if (!product) {
       throw createError(errorResponse(event, 404, 'Product not found'))
     }
+
+    await assertBusinessAccess(event, user, product.businessId)
 
     const finalSku = data.sku ? data.sku.trim() : null
     const finalBarcode = data.barcode ? data.barcode.trim() : null
@@ -58,6 +60,17 @@ export default defineEventHandler(async (event) => {
       })
       if (existingBarcode) {
         return errorResponse(event, 400, 'Barcode sudah digunakan di bisnis ini')
+      }
+    }
+
+    // Validate category belongs to the same business as the product
+    if (data.categoryId) {
+      const catBiz = await prisma.category.findFirst({
+        where: { id: data.categoryId, businessId: product.businessId },
+        select: { id: true }
+      })
+      if (!catBiz) {
+        return errorResponse(event, 400, 'Kategori tidak ditemukan di bisnis ini')
       }
     }
 

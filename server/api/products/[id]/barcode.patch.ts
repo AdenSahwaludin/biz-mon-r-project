@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireAuth } from '../../../utils/authGuard'
+import { requireAuth, assertBusinessAccess } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
@@ -10,7 +10,7 @@ const updateBarcodeSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   try {
-    requireAuth(event)
+    const user = requireAuth(event)
 
     const id = getRouterParam(event, 'id')
     if (!id) {
@@ -23,6 +23,12 @@ export default defineEventHandler(async (event) => {
     const product = await prisma.product.findUnique({ where: { id } })
     if (!product) {
       return errorResponse(event, 404, 'Produk tidak ditemukan')
+    }
+
+    try {
+      await assertBusinessAccess(event, user, product.businessId)
+    } catch (e: any) {
+      return errorResponse(event, e?.statusCode || 403, e?.statusMessage || 'Forbidden')
     }
 
     const finalBarcode = barcode.trim()

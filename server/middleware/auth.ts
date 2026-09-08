@@ -1,6 +1,7 @@
 import { verifyToken } from '../utils/jwt'
+import { prisma } from '../utils/prisma'
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   let token: string | undefined
 
   // Check Authorization header first
@@ -13,9 +14,22 @@ export default defineEventHandler((event) => {
   }
 
   if (token) {
-    const decoded = verifyToken(token)
-    if (decoded) {
-      event.context.user = decoded
+    const decoded: any = verifyToken(token)
+    if (decoded && typeof decoded === 'object' && decoded.id) {
+      // Revalidasi ke DB: user yang dihapus/dinonaktifkan langsung kehilangan akses
+      try {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: decoded.id },
+          select: { id: true, isActive: true, role: true }
+        })
+        if (!dbUser || !dbUser.isActive) {
+          return
+        }
+        // Pakai role fresh dari DB agar perubahan role langsung berlaku
+        event.context.user = { ...decoded, role: dbUser.role }
+      } catch {
+        return
+      }
     }
   }
 })

@@ -1,16 +1,31 @@
-import { requireAuth } from '../../utils/authGuard'
+import { requireAuth, getUserBusinessIds } from '../../utils/authGuard'
 import { prisma } from '../../utils/prisma'
 import { successResponse, errorResponse } from '../../utils/response'
 import { generateReadableSku } from '../../utils/skuGenerator'
 
+const MAX_IMPORT_ITEMS = 500
+
 export default defineEventHandler(async (event) => {
   try {
-    requireAuth(event)
+    const user = requireAuth(event)
     const body = await readBody(event)
     const items = body.products || body
 
     if (!Array.isArray(items) || items.length === 0) {
       return errorResponse(event, 400, 'Data produk tidak ditemukan atau kosong')
+    }
+
+    if (items.length > MAX_IMPORT_ITEMS) {
+      return errorResponse(event, 400, `Maksimal ${MAX_IMPORT_ITEMS} produk per import`)
+    }
+
+    // Scope karyawan: hanya boleh import ke bisnis cabangnya
+    let allowedBizIds: Set<string> | null = null
+    if (user.role !== 'ADMIN') {
+      allowedBizIds = await getUserBusinessIds(user.id)
+      if (allowedBizIds.size === 0) {
+        return errorResponse(event, 403, 'Forbidden: tidak ada cabang yang ditugaskan')
+      }
     }
 
     // Pre-fetch all active businesses & categories
@@ -48,7 +63,21 @@ export default defineEventHandler(async (event) => {
         targetBiz = businessMap.get(item.businessId)
       }
       if (!targetBiz) {
-        targetBiz = allBusinesses[0]
+        skippedCount++
+        skippedDetails.push({
+          name: rawName,
+          reason: 'Bisnis tidak ditemukan — isi businessName/businessId yang valid'
+        })
+        continue
+      }
+
+      if (allowedBizIds && !allowedBizIds.has(targetBiz.id)) {
+        skippedCount++
+        skippedDetails.push({
+          name: rawName,
+          reason: `Bukan bisnis cabang Anda — dilewati (${targetBiz.name})`
+        })
+        continue
       }
 
       const bizId = targetBiz.id
@@ -169,6 +198,7 @@ export default defineEventHandler(async (event) => {
       `Import selesai: ${createdCount} dibuat, ${skippedCount} dilewati`
     )
   } catch (error: any) {
-    return errorResponse(event, 500, error.message || 'Gagal memproses import produk')
+    console.error('[import products]', error)
+    return errorResponse(event, 500, 'Gagal memproses import produk')
   }
 })

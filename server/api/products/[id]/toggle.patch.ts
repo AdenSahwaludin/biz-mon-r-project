@@ -1,9 +1,9 @@
-import { requireAuth } from '../../../utils/authGuard'
+import { requireAuth, assertBusinessAccess } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event)
+  const user = requireAuth(event)
   
   const id = getRouterParam(event, 'id')
   if (!id) {
@@ -14,6 +14,8 @@ export default defineEventHandler(async (event) => {
   if (!product) {
     throw createError(errorResponse(event, 404, 'Product not found'))
   }
+
+  await assertBusinessAccess(event, user, product.businessId)
 
   const updated = await prisma.product.update({
     where: { id },

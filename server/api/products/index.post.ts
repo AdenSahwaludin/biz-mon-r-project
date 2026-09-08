@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireAuth } from '../../utils/authGuard'
+import { requireAuth, assertBusinessAccess } from '../../utils/authGuard'
 import { prisma } from '../../utils/prisma'
 import { successResponse, errorResponse } from '../../utils/response'
 import { generateReadableSku } from '../../utils/skuGenerator'
@@ -18,9 +18,10 @@ const createSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   try {
-    requireAuth(event)
+    const user = requireAuth(event)
     const body = await readBody(event)
     const data = createSchema.parse(body)
+    await assertBusinessAccess(event, user, data.businessId)
 
     let finalSku = data.sku ? data.sku.trim() : ''
     let finalBarcode = data.barcode ? data.barcode.trim() : ''
@@ -72,6 +73,17 @@ export default defineEventHandler(async (event) => {
       })
       if (existingBarcode) {
         return errorResponse(event, 400, 'Barcode sudah digunakan di bisnis ini')
+      }
+    }
+
+    // Validate category belongs to the same business
+    if (data.categoryId) {
+      const catBiz = await prisma.category.findFirst({
+        where: { id: data.categoryId, businessId: data.businessId },
+        select: { id: true }
+      })
+      if (!catBiz) {
+        return errorResponse(event, 400, 'Kategori tidak ditemukan di bisnis ini')
       }
     }
 

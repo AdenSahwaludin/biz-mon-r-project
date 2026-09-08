@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "Kang-Ravid",
@@ -31,7 +32,7 @@
       },
       "devDependencies": {
         "@types/jsonwebtoken": "^9.0.10",
-        "@vite-pwa/nuxt": "^1.0.2",
+        "@vite-pwa/nuxt": "^1.1.1",
       },
     },
   },

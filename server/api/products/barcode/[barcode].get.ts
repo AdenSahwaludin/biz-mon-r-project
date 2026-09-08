@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
   let businessId = query.businessId as string | undefined
 
   if (!barcode) {
-    return errorResponse(event, 'Barcode required', 400)
+    return errorResponse(event, 400, 'Barcode required')
   }
 
   const where: any = {
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!product) {
-    return errorResponse(event, 'Produk tidak ditemukan', 404)
+    return errorResponse(event, 404, 'Produk tidak ditemukan')
   }
 
   return successResponse(product)

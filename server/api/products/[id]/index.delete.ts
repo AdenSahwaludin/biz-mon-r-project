@@ -1,9 +1,9 @@
-import { requireAuth } from '../../../utils/authGuard'
+import { requireAuth, assertBusinessAccess } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event)
+  const user = requireAuth(event)
   
   const id = getRouterParam(event, 'id')
   if (!id) {
@@ -22,6 +22,8 @@ export default defineEventHandler(async (event) => {
   if (!product) {
     throw createError(errorResponse(event, 404, 'Product not found'))
   }
+
+  await assertBusinessAccess(event, user, product.businessId)
 
   if (product._count.transactionDetails > 0) {
     throw createError(errorResponse(event, 400, 'Cannot delete product because it has been used in transactions. Please deactivate it instead.'))

@@ -72,6 +72,9 @@ export default defineNuxtConfig({
     },
     workbox: {
       navigateFallback: null,
+      // Jangan cache /api/* di Service Worker: data terautentikasi
+      // (transaksi/omzet/produk) bisa basi 24 jam & terbaca user berikutnya
+      // di device shared. API selalu NetworkOnly.
       globPatterns: ['**/*.{js,css,html,png,svg,ico,webp,woff2}'],
       runtimeCaching: [
         {
@@ -96,20 +99,6 @@ export default defineNuxtConfig({
             expiration: {
               maxEntries: 10,
               maxAgeSeconds: 60 * 60 * 24 * 365
-            },
-            cacheableResponse: {
-              statuses: [0, 200]
-            }
-          }
-        },
-        {
-          urlPattern: /\/api\/.*/i,
-          handler: 'NetworkFirst',
-          options: {
-            cacheName: 'api-cache',
-            expiration: {
-              maxEntries: 50,
-              maxAgeSeconds: 60 * 60 * 24
             },
             cacheableResponse: {
               statuses: [0, 200]

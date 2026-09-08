@@ -5,13 +5,14 @@ import { successResponse, errorResponse } from '../../utils/response'
 
 const detailSchema = z.object({
   productId: z.string().min(1),
-  qty: z.number().min(1)
+  qty: z.number().int('Qty harus bilangan bulat').min(1, 'Qty minimal 1').max(1000, 'Qty maksimal 1000')
 })
 
 const createSchema = z.object({
   branchId: z.string().min(1),
-  paymentMethod: z.string().default('Tunai'),
-  details: z.array(detailSchema).min(1)
+  paymentMethod: z.enum(['Tunai', 'QRIS', 'CASH', 'Transfer', 'EDC']).default('Tunai'),
+  details: z.array(detailSchema).min(1).max(100),
+  clientMutationId: z.string().max(64).optional()
 })
 
 function formatTrxId(now: Date, seq: number): string {
@@ -81,38 +82,47 @@ export default defineEventHandler(async (event) => {
 
           const customId = formatTrxId(now, nextSeq)
 
+          // Merge duplicate productId agar decrement atomik benar
+          const merged = new Map<string, number>()
+          for (const item of data.details) {
+            merged.set(item.productId, (merged.get(item.productId) || 0) + item.qty)
+          }
+
           let total = 0
           const transactionDetails = []
 
-          for (const item of data.details) {
-            const product = await tx.product.findUnique({ where: { id: item.productId } })
+          for (const [productId, qty] of merged) {
+            const product = await tx.product.findUnique({ where: { id: productId } })
 
             if (!product) {
-              throw createError(errorResponse(event, 400, `Product with ID ${item.productId} not found`))
+              throw createError(errorResponse(event, 400, `Product with ID ${productId} not found`))
             }
             if (!product.isActive) {
               throw createError(errorResponse(event, 400, `Product ${product.name} is inactive and cannot be sold`))
             }
-            if (product.stock < item.qty) {
-              throw createError(errorResponse(event, 400, `Stok produk "${product.name}" tidak mencukupi (Tersisa: ${product.stock}, diminta: ${item.qty})`))
+            // Validasi produk satu bisnis dengan cabang transaksi
+            if (product.businessId !== branch.businessId) {
+              throw createError(errorResponse(event, 400, `Produk "${product.name}" bukan milik bisnis cabang ini`))
             }
 
-            const subtotal = product.price * item.qty
+            const subtotal = product.price * qty
             total += subtotal
 
             transactionDetails.push({
               productId: product.id,
               snapshotPrice: product.price,
-              qty: item.qty,
+              qty,
               subtotal
             })
           }
+
+          const normalizedPayment = data.paymentMethod === 'CASH' ? 'Tunai' : data.paymentMethod
 
           const created = await tx.transaction.create({
             data: {
               id: customId,
               total,
-              paymentMethod: data.paymentMethod,
+              paymentMethod: normalizedPayment,
               cashierId: user.id,
               branchId: data.branchId,
               details: {
@@ -122,13 +132,15 @@ export default defineEventHandler(async (event) => {
             include: { details: true }
           })
 
-          // Decrement stock inside the same DB transaction:
-          // if this fails, everything above is rolled back
-          for (const item of data.details) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { decrement: item.qty } }
+          // Decrement atomik dengan guard stok: gagal jika stok kurang (cegah oversell konkuren)
+          for (const [productId, qty] of merged) {
+            const dec = await tx.product.updateMany({
+              where: { id: productId, stock: { gte: qty } },
+              data: { stock: { decrement: qty } }
             })
+            if (dec.count === 0) {
+              throw createError(errorResponse(event, 400, 'Stok produk tidak mencukupi (transaksi bersamaan, silakan ulangi)'))
+            }
           }
 
           return created

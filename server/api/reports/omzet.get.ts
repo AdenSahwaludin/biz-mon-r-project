@@ -1,9 +1,9 @@
 import { requireAuth } from '../../utils/authGuard'
 import { prisma } from '../../utils/prisma'
-import { successResponse } from '../../utils/response'
+import { successResponse, errorResponse } from '../../utils/response'
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event)
+  const user = requireAuth(event)
 
   const query = getQuery(event)
   const businessId = query.businessId as string | undefined
@@ -13,7 +13,33 @@ export default defineEventHandler(async (event) => {
   const endDateStr = (query.endDate || query.date) as string | undefined
 
   const where: any = {}
-  if (branchId) {
+
+  // Tenant isolation: KARYAWAN hanya boleh lihat cabang yang ditugaskan
+  if (user.role === 'KARYAWAN') {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { branches: { select: { id: true } } }
+    })
+    const userBranchIds = [
+      ...(dbUser?.branchId ? [dbUser.branchId] : []),
+      ...(dbUser?.branches ? dbUser.branches.map(b => b.id) : [])
+    ]
+    if (userBranchIds.length === 0) {
+      throw createError(errorResponse(event, 403, 'Forbidden: no branch assigned'))
+    }
+    if (branchId) {
+      if (!userBranchIds.includes(branchId)) {
+        throw createError(errorResponse(event, 403, 'Forbidden: not your branch'))
+      }
+      where.branchId = branchId
+    } else if (businessId) {
+      where.branchId = { in: userBranchIds }
+      where.branch = { businessId }
+    } else {
+      where.branchId = { in: userBranchIds }
+    }
+    // Karyawan tidak boleh filter paymentMethod arbitrary? tetap boleh, tapi scope sudah dibatasi
+  } else if (branchId) {
     where.branchId = branchId
   } else if (businessId) {
     where.branch = { businessId }
@@ -34,6 +60,8 @@ export default defineEventHandler(async (event) => {
 
   const transactions = await prisma.transaction.findMany({
     where,
+    take: 10000,
+    orderBy: { createdAt: 'desc' },
     select: {
       total: true,
       createdAt: true,

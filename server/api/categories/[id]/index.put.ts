@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { requireAuth } from '../../../utils/authGuard'
+import { requireAuth, assertBusinessAccess } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
@@ -9,7 +9,7 @@ const updateSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   try {
-    requireAuth(event)
+    const user = requireAuth(event)
     const id = getRouterParam(event, 'id')
     if (!id) {
       throw createError(errorResponse(event, 400, 'Category ID is required'))
@@ -22,6 +22,8 @@ export default defineEventHandler(async (event) => {
     if (!category) {
       throw createError(errorResponse(event, 404, 'Category not found'))
     }
+
+    await assertBusinessAccess(event, user, category.businessId)
 
     const updated = await prisma.category.update({
       where: { id },

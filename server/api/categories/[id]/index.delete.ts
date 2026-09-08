@@ -1,9 +1,9 @@
-import { requireAuth } from '../../../utils/authGuard'
+import { requireAuth, assertBusinessAccess } from '../../../utils/authGuard'
 import { prisma } from '../../../utils/prisma'
 import { successResponse, errorResponse } from '../../../utils/response'
 
 export default defineEventHandler(async (event) => {
-  requireAuth(event)
+  const user = requireAuth(event)
   
   const id = getRouterParam(event, 'id')
   if (!id) {
@@ -22,6 +22,8 @@ export default defineEventHandler(async (event) => {
   if (!category) {
     throw createError(errorResponse(event, 404, 'Category not found'))
   }
+
+  await assertBusinessAccess(event, user, category.businessId)
 
   if (category._count.products > 0) {
     throw createError(errorResponse(event, 400, 'Cannot delete category because it has products'))

@@ -494,6 +494,12 @@ function openScanner() {
   isScannerOpen.value = true
 }
 
+function openPaymentModal() {
+  // Dipanggil dari BarcodeScannerModal @pay — tutup scanner lalu proses bayar
+  isScannerOpen.value = false
+  handlePay()
+}
+
 const barcodeInput = ref<HTMLInputElement>()
 const barcodeValue = ref('')
 const searchQuery = ref('')
@@ -752,6 +758,7 @@ function handleCancel() {
 const { enqueueTransaction } = useOfflineQueue()
 
 async function handlePay() {
+  if (isSaving.value) return
   const targetBranchId = biz.activeBranchId || (auth.isKaryawan ? auth.userBranch?.id : null)
 
   if (!targetBranchId) {
@@ -760,10 +767,14 @@ async function handlePay() {
   }
 
   isSaving.value = true
-  
+
+  // Idempotency key: satu untuk percobaan ini, dipakai ulang saat retry/offline
+  // agar sync offline tidak membuat transaksi ganda
+  const clientMutationId = `WEB-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
   const payload = {
     branchId: targetBranchId,
     paymentMethod: cart.metodePembayaran,
+    clientMutationId,
     total: cart.subtotal,
     details: cart.items.map(item => ({
       productId: item.produk.id,

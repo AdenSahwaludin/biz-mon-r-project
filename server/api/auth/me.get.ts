@@ -17,6 +17,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'User not found' })
   }
 
+  if (!user.isActive) {
+    throw createError({ statusCode: 403, statusMessage: 'Akun dinonaktifkan' })
+  }
+
   const userBranches = user.branches.length > 0
     ? user.branches.map(b => ({ id: b.id, name: b.name, businessId: b.businessId, businessName: b.business?.name || '' }))
     : (user.branch ? [{ id: user.branch.id, name: user.branch.name, businessId: user.branch.businessId, businessName: user.branch.business?.name || '' }] : [])
