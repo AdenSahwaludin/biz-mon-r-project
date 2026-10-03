@@ -96,6 +96,8 @@ export const useAuthStore = defineStore('auth', {
       token.value = null
       this.user = null
       this.isLoggedIn = false
+      // Bersihkan persistent SWR cache (-user berikutnya di device shared mulai fresh)
+      try { clearPersistentCache() } catch {}
       navigateTo('/login')
     },
 

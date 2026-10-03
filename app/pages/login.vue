@@ -165,6 +165,7 @@ import { User, Lock, Eye, EyeOff, ShieldCheck, TrendingUp, Building2, Sparkles, 
 
 definePageMeta({
   layout: false,
+  keepalive: false,
 })
 
 const auth = useAuthStore()
@@ -207,6 +208,13 @@ async function handleLogin() {
   if (result.success) {
     const bizStore = useBusinessStore()
     await bizStore.fetchAll(true)
+    // Warmup: isi cache POS + preload chunk transaksi di background,
+    // jadi halaman pertama setelah login langsung satset
+    try {
+      const { prefetch } = useCachedFetch()
+      prefetch(['/products', '/categories'])
+      void preloadRouteComponents(auth.isAdmin ? '/pilih-bisnis' : '/transaksi')
+    } catch {}
     isLoading.value = false
     navigateTo(auth.isAdmin ? '/pilih-bisnis' : '/transaksi')
   } else {

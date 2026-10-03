@@ -149,7 +149,7 @@
 import { ref, onMounted } from 'vue'
 import { Search, Trash2 } from 'lucide-vue-next'
 
-definePageMeta({ name: 'transaksi-catchall' })
+definePageMeta({ name: 'transaksi-catchall', keepalive: false })
 
 const route = useRoute()
 const router = useRouter()

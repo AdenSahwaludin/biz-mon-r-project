@@ -153,6 +153,8 @@
 import { ref, onMounted } from 'vue'
 import { Search, Trash2, Printer } from 'lucide-vue-next'
 
+definePageMeta({ keepalive: false })
+
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()

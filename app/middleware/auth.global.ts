@@ -22,7 +22,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
     if (authStore.user?.role === 'KARYAWAN' && authStore.user?.branch?.id) {
       bizStore.setBranch(authStore.user.branch.id)
     }
-    await bizStore.fetchAll()
+    // Jangan blokir navigasi: data bisnis menyusul via persistent SWR cache
+    // (pertama kali dari localStorage = instan, lalu revalidate background).
+    // Halaman tetap render skeleton dulu, habis itu satset.
+    void bizStore.fetchAll()
   }
 
   // 2. Protect non-public routes (all pages except /login)

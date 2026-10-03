@@ -545,16 +545,18 @@
       </div>
     </div>
 
-    <!-- Camera Barcode Scanner Modal -->
-    <BarcodeScannerModal
+    <!-- Camera Barcode Scanner Modal (lazy) -->
+    <LazyBarcodeScannerModal
+      v-if="scannerMounted"
       :is-open="isScannerOpen"
       :auto-close-on-scan="true"
       @close="isScannerOpen = false"
       @scan="handleCameraScan"
     />
 
-    <!-- Bulk Camera Barcode Scanner Modal -->
-    <BulkBarcodeScannerModal
+    <!-- Bulk Camera Barcode Scanner Modal (lazy) -->
+    <LazyBulkBarcodeScannerModal
+      v-if="bulkScannerMounted"
       :is-open="isBulkScannerOpen"
       :products="selectedProducts"
       @close="handleBulkScannerClose"
@@ -564,7 +566,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import {
   Search,
   Plus,
@@ -595,6 +597,8 @@ const { playSuccessBeep, unlockAudio } = useAudioBeep()
 
 const isScannerOpen = ref(false)
 const isBulkScannerOpen = ref(false)
+const scannerMounted = ref(false)
+const bulkScannerMounted = ref(false)
 const selectedProductIds = ref<string[]>([])
 
 const selectedProducts = computed(() => {
@@ -657,6 +661,7 @@ function clearSelection() {
 
 function openBulkScanner() {
   unlockAudio()
+  bulkScannerMounted.value = true
   isBulkScannerOpen.value = true
 }
 
@@ -675,6 +680,7 @@ async function handleBulkScannerClose() {
 
 function openScanner() {
   unlockAudio()
+  scannerMounted.value = true
   isScannerOpen.value = true
 }
 
@@ -723,6 +729,12 @@ onMounted(async () => {
     filterBisnis.value = bizStore.activeBusiness.id
   }
   await Promise.all([fetchProducts(), fetchCategories()])
+})
+
+// KeepAlive: kembali ke halaman = revalidate ringan (instan dari cache + refresh background)
+onActivated(() => {
+  void fetchProducts()
+  void fetchCategories()
 })
 
 watch(

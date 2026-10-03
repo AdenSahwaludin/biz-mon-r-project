@@ -62,7 +62,7 @@
         <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5 shadow-2xs">
           <h3 class="text-base font-bold text-gray-900 mb-4">Tren Penjualan (Harian)</h3>
           <div class="h-64">
-            <Bar v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
+            <ChartBar v-if="chartData.labels.length" :chart-data="chartData" :chart-options="chartOptions" />
             <div v-else class="h-full flex items-center justify-center text-gray-400">
               Belum ada data penjualan.
             </div>
@@ -167,12 +167,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { Bar } from 'vue-chartjs'
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import { Coins, Banknote, QrCode, Receipt } from 'lucide-vue-next'
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const bizStore = useBusinessStore()
 const fmt = useFormatCurrency()
@@ -239,6 +235,11 @@ const qrisCount = computed(() => {
 })
 
 const topBestSellers = computed(() => bestSellers.value.slice(0, 5))
+
+// KeepAlive: kembali ke halaman = revalidate ringan (instan dari cache + refresh background)
+onActivated(() => {
+  void fetchDashboardData()
+})
 
 watch(() => bizStore.activeBranchId, async () => {
   await fetchDashboardData(true)

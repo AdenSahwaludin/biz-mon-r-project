@@ -5,6 +5,8 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({ keepalive: false })
+
 onMounted(() => {
   navigateTo('/riwayat-transaksi', { replace: true })
 })

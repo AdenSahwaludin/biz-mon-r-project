@@ -456,8 +456,9 @@
       </div>
     </div>
 
-    <!-- Barcode Scanner Modal Component -->
-    <BarcodeScannerModal
+    <!-- Barcode Scanner Modal Component (lazy: JS kamera + zxing baru diunduh saat pertama dibuka) -->
+    <LazyBarcodeScannerModal
+      v-if="scannerMounted"
       :is-open="isScannerOpen"
       :cart-items="cart.items"
       :total-amount="cart.subtotal"
@@ -474,7 +475,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated } from 'vue'
 import { Search, Package, ShoppingCart, X, Minus, Plus, Banknote, Smartphone, CheckCircle, Soup, CupSoda, Utensils, Store, ArrowUpDown, ArrowDownUp, SortAsc, SortDesc, TrendingUp, SlidersHorizontal, ChevronUp, ChevronDown, XCircle, Camera } from 'lucide-vue-next'
 
 const cart = useCartStore()
@@ -488,9 +489,11 @@ const { fetchWithCache, invalidateCache } = useCachedFetch()
 const { playSuccessBeep, playErrorBeep, unlockAudio } = useAudioBeep()
 
 const isScannerOpen = ref(false)
+const scannerMounted = ref(false)
 
 function openScanner() {
   unlockAudio()
+  scannerMounted.value = true
   isScannerOpen.value = true
 }
 
@@ -572,6 +575,11 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleGlobalKeydown)
+})
+
+// KeepAlive: kembali ke halaman = revalidate ringan (instan dari cache + refresh background)
+onActivated(() => {
+  void fetchProducts()
 })
 
 async function fetchProducts(forceRefresh = false) {

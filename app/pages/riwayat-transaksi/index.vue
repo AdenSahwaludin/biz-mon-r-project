@@ -264,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import { Search, ClipboardList, Trash2, X, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-vue-next'
 
 const auth = useAuthStore()
@@ -321,6 +321,11 @@ watch(() => bizStore.activeBranchId, async (newBranch) => {
     filterBranchId.value = newBranch
     await fetchTransactions()
   }
+})
+
+// KeepAlive: kembali ke halaman = revalidate ringan (instan dari cache + refresh background)
+onActivated(() => {
+  void fetchTransactions()
 })
 
 async function fetchTransactions(forceRefresh = false) {

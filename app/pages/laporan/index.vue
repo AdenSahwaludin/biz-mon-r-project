@@ -106,7 +106,7 @@
           </div>
         </div>
         <div class="h-64">
-          <Line v-if="lineChartData.labels.length" :data="lineChartData" :options="lineChartOptions" />
+          <ChartLine v-if="lineChartData.labels.length" :chart-data="lineChartData" :chart-options="lineChartOptions" />
           <div v-else class="h-full flex items-center justify-center text-gray-400">
             Belum ada data untuk ditampilkan.
           </div>
@@ -176,11 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { Line } from 'vue-chartjs'
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js'
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 
 const auth = useAuthStore()
 const bizStore = useBusinessStore()
@@ -240,6 +236,11 @@ watch(() => bizStore.activeBranchId, (newBranch) => {
   if (newBranch && filterBranchId.value !== newBranch) {
     filterBranchId.value = newBranch
   }
+})
+
+// KeepAlive: kembali ke halaman = revalidate ringan (instan dari cache + refresh background)
+onActivated(() => {
+  void fetchReport()
 })
 
 async function fetchReport(forceRefresh = false) {

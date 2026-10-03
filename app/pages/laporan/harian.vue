@@ -121,7 +121,7 @@
             <span class="text-xs font-semibold px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full">Operasional Harian</span>
           </div>
           <div class="h-64">
-            <Bar v-if="hourlyChartData.labels.length" :data="hourlyChartData" :options="hourlyChartOptions" />
+            <ChartBar v-if="hourlyChartData.labels.length" :chart-data="hourlyChartData" :chart-options="hourlyChartOptions" />
             <div v-else class="h-full flex items-center justify-center text-gray-400 text-sm">
               Tidak ada data transaksi pada tanggal ini.
             </div>
@@ -331,12 +331,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
-import { Bar } from 'vue-chartjs'
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import { Calendar, Coins, Banknote, QrCode, Receipt, Clock, Users, Package, FileText, Download } from 'lucide-vue-next'
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const auth = useAuthStore()
 const bizStore = useBusinessStore()
@@ -427,8 +423,15 @@ watch(() => bizStore.activeBranchId, (newBranch) => {
   }
 })
 
+// KeepAlive: kembali ke halaman = revalidate ringan tanpa spinner (data lama tampil instan)
+onActivated(() => {
+  void fetchDailyReport()
+})
+
 async function fetchDailyReport() {
-  isLoading.value = true
+  if (dailyTransactions.value.length === 0) {
+    isLoading.value = true
+  }
   try {
     let url = `/transactions?startDate=${selectedDate.value}&endDate=${selectedDate.value}&includeDetails=true`
     if (filterBranchId.value) {

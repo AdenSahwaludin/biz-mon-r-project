@@ -46,10 +46,20 @@ export default defineEventHandler(async (event) => {
 
   const products = await prisma.product.findMany({
     where,
-    include: {
-      category: true,
-      business: true,
-      _count: { select: { transactionDetails: true } }
+    select: {
+      id: true,
+      sku: true,
+      barcode: true,
+      name: true,
+      price: true,
+      stock: true,
+      unit: true,
+      isActive: true,
+      businessId: true,
+      categoryId: true,
+      createdAt: true,
+      category: { select: { id: true, name: true } },
+      business: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: 'desc' }
   })

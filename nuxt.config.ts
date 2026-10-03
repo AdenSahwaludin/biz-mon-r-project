@@ -13,6 +13,11 @@ export default defineNuxtConfig({
     '/*.ico': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
   },
 
+  experimental: {
+    // Payload SSR dipakai ulang saat hydration -> tidak fetch ulang setelah SSR
+    payloadExtraction: true,
+  },
+
   nitro: {
     compressPublicAssets: true,
   },
@@ -25,6 +30,8 @@ export default defineNuxtConfig({
     },
     build: {
       cssCodeSplit: true,
+      reportCompressedSize: false,
+      chunkSizeWarningLimit: 900,
       rollupOptions: {
         output: {
           manualChunks(id) {

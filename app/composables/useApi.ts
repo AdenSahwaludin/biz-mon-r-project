@@ -28,6 +28,8 @@ export const useApi = () => {
         const auth = useAuthStore()
         auth.isLoggedIn = false
         auth.user = null
+        // Token mati: buang cache persisten biar tidak bocor ke sesi berikutnya
+        try { clearPersistentCache() } catch {}
         if (import.meta.client) {
           navigateTo('/login')
         }

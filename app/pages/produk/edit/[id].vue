@@ -124,8 +124,9 @@
       </form>
     </div>
 
-    <!-- Camera Barcode Scanner Modal -->
-    <BarcodeScannerModal
+    <!-- Camera Barcode Scanner Modal (lazy) -->
+    <LazyBarcodeScannerModal
+      v-if="scannerMounted"
       :is-open="isScannerOpen"
       :auto-close-on-scan="true"
       @close="isScannerOpen = false"
@@ -138,6 +139,8 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { Lock, Unlock, Camera } from 'lucide-vue-next'
 
+definePageMeta({ keepalive: false })
+
 const route = useRoute()
 const bizStore = useBusinessStore()
 const businessList = computed(() => bizStore.businesses)
@@ -146,9 +149,11 @@ const { fetchWithAuth } = useApi()
 const { playSuccessBeep, unlockAudio } = useAudioBeep()
 
 const isScannerOpen = ref(false)
+const scannerMounted = ref(false)
 
 function openScanner() {
   unlockAudio()
+  scannerMounted.value = true
   isScannerOpen.value = true
 }
 

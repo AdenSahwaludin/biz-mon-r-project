@@ -156,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, reactive } from 'vue'
+import { ref, computed, watch, onMounted, onActivated, reactive } from 'vue'
 import { Plus, Edit, Trash2, Tag, Soup, CupSoda, Utensils, Store, Eye, Package } from 'lucide-vue-next'
 
 const bizStore = useBusinessStore()
@@ -198,6 +198,11 @@ watch(activeTabId, async (newVal) => {
   if (newVal) {
     await fetchCategories(newVal)
   }
+})
+
+// KeepAlive: kembali ke halaman = revalidate ringan tab aktif
+onActivated(() => {
+  if (activeTabId.value) void fetchCategories(activeTabId.value)
 })
 
 async function fetchCategories(businessId: string, forceRefresh = false) {
